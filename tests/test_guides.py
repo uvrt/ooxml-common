@@ -6,7 +6,7 @@ import math
 
 import pytest
 
-from pptx2svg.guides import (
+from ooxml_common.drawingml.guides import (
     DEGREE,
     arc_endpoint,
     arc_segments,

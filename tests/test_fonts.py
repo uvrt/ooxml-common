@@ -5,20 +5,18 @@ face's advance widths and drawn with another's, and nothing anywhere said so: re
 substitutes silently, so the output looked exactly like correct output.  Every test here
 is really the same assertion from a different angle -- *we draw with what we measured
 with, and where we cannot, we say so out loud*.
+
+The tests that render a deck to see the invariant hold end to end stay in pptx2svg's
+copy of this file; the ones here need only the tables, the font map and the bundle.
 """
 
 from __future__ import annotations
 
-import re
-import subprocess
-import sys
-from types import SimpleNamespace
 from pathlib import Path
 
 import pytest
 
-from pptx2svg import ConvertOptions, convert_pptx_to_svg
-from pptx2svg.fonts import (
+from ooxml_common.fonts import (
     BUNDLED_FAMILIES,
     GENERIC_FAMILY_DEFAULTS,
     available_families,
@@ -26,8 +24,8 @@ from pptx2svg.fonts import (
     bundle_mode,
     font_dirs,
 )
-from pptx2svg.fonts.check import check_deck, check_families
-from pptx2svg.text.fontmap import (
+from ooxml_common.fonts.check import check_families
+from ooxml_common.text.fontmap import (
     SUBSTITUTIONS,
     font_family_value,
     generic_family,
@@ -35,12 +33,9 @@ from pptx2svg.text.fontmap import (
     substitution_for,
     typographic_family,
 )
-from pptx2svg.text.measure import DefaultTextMeasurer
-from pptx2svg.text.metrics import METRICS
-from pptx2svg.units import PX_PER_PT
-
-ROOT = Path(__file__).resolve().parents[1]
-
+from ooxml_common.text.measure import DefaultTextMeasurer
+from ooxml_common.text.metrics import METRICS
+from ooxml_common.units import PX_PER_PT
 
 def _bundle() -> Path:
     directory = bundle_dir()
@@ -206,7 +201,7 @@ def test_the_generic_behind_a_bundled_family_matches_its_design():
     assert generic_family("cousine") == "monospace"
     # Hand-written, unlike the identity rows, so it needs a guard against drift: a ninth
     # bundled family would otherwise fall back to reading its name.
-    from pptx2svg.text.fontmap import _BUNDLED_GENERICS
+    from ooxml_common.text.fontmap import _BUNDLED_GENERICS
 
     assert set(_BUNDLED_GENERICS) == {family.lower() for family in BUNDLED_FAMILIES}
 
@@ -235,55 +230,6 @@ def test_every_family_we_can_draw_is_a_family_we_can_be_asked_for():
         assert substitution.substitute == family, family
         assert substitution.exact, family
         assert substitution.metrics in METRICS, family
-
-
-#: A 24 pt line of Carlito in a 250 px box with no insets.  Carlito's own advance widths
-#: put "Hamburgefonstiv" at 225.078 px, so it fits; the 0.6 em per-character guess puts it
-#: at 278.400 px, so it does not.  The deck is derived rather than committed -- no font
-#: file, and nothing opaque, enters the corpus.
-CARLITO_PROBE_XML = """
-<p:sp xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"
-      xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">
-  <p:nvSpPr>
-    <p:cNvPr id="9001" name="Carlito probe"/>
-    <p:cNvSpPr txBox="1"/>
-    <p:nvPr/>
-  </p:nvSpPr>
-  <p:spPr>
-    <a:xfrm><a:off x="0" y="0"/><a:ext cx="2381250" cy="914400"/></a:xfrm>
-    <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
-  </p:spPr>
-  <p:txBody>
-    <a:bodyPr wrap="square" lIns="0" tIns="0" rIns="0" bIns="0"><a:noAutofit/></a:bodyPr>
-    <a:lstStyle/>
-    <a:p><a:r><a:rPr lang="en-US" sz="2400"><a:latin typeface="Carlito"/></a:rPr>
-      <a:t>Hamburgefonstiv</a:t></a:r></a:p>
-  </p:txBody>
-</p:sp>
-"""
-
-
-def test_a_deck_naming_a_bundled_face_lays_out_from_its_own_widths(authoring):
-    """End to end, because the unit widths being right is only half of it.
-
-    This is the failure as a reader of the output would meet it, which is to say not at
-    all: the text still drew, in the right family, at the right size -- and broke
-    "Hamburgefonstiv" across two lines mid-word, because the layout had been computed
-    from a per-character guess 23.7% wider than Carlito.  The first baseline moved too
-    (y=32 from the no-metrics default, against y=29.806 from Carlito's own descender).
-    Nothing in the SVG says the widths were invented.
-    """
-    from deckbuilder import derive_deck
-
-    deck = derive_deck(authoring, shapes_xml=CARLITO_PROBE_XML)
-    (svg,) = convert_pptx_to_svg(deck, ConvertOptions(warn_on_font_substitution=False))
-
-    elements = re.findall(r"<text[^>]*>.*?</text>", svg, re.S)
-    (text,) = [element for element in elements if "Hamburge" in element]
-    assert text.count("<tspan") == 1, text
-    assert ">Hamburgefonstiv</tspan>" in text
-    # ...and the chunk is sent to the family the widths came from.
-    assert 'font-family="Carlito, sans-serif"' in text
 
 
 #: Faces measured from one font and drawn with another, listed by name so that adding a
@@ -377,24 +323,6 @@ def test_a_clone_carries_the_office_faces_line_gap_and_not_its_own():
     # Stated as the negative too, because this is the assertion that has to survive
     # somebody "fixing" the extractor to read the bundled file.
     assert METRICS["Tinos"].line_gap == 0
-
-
-def test_an_unmeasured_line_gap_lays_out_exactly_as_no_gap():
-    """``None`` means nobody measured it, and it must not become a guess of zero or of anything else."""
-    from pptx2svg.resolve.chart import font_box
-    from pptx2svg.text.metrics import FontMetrics
-
-    unmeasured = FontMetrics(
-        units_per_em=1000, ascender=800, descender=-200,
-        default_width=500, cjk_width=1000, widths={},
-    )
-    assert unmeasured.line_gap is None
-    measured = METRICS["Arial"] if "Arial" in METRICS else METRICS["Arimo"]
-    assert measured.line_gap is not None
-
-    box = font_box("No Such Face", 10.0)
-    assert box.gap == 0.0
-    assert box.pitch == box.line_height
 
 
 #: The thirteen tables that cost the wheel nothing: ``(key, units_per_em, half, full)``.
@@ -565,17 +493,6 @@ def test_generic_families_resolve_into_the_bundle():
 # Generated metrics stay in step with the files
 # --------------------------------------------------------------------------------------
 
-def test_metrics_table_still_matches_the_bundled_fonts():
-    """Re-derives the table and fails on drift.  This is the guard, not the docstring."""
-    pytest.importorskip("fontTools", reason="fontTools is not installed")
-    _bundle()
-    result = subprocess.run(
-        [sys.executable, str(ROOT / "tools" / "extract_font_metrics.py"), "--check"],
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stdout + result.stderr
-
 
 def test_bold_is_measured_from_the_bold_cut_not_a_multiplier():
     """A flat 1.05 was wrong in both directions; monospace bold is the clearest case."""
@@ -626,7 +543,7 @@ def test_theme_pointers_are_not_reported_as_fonts():
 
 
 def test_without_the_bundle_nothing_is_faithful_or_reproducible(monkeypatch):
-    monkeypatch.setattr("pptx2svg.fonts.bundle_dir", lambda: None)
+    monkeypatch.setattr("ooxml_common.fonts.bundle_dir", lambda: None)
     report = check_families(["Calibri"])
     assert report.mode == "system"
     assert not report.reproducible
@@ -644,51 +561,9 @@ def test_faithful_and_reproducible_are_different_questions():
     assert not report.reproducible  # ... but the host's fonts are in play too
 
 
-def test_checking_a_deck_finds_the_faces_it_really_uses(authoring):
-    report = check_deck(authoring)
-    assert {face.requested for face in report.faces} >= {"Aptos", "Aptos Display"}
-    assert not report.faithful
-
-
-# --------------------------------------------------------------------------------------
-# Warnings
-# --------------------------------------------------------------------------------------
-
-def test_a_substituted_face_warns_through_the_normal_channel(authoring):
-    options = ConvertOptions()
-    convert_pptx_to_svg(authoring, options)
-    codes = {warning.code for warning in options.warnings}
-    assert codes & {"font-substituted", "font-bundle-missing"}
-    assert any("Aptos" in warning.message for warning in options.warnings)
-
-
-def test_a_missing_bundle_warns_once_and_names_the_fix(monkeypatch, authoring):
-    """One warning, not one per face: without the bundle they all have the same cause."""
-    monkeypatch.setattr("pptx2svg.fonts.bundle_dir", lambda: None)
-    options = ConvertOptions()
-    convert_pptx_to_svg(authoring, options)
-    font_warnings = [w for w in options.warnings if w.code.startswith("font")]
-    assert len(font_warnings) == 1
-    assert font_warnings[0].code == "font-bundle-missing"
-    assert "pptx2svg[fonts]" in font_warnings[0].message
-
-
-def test_warnings_can_be_turned_off(authoring):
-    options = ConvertOptions(warn_on_font_substitution=False)
-    convert_pptx_to_svg(authoring, options)
-    assert not [w for w in options.warnings if w.code.startswith("font")]
-
-
 # --------------------------------------------------------------------------------------
 # What the SVG asks for
 # --------------------------------------------------------------------------------------
-
-def test_the_font_stack_asks_for_the_original_face_before_the_substitute(authoring):
-    """A host that really has Aptos should use it; the substitute is the fallback."""
-    (svg,) = convert_pptx_to_svg(
-        authoring, ConvertOptions(warn_on_font_substitution=False)
-    )
-    assert 'font-family="Aptos, Carlito, sans-serif"' in svg
 
 
 def test_a_superfamily_face_names_its_typographic_family_too():
@@ -717,50 +592,6 @@ def test_typographic_family_strips_one_style_word_only():
     assert typographic_family("Hoefler Text Ornaments") is None
 
 
-def test_a_plain_text_box_falls_back_to_arial_not_the_theme(authoring):
-    """PowerPoint does not consult the theme for a text box with nothing specified.
-
-    Measured from PowerPoint's own export of this fixture: its text boxes are drawn in
-    Arial (/BaseFont ArialMT, "MASTER CONTRACT" inked 178.28 pt against Arial's 180.00 pt
-    advance at 18 pt) while its table cells in the same export are Aptos-Bold.  Getting
-    this wrong is not cosmetic -- Arial is wider, so PowerPoint wraps "LAYOUT CONTRACT"
-    onto two lines where the theme face fits it on one.
-    """
-    (svg,) = convert_pptx_to_svg(
-        authoring, ConvertOptions(warn_on_font_substitution=False)
-    )
-    assert 'font-family="Arial, Arimo, sans-serif">MASTER CONTRACT<' in svg
-    # ...and the wider face makes the layout's box wrap, as PowerPoint's does.
-    assert ">LAYOUT</tspan>" in svg and ">CONTRACT</tspan>" in svg
-    # The table is a table, not a text box: it keeps the theme face.
-    assert "Aptos" in svg
-
-
-def test_every_font_stack_ends_in_a_generic_family(pptx_path):
-    generics = ("sans-serif", "serif", "monospace")
-    documents = convert_pptx_to_svg(
-        pptx_path, ConvertOptions(warn_on_font_substitution=False)
-    )
-    for document in documents:
-        for value in re.findall(r'font-family="([^"]*)"', document):
-            assert value.rsplit(", ", 1)[-1] in generics, value
-
-
-def test_no_theme_pointer_reaches_a_font_family_stack(pptx_path):
-    """``+`` cannot start a CSS identifier, and resvg drops the whole declaration.
-
-    A theme that writes ``<a:cs typeface=""/>`` -- which every deck in the corpus does --
-    used to resolve ``+mn-cs`` to itself, and the literal pointer was emitted in the
-    stack.  The cost was not one dead entry: resvg rejected the entire ``font-family``
-    and fell back to its default face, so *every* named face in the stack was lost.
-    """
-    for document in convert_pptx_to_svg(
-        pptx_path, ConvertOptions(warn_on_font_substitution=False)
-    ):
-        for value in re.findall(r'font-family="([^"]*)"', document):
-            assert "+" not in value, value
-
-
 def test_synthetic_bold_widens_a_cjk_face_with_no_bold_cut():
     """PowerPoint emboldens such a face itself, and the advance grows with it.
 
@@ -769,8 +600,8 @@ def test_synthetic_bold_widens_a_cjk_face_with_no_bold_cut():
     24.000 -> 24.1248, 28 pt goes 28.000 -> 28.1260, 32 pt goes 32.000 -> 32.1248.  A
     1/256 em model would have predicted +0.094 at 24 pt.
     """
-    from pptx2svg.text.measure import DefaultTextMeasurer
-    from pptx2svg.units import PX_PER_PT
+    from ooxml_common.text.measure import DefaultTextMeasurer
+    from ooxml_common.units import PX_PER_PT
 
     measurer = DefaultTextMeasurer()
     text = "テンプレート"
@@ -798,7 +629,7 @@ def test_synthetic_bold_widens_a_cjk_face_with_no_bold_cut():
 
 def test_the_east_asian_cascade_takes_the_script_face_over_the_latin_one():
     """An empty `<a:ea>` falls through to the theme's script list, not to `<a:latin>`."""
-    from pptx2svg.text.fontmap import east_asian_family
+    from ooxml_common.text.fontmap import east_asian_family
 
     assert east_asian_family("", "游ゴシック", "Arial") == "游ゴシック"
     assert east_asian_family(None, "游ゴシック", "Arial") == "游ゴシック"
@@ -821,7 +652,7 @@ def test_a_latin_face_named_as_the_east_asian_one_loses_to_the_script_face():
     `tools/extract_font_metrics.py` writes `units_per_em` when the probe kanji is missing
     from the face.  It is the absence of a measurement, dressed as one.
     """
-    from pptx2svg.text.fontmap import covers_east_asian, east_asian_family
+    from ooxml_common.text.fontmap import covers_east_asian, east_asian_family
 
     assert not covers_east_asian("Raleway")
     assert not covers_east_asian("Arial")
@@ -838,8 +669,8 @@ def test_covers_east_asian_cannot_be_read_off_the_metric_tables():
     carry no East Asian rows while Cambria carries four, its bracket forms.  Counting rows
     would call Cambria Japanese and ＭＳ ゴシック not.
     """
-    from pptx2svg.text.fontmap import covers_east_asian
-    from pptx2svg.text.measure import is_cjk
+    from ooxml_common.text.fontmap import covers_east_asian
+    from ooxml_common.text.measure import is_cjk
 
     for table in METRICS.values():
         assert table.cjk_width == table.units_per_em
@@ -859,7 +690,7 @@ def test_a_mixed_run_is_measured_face_by_face():
     and X 8.004 pt at 12 pt, then three ideographs at a full em each.  52.669 pt in total,
     which is what the measurer has to return for a *single* string carrying both faces.
     """
-    from pptx2svg.units import PX_PER_PT
+    from ooxml_common.units import PX_PER_PT
 
     measurer = DefaultTextMeasurer()
     width = measurer.measure_text_width("DX投資額", 12, False, "Arial", "游ゴシック")
@@ -867,48 +698,6 @@ def test_a_mixed_run_is_measured_face_by_face():
     # CO2削減 on the same axis: 8.666 + 9.334 + 6.674 of Arial, then two ideographs.
     width = measurer.measure_text_width("CO2削減", 12, False, "Arial", "游ゴシック")
     assert width / PX_PER_PT == pytest.approx(48.674, abs=0.01)
-
-
-def test_the_east_asian_face_is_reported_only_when_east_asian_text_is_drawn():
-    """A Jpan theme entry must not make every Latin run report a CJK substitution.
-
-    ``font_family_ea`` is the *resolved* East Asian face, so on a theme that offers an
-    ``<a:font script="Jpan"/>`` every run in the deck carries one -- whether or not a
-    single CJK character is drawn.  Counting those puts ``resolved_families`` back to
-    listing the script fallbacks its own docstring says it exists to exclude.
-
-    This is not hypothetical: two Google Slides templates with no Japanese anywhere began
-    warning that ＭＳ Ｐゴシック would be substituted, which is a warning about a face
-    that never draws.  The test here is the same :func:`is_cjk` one ``render/text.py``
-    splits on, so the report and the drawing agree.
-    """
-    from pptx2svg import model as m
-    from pptx2svg.fonts.check import resolved_families
-
-    def deck(text: str):
-        run = m.TextRun(
-            text=text,
-            properties=m.RunProperties(font_family="Arial", font_family_ea="ＭＳ Ｐゴシック"),
-        )
-        paragraph = m.Paragraph(runs=[run], properties=m.ParagraphProperties())
-        body = m.TextBody(paragraphs=[paragraph])
-        shape = m.ShapeElement(
-            transform=m.Transform(0, 0, 100, 100),
-            geometry=m.PresetGeometry(preset="rect"),
-            text_body=body,
-        )
-        slide = m.Slide(slide_number=1, elements=[shape])
-        # An empty scheme: this test is about the *run's* resolved East Asian face,
-        # not about the theme's own major/minor entries, which are added
-        # unconditionally and deliberately a few lines further down.
-        return SimpleNamespace(slides=[slide], font_scheme=SimpleNamespace())
-
-    latin_only = resolved_families(deck("Modern productivity"))
-    assert "Arial" in latin_only
-    assert "ＭＳ Ｐゴシック" not in latin_only
-
-    with_japanese = resolved_families(deck("Modern プラットフォーム"))
-    assert "ＭＳ Ｐゴシック" in with_japanese
 
 
 # --------------------------------------------------------------------------------------
@@ -1000,7 +789,7 @@ def test_the_fonttools_measurer_agrees_with_the_baked_table_on_kerning():
     directly, so agreement is evidence the compression is lossless.
     """
     pytest.importorskip("fontTools", reason="fontTools is not installed")
-    from pptx2svg.text.measure import FontToolsTextMeasurer
+    from ooxml_common.text.measure import FontToolsTextMeasurer
 
     bundle = _bundle()
     measurer = FontToolsTextMeasurer(
@@ -1020,21 +809,3 @@ def test_the_fonttools_measurer_agrees_with_the_baked_table_on_kerning():
         assert live == pytest.approx(table, abs=1e-6), text
 
 
-def test_chart_text_is_measured_without_kerning_because_powerpoint_lays_it_out_that_way():
-    """The one caller that must *not* kern, and it is measured rather than overlooked.
-
-    ``chart-gallery``'s horizontal legends turn each entry name's advance directly into
-    the next key's x, and against PowerPoint's own export the unkerned advance lands
-    every one of twenty-odd entries within 0.033 pt while the kerned one moves five of
-    slide 9's out by 0.23 to 0.67 pt.  The same export *draws* those names kerned.  See
-    :func:`pptx2svg.resolve.chart.text_width`.
-    """
-    from pptx2svg.resolve.chart import text_width
-
-    measurer = DefaultTextMeasurer()
-    for family, text in (("Aptos", "Plan"), ("Calibri", "AV Today"), ("Arial", "Watery")):
-        metrics = metrics_for(family)
-        unkerned = sum(metrics.widths[char] for char in text) / metrics.units_per_em * 10.0
-        assert text_width(text, family, 10.0) == pytest.approx(unkerned, abs=1e-9)
-        slide = measurer.measure_text_width(text, 10.0, font_family=family) / PX_PER_PT
-        assert slide < unkerned, (family, text)
