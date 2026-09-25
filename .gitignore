@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+
+# Environments
+.venv/
+venv/
+
+# macOS
+.DS_Store
+.claude/
+
+# Licensed fonts, and anything that points at them.  The metric tables in
+# ooxml_common.text record measurements of Office faces; the files themselves are not
+# ours to redistribute and never enter this repository in any form.
+/tests/font-profile.local.json
+/tests/local-fonts/
+*.ttf
+*.ttc
+*.otf
+*.ttf.local
+
+# Local scratch.
+/scratch/

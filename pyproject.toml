@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ooxml-common"
+version = "0.1.0"
+description = "Format-neutral OOXML pieces shared by pptx2svg and docx2svg: OPC, units, DrawingML data, fonts and measured text metrics"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Evert Koks" }]
+keywords = ["ooxml", "opc", "drawingml", "fonts", "text-metrics", "pptx", "docx"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Multimedia :: Graphics :: Graphics Conversion",
+  "Topic :: Office/Business :: Office Suites",
+  "Typing :: Typed",
+]
+# Standard-library only at runtime, and this empty list is the statement of that.  Both
+# consumers make the same promise, and it only holds if the package under them keeps it.
+dependencies = []
+
+[project.optional-dependencies]
+# The OFL font files the metric tables were measured from, so a rasteriser draws with
+# the same faces the layout was computed for.  Found by import name only (see
+# ooxml_common.fonts.bundle_dir); nothing here imports it.  The distribution keeps the
+# name it was created under in the pptx2svg repository -- see README, "Font files".
+fonts = ["pptx2svg-fonts>=0.1"]
+# Measure with real installed fonts instead of the generated tables (FontToolsTextMeasurer).
+measure = ["fonttools>=4.40"]
+dev = [
+  "pytest>=7",
+  "fonttools>=4.40",
+]
+# `pptx2svg-fonts` is deliberately NOT in `dev`, for the reason pptx2svg's pyproject gives:
+# it is not on PyPI, so naming it there makes `pip install -e '.[dev]'` fail against the
+# index.  Install it from a checkout of pptx2svg instead:
+#
+#     pip install -e ../pptx2svg/packages/pptx2svg-fonts
+#
+# The tests that need the files skip, with a reason, when it is absent.
+
+[project.urls]
+Repository = "https://github.com/uvrt/ooxml-common"
+Issues = "https://github.com/uvrt/ooxml-common/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
