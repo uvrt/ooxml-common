@@ -1,5 +1,17 @@
 """OOXML DrawingML preset shapes (ECMA-376 §20.1.10.56 ``prst``).
 
+Two ways to draw a geometry live here, for two kinds of consumer:
+
+* **pptx2svg's**, one SVG *element* per shape (:func:`preset_geometry_svg`,
+  :func:`render_geometry`), which the caller splices fill and stroke onto.  Its hand-written
+  generators and its choice of which presets come from the specification are pptx2svg's
+  renderer policy, measured against PowerPoint, and they are unchanged by the move here.
+* **Path data** (:func:`geometry_path_data`, :func:`preset_path_data`,
+  :func:`spec_path_data`): every path of a geometry as an SVG ``d`` string over a box,
+  with its fill mode and stroke flag, from the *complete* specification table
+  (:data:`~ooxml_common.drawingml.presets.PRESETS`) -- for a consumer that paints paths
+  itself, as docx2svg does.  The rest of this docstring is about the first.
+
 Each generator turns a shape's pixel width/height and its adjustment values into a
 single SVG element -- ``<rect>``, ``<ellipse>``, ``<polygon>`` or ``<path>``.  The caller
 splices fill and stroke attributes into whatever element comes back, which is why every
@@ -17,11 +29,14 @@ exactly.  An unknown preset falls back to a rectangle.
 from __future__ import annotations
 
 import math
+import re
+from dataclasses import dataclass
 from typing import Callable
 
 from . import model as m
 from .guides import arc_segments, evaluate_guides, resolve_value
 from .preset_specs import PRESET_SPECS
+from .presets import PRESETS
 
 Generator = Callable[[float, float, dict], str]
 
@@ -491,7 +506,12 @@ def _path_scale(path: "_P", w: float, h: float) -> tuple[float, float]:
     )
 
 
-def _spec_path_data(commands, variables: dict, scale: tuple[float, float] = (1.0, 1.0)) -> str:
+def _spec_path_data(
+    commands,
+    variables: dict,
+    scale: tuple[float, float] = (1.0, 1.0),
+    offset: tuple[float, float] = (0.0, 0.0),
+) -> str:
     """Build an SVG ``d`` string, tracking the pen so ``arcTo`` can be converted.
 
     DrawingML's ``arcTo`` is relative to wherever the pen already is -- it names a sweep,
@@ -507,8 +527,13 @@ def _spec_path_data(commands, variables: dict, scale: tuple[float, float] = (1.0
 
     Scaling afterwards is exact: the scale is axis-aligned and so are the ellipse axes,
     DrawingML having no rotated ``arcTo``.
+
+    ``offset`` moves every point (not a radius) after scaling, for a caller that draws in
+    its page's coordinates rather than inside a translated group.  Adding the default
+    ``0.0`` leaves every value, and so every byte, as it was.
     """
     scale_x, scale_y = scale
+    offset_x, offset_y = offset
 
     def value(token) -> float:
         return resolve_value(token, variables)
@@ -520,7 +545,7 @@ def _spec_path_data(commands, variables: dict, scale: tuple[float, float] = (1.0
         kind = command[0]
         if kind in ("M", "L"):
             x, y = value(command[1]), value(command[2])
-            parts.append(f"{kind} {_n(x * scale_x)} {_n(y * scale_y)}")
+            parts.append(f"{kind} {_n(x * scale_x + offset_x)} {_n(y * scale_y + offset_y)}")
             if kind == "M":
                 start_x, start_y = x, y
         elif kind == "Z":
@@ -536,7 +561,7 @@ def _spec_path_data(commands, variables: dict, scale: tuple[float, float] = (1.0
             ):
                 parts.append(
                     f"A {_n(width_radius * scale_x)} {_n(height_radius * scale_y)} 0 "
-                    f"{large} {sweep} {_n(x * scale_x)} {_n(y * scale_y)}"
+                    f"{large} {sweep} {_n(x * scale_x + offset_x)} {_n(y * scale_y + offset_y)}"
                 )
         elif kind in ("Q", "C"):
             points = [
@@ -545,7 +570,10 @@ def _spec_path_data(commands, variables: dict, scale: tuple[float, float] = (1.0
             ]
             parts.append(
                 f"{kind} "
-                + ", ".join(f"{_n(px * scale_x)} {_n(py * scale_y)}" for px, py in points)
+                + ", ".join(
+                    f"{_n(px * scale_x + offset_x)} {_n(py * scale_y + offset_y)}"
+                    for px, py in points
+                )
             )
             x, y = points[-1]
 
@@ -671,3 +699,169 @@ def _render_custom_path(
         f'<path d="{path.commands}" '
         f'transform="scale({_factor(scale_x)}, {_factor(scale_y)})"/>'
     )
+
+
+# --------------------------------------------------------------------------------------
+# Geometry as path data
+#
+# Everything above draws a shape as one SVG element for pptx2svg to splice attributes
+# onto, and chooses per preset between a hand-written approximation and the
+# specification.  A consumer that paints paths itself wants neither choice made for it:
+# it wants each ``a:path`` of the geometry as path data over its box, with the path's own
+# fill mode and stroke flag, and the specification's geometry for every name.  That is
+# what these give, from the complete table -- ``rect`` included, which docx2svg had to
+# write itself while the table carried only pptx2svg's specification-driven presets.
+#
+# Coordinates go through the same evaluator (``precise=True``) and the same path builder
+# as pptx2svg's specification-driven presets, so a preset both draw comes out the same.
+# --------------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class GeometryPath:
+    """One ``a:path`` of a geometry, as SVG path data in the box's coordinates.
+
+    ``fill`` is the path's ``@fill`` mode -- ``norm``, ``none``, or one of the shading
+    modes ``lighten``, ``lightenLess``, ``darken``, ``darkenLess``, which shade the
+    shape's own fill (see :data:`_SHADE_OVERLAYS` for how pptx2svg paints them) -- and
+    ``stroke`` is its ``@stroke``.
+    """
+
+    d: str
+    fill: str = "norm"
+    stroke: bool = True
+
+
+def spec_path_data(
+    spec,
+    width: float,
+    height: float,
+    adjust: dict | None = None,
+    *,
+    x: float = 0.0,
+    y: float = 0.0,
+) -> list[GeometryPath]:
+    """A geometry in the preset table's form -- ``(adjustments, guides, paths)`` -- as path
+    data over the box ``x, y, width, height``.
+
+    That form holds a custom geometry (``a:custGeom``) as well as a preset: its ``a:avLst``
+    as the adjustments, its ``a:gdLst`` as the guides and its ``a:pathLst`` as the paths,
+    each command an SVG-style letter with its operands as guide names or literals.
+    ``adjust`` overrides adjustments by name, each a number in the raw OOXML units the
+    guides expect, or a formula string (``"val 25000"``) as ``a:avLst`` states it.  A path
+    with its own ``@w`` / ``@h`` is scaled onto the box.  A path that draws nothing is
+    left out.
+    """
+    adjustments, guides, paths = spec
+    adjust = adjust or {}
+    evaluated = [
+        (name, _adjustment(adjust.get(name, default))) for name, default in adjustments
+    ]
+    variables = evaluate_guides([evaluated, list(guides)], width, height, precise=True)
+    out = []
+    for fill, stroke, space, commands in paths:
+        scale = (1.0, 1.0)
+        if space:
+            scale = (
+                width / space[0] if space[0] else 1.0,
+                height / space[1] if space[1] else 1.0,
+            )
+        data = _spec_path_data(commands, variables, scale=scale, offset=(x, y))
+        if data:
+            out.append(GeometryPath(data, fill, stroke))
+    return out
+
+
+def _adjustment(value) -> str:
+    return value if isinstance(value, str) else f"val {value}"
+
+
+def preset_path_data(
+    preset: str,
+    width: float,
+    height: float,
+    adjust: dict | None = None,
+    *,
+    x: float = 0.0,
+    y: float = 0.0,
+) -> list[GeometryPath] | None:
+    """A preset's paths from the complete specification table, or ``None`` for a name
+    ``ST_ShapeType`` does not have (after :data:`PRESET_ALIASES`)."""
+    spec = PRESETS.get(PRESET_ALIASES.get(preset, preset))
+    if spec is None:
+        return None
+    return spec_path_data(spec, width, height, adjust, x=x, y=y)
+
+
+def geometry_path_data(
+    geometry: m.Geometry,
+    width: float,
+    height: float,
+    *,
+    x: float = 0.0,
+    y: float = 0.0,
+) -> list[GeometryPath] | None:
+    """A model geometry's paths over the box: a :class:`~.model.PresetGeometry` from the
+    complete table (``None`` for an unknown name), a :class:`~.model.CustomGeometry`'s
+    already-evaluated paths scaled from their own ``@w`` / ``@h`` onto the box.
+
+    The model's custom paths carry no ``@fill`` / ``@stroke`` (pptx2svg's parser does not
+    keep them), so each comes back ``norm`` and stroked.  A consumer that keeps them passes
+    its geometry to :func:`spec_path_data` instead.
+    """
+    if isinstance(geometry, m.PresetGeometry):
+        return preset_path_data(
+            geometry.preset, width, height, geometry.adjust_values, x=x, y=y
+        )
+    if isinstance(geometry, m.CustomGeometry):
+        out = []
+        for path in geometry.paths:
+            scale_x = width / path.width if path.width > 0 else 1.0
+            scale_y = height / path.height if path.height > 0 else 1.0
+            data = _scale_path_data(path.commands, scale_x, scale_y, x, y)
+            if data:
+                out.append(GeometryPath(data))
+        return out
+    return None
+
+
+_PATH_TOKEN = re.compile(r"[MLQCAZ]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
+
+#: How many operands each command letter takes, and which are x and y coordinates.  An
+#: arc's radii scale but do not move; its rotation and flags do neither.
+_OPERAND_ROLES = {
+    "M": "xy", "L": "xy", "Q": "xyxy", "C": "xyxyxy", "A": "rr---xy", "Z": "",
+}
+
+
+def _scale_path_data(commands: str, scale_x: float, scale_y: float, x: float, y: float) -> str:
+    """Absolute SVG path data -- the ``M L Q C A Z`` pptx2svg's custom geometry is written
+    in -- scaled about the origin and moved by ``x, y``.  Exact for the arcs too: they are
+    axis-aligned (rotation 0), so an axis-aligned scale maps each onto an axis-aligned arc
+    with scaled radii."""
+    tokens = _PATH_TOKEN.findall(commands)
+    parts: list[str] = []
+    index = 0
+    while index < len(tokens):
+        letter = tokens[index]
+        index += 1
+        roles = _OPERAND_ROLES.get(letter)
+        if roles is None:
+            continue
+        operands = tokens[index:index + len(roles)]
+        index += len(roles)
+        if len(operands) < len(roles):
+            break
+        values = []
+        for role, token in zip(roles, operands):
+            value = float(token)
+            if role == "x":
+                values.append(_n(value * scale_x + x))
+            elif role == "y":
+                values.append(_n(value * scale_y + y))
+            elif role == "r":
+                values.append(_n(value * (scale_x if len(values) == 0 else scale_y)))
+            else:
+                values.append(token)
+        parts.append(" ".join([letter, *values]))
+    return " ".join(parts)

@@ -58,6 +58,14 @@ def test_the_package_has_the_modules_it_claims():
         "ooxml_common.drawingml.guides",
         "ooxml_common.drawingml.pattern",
         "ooxml_common.drawingml.preset_specs",
+        "ooxml_common.imagemeta",
+        "ooxml_common.drawingml.model",
+        "ooxml_common.drawingml.color",
+        "ooxml_common.drawingml.presets",
+        "ooxml_common.drawingml.geometry",
+        "ooxml_common.drawingml.fill",
+        "ooxml_common.drawingml.effect",
+        "ooxml_common.drawingml.svg",
     } <= names
 
 
