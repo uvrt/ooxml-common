@@ -1,8 +1,9 @@
 """A picture's **natural size** -- the size it claims for itself, in points.
 
-Only one thing in this library needs it, and it needs it badly: ``a:tile@sx`` scales the
-picture's *own* size rather than the shape it fills, so a tiled fill cannot be drawn at all
-without knowing what size the picture claims.  ``render/fill.py`` used to size a tile at
+Only one thing here needs it, and it needs it badly: ``a:tile@sx`` scales the picture's
+*own* size rather than the shape it fills, so a tiled fill cannot be drawn at all without
+knowing what size the picture claims (:func:`ooxml_common.drawingml.fill.tile_pattern`).
+Moved from pptx2svg with its history, where ``render/fill.py`` used to size a tile at
 ``sx`` of the shape's bounding box, and on ``tests/fixtures/feature-sweep.pptx`` slide 10
 that drew a tile 8.3x too big.
 

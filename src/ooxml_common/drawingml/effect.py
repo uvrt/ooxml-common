@@ -13,9 +13,9 @@ from __future__ import annotations
 
 import math
 
-from .. import model as m
+from . import model as m
 from ..units import emu_to_px
-from .context import RenderContext, num
+from .svg import SvgDefs, num
 
 #: How sharply `a:clrChange`'s mask falls away from the keyed colour.  Alpha is
 #: ``1 - K * (|dR| + |dG| + |dB|)``, so K = 64 means the three channels together may
@@ -27,7 +27,7 @@ from .context import RenderContext, num
 CLR_CHANGE_SHARPNESS = 64
 
 
-def render_effects(effects: m.EffectList | None, context: RenderContext) -> str:
+def render_effects(effects: m.EffectList | None, context: SvgDefs) -> str:
     """Return a ``filter="url(#...)"`` attribute, registering the filter in ``<defs>``."""
     if effects is None:
         return ""
@@ -133,7 +133,7 @@ def render_effects(effects: m.EffectList | None, context: RenderContext) -> str:
     return f'filter="url(#{filter_id})"'
 
 
-def render_blip_effects(effects: m.BlipEffects | None, context: RenderContext) -> str:
+def render_blip_effects(effects: m.BlipEffects | None, context: SvgDefs) -> str:
     """Colour adjustments applied to a picture (``a:grayscl``, ``a:duotone``, ...).
 
     The primitives chain implicitly: a primitive with no ``in`` reads whatever the one

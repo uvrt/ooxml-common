@@ -10,7 +10,7 @@ Each generator supplies PowerPoint's default when the shape omits an adjustment.
 
 These are approximations, not the full ECMA-376 guide-formula geometry: a ``cloud`` is a
 rounded rectangle, not nine overlapping arcs.  Shapes whose real outline matters are
-usually authored as custom geometry anyway, which :mod:`pptx2svg.parse.drawing` evaluates
+usually authored as custom geometry anyway, which pptx2svg's ``parse/drawing.py`` evaluates
 exactly.  An unknown preset falls back to a rectangle.
 """
 
@@ -19,8 +19,8 @@ from __future__ import annotations
 import math
 from typing import Callable
 
-from .. import model as m
-from ..guides import arc_segments, evaluate_guides, resolve_value
+from . import model as m
+from .guides import arc_segments, evaluate_guides, resolve_value
 from .preset_specs import PRESET_SPECS
 
 Generator = Callable[[float, float, dict], str]
@@ -360,7 +360,7 @@ def _right_brace(w, h, adj):
 #
 # So these presets carry their ECMA-376 Appendix D definition as data -- the same
 # ``avLst`` / ``gdLst`` / ``pathLst`` the specification publishes -- and evaluate it with
-# :mod:`pptx2svg.guides`, the evaluator ``a:custGeom`` already uses.  The geometry is then
+# :mod:`ooxml_common.drawingml.guides`, the evaluator ``a:custGeom`` already uses.  The geometry is then
 # exact by construction rather than by judgement, and adding a preset becomes a
 # transcription that can be diffed against the spec instead of a drawing exercise.
 #
@@ -562,7 +562,7 @@ def _spec_generator(name: str) -> Generator:
 
 
 #: The specification's definitions, inflated into the objects :func:`_spec_geometry`
-#: draws from.  The data itself is generated -- see :mod:`pptx2svg.render.preset_specs`
+#: draws from.  The data itself is generated -- see :mod:`ooxml_common.drawingml.preset_specs`
 #: and ``tools/derive_preset_geometry.py`` -- so a shape that looks wrong is diffed
 #: against ECMA-376 rather than argued about.
 SPEC_PRESETS: dict[str, "_Spec"] = {

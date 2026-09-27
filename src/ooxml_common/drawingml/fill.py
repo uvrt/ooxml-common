@@ -3,7 +3,8 @@
 Renderers here return *attribute strings* rather than elements, because the caller
 splices them into whichever geometry element the shape produced.  Anything that needs a
 ``<defs>`` entry (gradients, image patterns, hatch patterns, markers) registers it on the
-:class:`RenderContext` and returns a ``url(#id)`` reference.
+:class:`~ooxml_common.drawingml.svg.SvgDefs` it is given -- pptx2svg's ``RenderContext`` is
+one -- and returns a ``url(#id)`` reference.
 
 SVG output uses inline attributes only -- no CSS classes.  librsvg and resvg, the usual
 rasterisation backends, do not apply CSS selectors reliably.
@@ -14,10 +15,10 @@ from __future__ import annotations
 import base64
 import math
 
-from .. import model as m
+from . import model as m
 from ..imagemeta import natural_size_pt
 from ..units import PX_PER_PT, emu_to_px
-from .context import RenderContext, num
+from .svg import SvgDefs, num
 from .pattern import PATTERN_CELL_BITS, PATTERN_CELL_PT, cell_rectangles
 
 #: Dash patterns as multiples of the stroke width (ECMA-376 §20.1.10.49).
@@ -37,7 +38,7 @@ ARROW_SIZE_PX: dict[str, float] = {"sm": 5, "med": 8, "lg": 12}
 
 def render_fill_attrs(
     fill: m.Fill | None,
-    context: RenderContext,
+    context: SvgDefs,
     box: tuple[float, float, float, float] | None = None,
 ) -> str:
     """``fill="..."`` (plus ``fill-opacity``) for a shape.
@@ -67,7 +68,7 @@ def render_fill_attrs(
     return 'fill="none"'
 
 
-def _gradient_ref(fill: m.GradientFill, context: RenderContext) -> str:
+def _gradient_ref(fill: m.GradientFill, context: SvgDefs) -> str:
     gradient_id = context.new_id("grad")
 
     stops = "".join(
@@ -104,7 +105,7 @@ def _gradient_ref(fill: m.GradientFill, context: RenderContext) -> str:
 
 def _image_fill_ref(
     fill: m.ImageFill,
-    context: RenderContext,
+    context: SvgDefs,
     box: tuple[float, float, float, float] | None = None,
 ) -> str:
     pattern_id = context.new_id("imgfill")
@@ -153,13 +154,13 @@ def tile_pattern(
     bounding box", and the measurement refutes it: deck ``fill-tile`` drew the same 32 px
     picture at ``sx=100%`` on boxes of 68x48, 136x96, 272x192 and 400x96 pt and got a
     16.0000 pt cell on all four.  Scaling the picture's natural size instead (see
-    :mod:`pptx2svg.imagemeta`) reproduces every row of that deck: 25, 50, 60, 150 and 200%
+    :mod:`ooxml_common.imagemeta`) reproduces every row of that deck: 25, 50, 60, 150 and 200%
     of a 16 pt picture drew 4, 8, 9.6, 24 and 32 pt, and ``sx != sy`` moved the two axes
     independently.  ``feature-sweep`` slide 10 is the same arithmetic -- a 32 px untagged
     PNG at ``sx=60%`` is 16 x 0.6 = 9.6 pt, which is what PowerPoint drew there, against
     the 82.08 pt this drew from the box.
 
-    Shared with the ``p:pic`` path in :mod:`pptx2svg.render.shape`, which carries the
+    Shared with pptx2svg's ``p:pic`` path (``pptx2svg.render.shape``), which carries the
     identical ``a:tile`` and used to size it from the frame for the stated reason that the
     two paths agreeing mattered more than either being right.  They agree here too, on the
     measurement.
@@ -265,13 +266,13 @@ def _tile_origin(
     return x, y
 
 
-def _pattern_fill_attrs(fill: m.PatternFill, context: RenderContext) -> str:
+def _pattern_fill_attrs(fill: m.PatternFill, context: SvgDefs) -> str:
     """``a:pattFill`` as a ``<pattern>`` of the preset's measured 8 x 8 cell.
 
     The cell is **8.0 pt**, which is ``PATTERN_CELL_PT * PX_PER_PT`` pixels here, and one
     bit of the preset's bitmap is one point.  The old code used 8 *pixels*, which is 6 pt,
     so every pattern in the library tiled a third too finely; see
-    :mod:`pptx2svg.render.pattern` for how the cell and all 54 bitmaps were measured.
+    :mod:`ooxml_common.drawingml.pattern` for how the cell and all 54 bitmaps were measured.
 
     **The lattice's phase is measured but not reproduced.**  PowerPoint registers the grid
     to the slide's own top-left corner: deck ``fill-pitch`` put a shape's left edge at
@@ -333,7 +334,7 @@ def _pattern_fill_attrs(fill: m.PatternFill, context: RenderContext) -> str:
     return f'fill="url(#{pattern_id})"'
 
 
-def render_outline_attrs(outline: m.Outline | None, context: RenderContext) -> str:
+def render_outline_attrs(outline: m.Outline | None, context: SvgDefs) -> str:
     """``stroke``/``stroke-width``/``stroke-dasharray`` etc. for a shape."""
     if outline is None:
         return 'stroke="none"'
@@ -372,7 +373,7 @@ def render_outline_attrs(outline: m.Outline | None, context: RenderContext) -> s
     return " ".join(parts)
 
 
-def render_markers(outline: m.Outline | None, context: RenderContext) -> str:
+def render_markers(outline: m.Outline | None, context: SvgDefs) -> str:
     """``marker-start``/``marker-end`` attributes for a connector's arrowheads."""
     if outline is None or (outline.head_end is None and outline.tail_end is None):
         return ""
