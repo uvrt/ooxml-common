@@ -19,11 +19,22 @@ measured against its own application:
   probe found ``lumMod`` / ``lumOff`` within 2/255 of PowerPoint on every swatch (pptx2svg
   ROADMAP.md, "Also found on the way"), which does not settle a half level either way.
 
-Nothing else here differs between the two, and not because it was shown to agree:
-``tint`` and ``shade`` in linear light, ``satMod`` in HLS and the order transforms apply in
-are PowerPoint's (measured, or pptx2svg's long-standing behaviour); Word's are
-**unmeasured** -- docx2svg warns of every transform but ``lumMod`` / ``lumOff`` -- so
-:data:`WORD` carries PowerPoint's until a Word probe says otherwise.
+* **How transforms compose** -- measured on Word by docx2svg's
+  ``tools/make_dml_probe.py`` (ROADMAP.md, "DrawingML drawn by the shared renderers"): 54
+  swatches, every one Word's to the level under :data:`WORD` and 43 of them under
+  :data:`POWERPOINT`.  Word applies the transforms **in document order**
+  (``lumOff 40000`` before ``lumMod 60000`` is ``517CC8``, not the paired ``8FAADC``), **on
+  unrounded channels** clamped to 0-1 between steps (Office's theme gradient stops, three
+  transforms each, came out a level off when every step rounded), with the **saturation
+  unbounded above** (``satMod 200000`` on ``4472C4`` is ``0460FF``: the HLS formula
+  evaluated with a saturation over 1, each channel clamped, where clamping the
+  saturation gives ``0961FF``), and it applies ``satOff``, ``hueMod``, ``hueOff``,
+  ``comp`` (the hue turned half way), ``gray`` (Rec. 601 luma on the sRGB channels) and
+  ``inv`` (in linear light), and reads ``a:scrgbClr`` as linear light.  ``tint`` and
+  ``shade`` in linear light, and ``lumMod`` / ``lumOff`` / ``satMod`` in HLS, are
+  PowerPoint's to the level.  pptx2svg's composition (``lumMod`` with ``lumOff`` in one
+  pass wherever they are, a level rounded after every transform, the saturation clamped
+  at 1) is unmeasured for PowerPoint beyond its swatches, so :data:`POWERPOINT` keeps it.
 
 **A known defect, moved as it is.**  PowerPoint shades a chart's accent cycle in linear
 light, and the HLS-on-sRGB ``lumMod`` here puts accent1's blue at 150 where PowerPoint drew
@@ -44,14 +55,16 @@ from .model import ResolvedColor, SourceColor
 
 @dataclass(frozen=True)
 class ColorRules:
-    """How one application turns a transformed colour back into levels.
+    """How one application applies a colour's transforms and turns the result into levels.
 
     ``round_channel`` takes a channel as a float on 0-255 and returns the level drawn, before
-    clamping.  See the module docstring for the evidence behind each instance.
+    clamping.  ``composition`` is ``"paired"`` (pptx2svg's) or ``"sequential"`` (Word's,
+    measured); see the module docstring for the evidence behind each instance.
     """
 
     name: str
     round_channel: Callable[[float], int]
+    composition: str = "paired"
 
 
 def round_half_even(value: float) -> int:
@@ -71,9 +84,9 @@ def round_half_down(value: float) -> int:
 #: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
 POWERPOINT = ColorRules("powerpoint", round_half_even)
 
-#: Word, as docx2svg measured it: ``lumMod`` / ``lumOff`` in HSL, each channel rounded a
-#: half down.  Every other transform is PowerPoint's, unmeasured for Word.
-WORD = ColorRules("word", round_half_down)
+#: Word, as docx2svg measured it: every transform in document order on unrounded
+#: channels, the result rounded a half down.
+WORD = ColorRules("word", round_half_down, "sequential")
 
 
 class Theme(Protocol):
@@ -189,10 +202,14 @@ def resolve_color(
 ) -> ResolvedColor | None:
     if color is None:
         return None
+    rules = _rules(context)
+    linear = getattr(color, "linear", None)
+    if linear is not None and rules.composition == "sequential":
+        return apply_transforms_linear(linear, color.transforms, rules)
     base = _resolve_base_hex(context, color, visited)
     if base is None:
         return None
-    return _apply_transforms(base, color.transforms, _rules(context))
+    return _apply_transforms(base, color.transforms, rules)
 
 
 def resolve_color_or(
@@ -214,6 +231,18 @@ def apply_transforms(
     (anything with ``kind`` and ``value``), in document order.
     """
     return _apply_transforms(_normalize_hex(value), transforms, rules)
+
+
+def apply_transforms_linear(
+    linear: tuple[float, float, float], transforms, rules: ColorRules = POWERPOINT
+) -> ResolvedColor:
+    """As :func:`apply_transforms`, from channels in linear light (an ``a:scrgbClr``'s),
+    for rules that compose in order (:data:`WORD`); others start from the reader's
+    sRGB reading of them."""
+    if rules.composition != "sequential":
+        hex_value = "".join(f"{round(max(0.0, min(1.0, v)) * 255):02x}" for v in linear)
+        return _apply_transforms("#" + hex_value, transforms, rules)
+    return _apply_sequential([_linear_to_srgb(v) / 255 for v in linear], transforms, rules)
 
 
 def _rules(context) -> ColorRules:
@@ -240,6 +269,8 @@ def _resolve_base_hex(context, color: SourceColor, visited: frozenset[str]) -> s
 
 
 def _apply_transforms(initial_hex: str, transforms, rules: ColorRules = POWERPOINT) -> ResolvedColor:
+    if rules.composition == "sequential":
+        return _apply_sequential([c / 255 for c in _hex_to_rgb(initial_hex)], transforms, rules)
     hex_value = initial_hex
     alpha = 1.0
     kinds = {transform.kind for transform in transforms}
@@ -347,3 +378,69 @@ def _apply_shade(value: str, amount: float, rules: ColorRules = POWERPOINT) -> s
         ),
         rules=rules,
     )
+
+
+def _apply_sequential(rgb: list[float], transforms, rules: ColorRules) -> ResolvedColor:
+    """Word's composition (module docstring): each transform in document order on sRGB
+    channels 0-1 kept unrounded and clamped between steps, rounded once at the end."""
+    alpha = 1.0
+    for transform in transforms:
+        kind = transform.kind
+        amount = transform.value / 100000
+        rgb = [max(0.0, min(1.0, channel)) for channel in rgb]
+        if kind in ("lumMod", "lumOff", "satMod", "satOff", "hueMod", "hueOff", "comp"):
+            hue, lum, sat = colorsys.rgb_to_hls(*rgb)
+            if kind == "lumMod":
+                lum = max(0.0, min(1.0, lum * amount))
+            elif kind == "lumOff":
+                lum = max(0.0, min(1.0, lum + amount))
+            elif kind == "satMod":
+                sat = max(0.0, sat * amount)
+            elif kind == "satOff":
+                sat = max(0.0, sat + amount)
+            elif kind == "hueMod":
+                hue = (hue * amount) % 1.0
+            elif kind == "hueOff":
+                hue = (hue + transform.value / 60000 / 360) % 1.0
+            else:
+                hue = (hue + 0.5) % 1.0
+            rgb = _hls_to_rgb_unbounded(hue, lum, sat)
+        elif kind == "tint":
+            rgb = [_linear_to_srgb(_srgb_to_linear_unit(c) * amount + (1 - amount)) / 255 for c in rgb]
+        elif kind == "shade":
+            rgb = [_linear_to_srgb(_srgb_to_linear_unit(c) * amount) / 255 for c in rgb]
+        elif kind == "inv":
+            rgb = [_linear_to_srgb(1 - _srgb_to_linear_unit(c)) / 255 for c in rgb]
+        elif kind == "gray":
+            luma = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
+            rgb = [luma, luma, luma]
+        elif kind == "alpha":
+            alpha = amount
+    return ResolvedColor(hex=_rgb_to_hex(*(c * 255 for c in rgb), rules=rules), alpha=alpha)
+
+
+def _srgb_to_linear_unit(value: float) -> float:
+    if value <= 0.04045:
+        return value / 12.92
+    return ((value + 0.055) / 1.055) ** 2.4
+
+
+def _hls_to_rgb_unbounded(hue: float, lum: float, sat: float) -> list[float]:
+    """HLS to RGB by the textbook formula, *not* clamping the saturation to 1: Word lets
+    ``satMod`` push it past 1 and clamps the channels instead (module docstring)."""
+    if sat == 0:
+        return [lum, lum, lum]
+    high = lum * (1 + sat) if lum < 0.5 else lum + sat - lum * sat
+    low = 2 * lum - high
+
+    def channel(t: float) -> float:
+        t %= 1.0
+        if t < 1 / 6:
+            return low + (high - low) * 6 * t
+        if t < 1 / 2:
+            return high
+        if t < 2 / 3:
+            return low + (high - low) * (2 / 3 - t) * 6
+        return low
+
+    return [channel(hue + 1 / 3), channel(hue), channel(hue - 1 / 3)]

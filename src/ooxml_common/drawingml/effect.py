@@ -14,7 +14,7 @@ from __future__ import annotations
 import math
 
 from . import model as m
-from ..units import emu_to_px
+from ..units import DEFAULT_DPI, emu_to_px
 from .svg import SvgDefs, num
 
 #: How sharply `a:clrChange`'s mask falls away from the keyed colour.  Alpha is
@@ -27,8 +27,13 @@ from .svg import SvgDefs, num
 CLR_CHANGE_SHARPNESS = 64
 
 
-def render_effects(effects: m.EffectList | None, context: SvgDefs) -> str:
-    """Return a ``filter="url(#...)"`` attribute, registering the filter in ``<defs>``."""
+def render_effects(
+    effects: m.EffectList | None, context: SvgDefs, *, dpi: float = DEFAULT_DPI
+) -> str:
+    """Return a ``filter="url(#...)"`` attribute, registering the filter in ``<defs>``.
+
+    ``dpi`` is the pixels per inch of the caller's user space (96, pptx2svg's).
+    """
     if effects is None:
         return ""
 
@@ -36,7 +41,7 @@ def render_effects(effects: m.EffectList | None, context: SvgDefs) -> str:
     last_result = "SourceGraphic"
 
     if effects.soft_edge is not None:
-        radius = emu_to_px(effects.soft_edge.radius)
+        radius = emu_to_px(effects.soft_edge.radius, dpi)
         primitives.append(
             f'<feGaussianBlur in="SourceAlpha" stdDeviation="{num(radius)}" result="softEdgeMask"/>'
         )
@@ -47,7 +52,7 @@ def render_effects(effects: m.EffectList | None, context: SvgDefs) -> str:
         last_result = "softEdgeResult"
 
     if effects.glow is not None:
-        radius = emu_to_px(effects.glow.radius)
+        radius = emu_to_px(effects.glow.radius, dpi)
         color = effects.glow.color
         if last_result != "SourceGraphic":
             # Take the alpha of the current stage to blur, not of the original graphic.
@@ -73,8 +78,8 @@ def render_effects(effects: m.EffectList | None, context: SvgDefs) -> str:
     if effects.outer_shadow is not None:
         shadow = effects.outer_shadow
         # DrawingML blurRad is a diameter-like radius; halve it for a Gaussian sigma.
-        std_dev = emu_to_px(shadow.blur_radius) / 2
-        distance = emu_to_px(shadow.distance)
+        std_dev = emu_to_px(shadow.blur_radius, dpi) / 2
+        distance = emu_to_px(shadow.distance, dpi)
         radians = math.radians(shadow.direction)
         dx = round(distance * math.cos(radians), 2)
         dy = round(distance * math.sin(radians), 2)
@@ -97,8 +102,8 @@ def render_effects(effects: m.EffectList | None, context: SvgDefs) -> str:
 
     if effects.inner_shadow is not None:
         shadow = effects.inner_shadow
-        std_dev = emu_to_px(shadow.blur_radius) / 2
-        distance = emu_to_px(shadow.distance)
+        std_dev = emu_to_px(shadow.blur_radius, dpi) / 2
+        distance = emu_to_px(shadow.distance, dpi)
         radians = math.radians(shadow.direction)
         dx = round(distance * math.cos(radians), 2)
         dy = round(distance * math.sin(radians), 2)
@@ -133,7 +138,9 @@ def render_effects(effects: m.EffectList | None, context: SvgDefs) -> str:
     return f'filter="url(#{filter_id})"'
 
 
-def render_blip_effects(effects: m.BlipEffects | None, context: SvgDefs) -> str:
+def render_blip_effects(
+    effects: m.BlipEffects | None, context: SvgDefs, *, dpi: float = DEFAULT_DPI
+) -> str:
     """Colour adjustments applied to a picture (``a:grayscl``, ``a:duotone``, ...).
 
     The primitives chain implicitly: a primitive with no ``in`` reads whatever the one
@@ -250,7 +257,7 @@ def render_blip_effects(effects: m.BlipEffects | None, context: SvgDefs) -> str:
 
     if effects.blur is not None:
         primitives.append(
-            f'<feGaussianBlur stdDeviation="{num(emu_to_px(effects.blur.radius) / 2)}"/>'
+            f'<feGaussianBlur stdDeviation="{num(emu_to_px(effects.blur.radius, dpi) / 2)}"/>'
         )
 
     if effects.alpha is not None and effects.alpha < 1:

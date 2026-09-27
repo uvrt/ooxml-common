@@ -865,3 +865,100 @@ def _scale_path_data(commands: str, scale_x: float, scale_y: float, x: float, y:
                 values.append(token)
         parts.append(" ".join([letter, *values]))
     return " ".join(parts)
+
+
+# --------------------------------------------------------------------------------------
+# A path's open ends, for arrowheads
+# --------------------------------------------------------------------------------------
+
+
+def _commands(data: str) -> list[list]:
+    """Path data in this module's form (absolute ``M L Q C A Z``) as ``[letter, *numbers]``."""
+    tokens = _PATH_TOKEN.findall(data)
+    out: list[list] = []
+    index = 0
+    while index < len(tokens):
+        letter = tokens[index]
+        index += 1
+        roles = _OPERAND_ROLES.get(letter)
+        if roles is None:
+            continue
+        operands = tokens[index:index + len(roles)]
+        index += len(roles)
+        if len(operands) < len(roles):
+            break
+        out.append([letter, *(float(token) for token in operands)])
+    return out
+
+
+def _format(commands: list[list]) -> str:
+    parts = []
+    for command in commands:
+        letter, values = command[0], command[1:]
+        if letter == "A":
+            text = [_n(values[0]), _n(values[1]), _n(values[2]), str(int(values[3])), str(int(values[4])),
+                    _n(values[5]), _n(values[6])]
+        else:
+            text = [_n(value) for value in values]
+        parts.append(" ".join([letter, *text]))
+    return " ".join(parts)
+
+
+def _unit(dx: float, dy: float) -> tuple[float, float] | None:
+    length = math.hypot(dx, dy)
+    return (dx / length, dy / length) if length > 1e-9 else None
+
+
+def path_ends(data: str) -> tuple[tuple[float, float, float, float], tuple[float, float, float, float]] | None:
+    """An open path's first and last points, each with the unit direction pointing out of
+    the path there -- what :func:`~ooxml_common.drawingml.fill.render_arrowheads` places
+    heads by -- or ``None`` for a closed or degenerate path.  A curve's end points along
+    its last control leg; an arc's along its chord (an approximation)."""
+    commands = _commands(data)
+    if not commands or commands[0][0] != "M" or any(command[0] == "Z" for command in commands):
+        return None
+    if len(commands) < 2 or any(command[0] == "M" for command in commands[1:]):
+        return None
+    start = (commands[0][1], commands[0][2])
+    first = commands[1]
+    toward = (first[1], first[2]) if first[0] in ("L", "Q", "C") else (first[-2], first[-1])
+    out_start = _unit(start[0] - toward[0], start[1] - toward[1])
+    last = commands[-1]
+    end = (last[-2], last[-1])
+    before = commands[-2]
+    previous = (before[-2], before[-1])
+    if last[0] in ("Q", "C"):
+        previous = (last[-4], last[-3])
+    out_end = _unit(end[0] - previous[0], end[1] - previous[1])
+    if out_start is None or out_end is None:
+        return None
+    return (start[0], start[1], *out_start), (end[0], end[1], *out_end)
+
+
+def trim_path(data: str, start: float, end: float) -> str:
+    """The open path cut back by ``start`` at its first point and ``end`` at its last,
+    along its end segments (a straight segment exactly; a curve's end point moved along
+    its tangent, and never past the segment's other end)."""
+    if not start and not end:
+        return data
+    commands = _commands(data)
+    if len(commands) < 2:
+        return data
+    if start:
+        first = commands[1]
+        sx, sy = commands[0][1], commands[0][2]
+        tx, ty = (first[1], first[2]) if first[0] in ("L", "Q", "C") else (first[-2], first[-1])
+        length = math.hypot(tx - sx, ty - sy)
+        if length > 1e-9:
+            t = min(start, length * 0.999) / length
+            commands[0][1], commands[0][2] = sx + (tx - sx) * t, sy + (ty - sy) * t
+    if end:
+        last = commands[-1]
+        ex, ey = last[-2], last[-1]
+        before = commands[-2]
+        px, py = (last[-4], last[-3]) if last[0] in ("Q", "C") else (before[-2], before[-1])
+        length = math.hypot(ex - px, ey - py)
+        if length > 1e-9:
+            t = min(end, length * 0.999) / length
+            last[-2], last[-1] = ex + (px - ex) * t, ey + (py - ey) * t
+    return _format(commands)
