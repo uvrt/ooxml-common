@@ -29,4 +29,4 @@ paragraphs, and which paragraph protocol a shared line breaker should take is a 
 docx2svg's Phase 3 answers by breaking lines against Word, not one to settle in advance.
 """
 
-__version__ = "0.3.0"
+__version__ = "0.3.1"
