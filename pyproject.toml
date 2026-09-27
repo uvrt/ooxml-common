@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ooxml-common"
-version = "0.2.0"
+version = "0.3.0"
 description = "Format-neutral OOXML pieces shared by pptx2svg and docx2svg: OPC, units, DrawingML data, fonts and measured text metrics"
 readme = "README.md"
 requires-python = ">=3.10"

@@ -40,6 +40,8 @@ started to write (its ROADMAP.md, "Floating drawings -- measured", F.10).
 | `ooxml_common.text.measure` | The `TextMeasurer` protocol and both implementations |
 | `ooxml_common.imagemeta` | A picture's natural size, which a tiled fill is measured in |
 | `ooxml_common.drawingml.model` | DrawingML's value types: colour choices and resolved colours, fills, outlines, effects, transforms, geometry, picture tiling |
+| `ooxml_common.drawingml.source` | DrawingML as the XML states it: unresolved fills, outlines, shape styles, effects, transforms, geometry, the theme's format scheme |
+| `ooxml_common.drawingml.read` | The reader: `a:` XML (a slide's or a Word shape's) into those types, and a theme's colour and format schemes |
 | `ooxml_common.drawingml.color` | Colour resolution through a colour map and theme, with every transform, under per-application `ColorRules` |
 | `ooxml_common.drawingml.guides` | Shape-guide formula evaluation |
 | `ooxml_common.drawingml.preset_specs` | The preset geometries pptx2svg draws from ECMA-376 |
@@ -48,24 +50,42 @@ started to write (its ROADMAP.md, "Floating drawings -- measured", F.10).
 | `ooxml_common.drawingml.fill` | Solid, gradient, pattern and picture fills; outlines with dashes, caps and joins; arrowheads |
 | `ooxml_common.drawingml.effect` | Shadows, glow, soft edges and picture effects as SVG filters |
 | `ooxml_common.drawingml.pattern` | The 54 `a:pattFill` presets |
+| `ooxml_common.drawingml.rules` | Where Word and PowerPoint draw the same DrawingML differently, as a parameter of the renderers |
 | `ooxml_common.drawingml.svg` | What the renderers need of the consumer's SVG document (`SvgDefs`), and `num` |
 
 ## Where Word and PowerPoint differ
 
 Where the two applications measurably draw the same DrawingML differently, the shared code
-takes the application as a parameter rather than choosing one rule for both. Today there
-is one such difference, and `ooxml_common.drawingml.color.ColorRules` carries it:
+takes the application as a parameter rather than choosing one rule for both:
+`ooxml_common.drawingml.rules.DrawingRules` (`POWERPOINT`, the default, and `WORD`), which
+carries `ooxml_common.drawingml.color.ColorRules`, and which `fill.render_fill_attrs`,
+`fill.render_outline_attrs` and `fill.render_arrowheads` take. Word's column was measured
+by docx2svg's `tools/make_dml_probe.py`, read off Word's PDF (docx2svg ROADMAP.md,
+"DrawingML drawn by the shared renderers"); PowerPoint's is what pptx2svg has always
+drawn, which its fidelity baselines hold byte for byte.
 
-| | PowerPoint (`POWERPOINT`, the default) | Word (`WORD`) |
+| | PowerPoint (`POWERPOINT`) | Word (`WORD`), measured |
 | --- | --- | --- |
-| A transformed channel's level | the nearest, a half to even (pptx2svg's rule; its swatches are within 2/255 of PowerPoint) | the nearest, **a half down** -- black at `lumMod 50000 lumOff 50000` is `7F7F7F` (docx2svg ROADMAP.md, F.3) |
+| A transformed channel's level | the nearest, a half to even | the nearest, **a half down** (black at `lumMod 50000 lumOff 50000` is `7F7F7F`) |
+| Composing transforms | `lumMod` with `lumOff` in one pass wherever they are; a level rounded after each; saturation clamped at 1; `hueMod`, `hueOff`, `satOff`, `gray`, `inv`, `comp` not applied | **in document order, unrounded**, saturation unbounded above, all of them applied (`inv` in linear light); `a:scrgbClr` read as linear light. 54 / 54 swatches, against 36 |
+| A linear gradient's span | the box's width, in box units | through the centre, **corner to corner** projected on the direction; `scaled` stretches the unit square's; `rotWithShape="0"` holds the angle to the page |
+| A two-stop 0-100% gradient | blended in sRGB | eased (cosine) **in linear light**; a stop's alpha not drawn |
+| Path gradients | radial, to the farthest corner | `circle` from the `fillToRect` point to the corners' circle round the centre; `rect` / `shape` rectangular rings |
+| Dashes | preset times width, the cap on each dash | round cap: each dash a width shorter, each gap a width longer; square cap: squared only at the line's ends; `sysDashDot`, `sysDashDotDot` |
+| Arrowheads | SVG markers, 5 / 8 / 12 px | 2 / 3 / 5 times the width (2 pt at least), the line cut back under a triangle or stealth |
+| An outline's join when none is stated | miter (SVG's) | **round** |
+| A pattern's 8 pt cell | registered to the shape | registered to the **page**, square to it on a rotated shape |
 
-Everything else follows PowerPoint's measurements and is **unmeasured for Word**:
-`tint` and `shade` in linear light, `satMod` in HLS, the order transforms apply in. And one
+Most of Word's column is probably Office's shared engine and so PowerPoint's too; that is
+not measured, and pptx2svg's output is not moved on a guess. `tint` and `shade` in linear
+light and `lumMod` / `lumOff` / `satMod` in HLS are measured the same in both. And one
 known defect moved as it was: PowerPoint shades a chart's accent cycle in linear light,
 where the HLS `lumMod` here is up to 23 levels off (pptx2svg ROADMAP.md) -- pptx2svg's
 chart ramp carries its own conversion, and fixing the general transform would move every
 deck, so it waits for a change that is allowed to.
+
+Every renderer also takes `dpi`, the pixels per inch of the caller's user space: 96 for
+pptx2svg, 300 for docx2svg, which draws on Word's device grid.
 
 ## What is deliberately not in it
 
@@ -75,7 +95,9 @@ deck, so it waits for a change that is allowed to.
   own output, not in advance.
 - **Anything that takes a document model.** `render/text.py` lays out an `a:bodyPr`
   text box, which a Word body does not have; the shape renderer that places elements on a
-  slide, and the parser that reads DrawingML XML into these types, are pptx2svg's.
+  slide, and the resolver that turns what the reader read into drawable values through a
+  slide's inheritance, are pptx2svg's.  (The reader itself is here: what it reads is the
+  same in both formats.)
 - **The fidelity harnesses.** pptx2svg scores rasterised slides by SSIM; docx2svg
   measures glyph boxes in a vector PDF. They share the idea of an oracle and none of the
   code.
