@@ -67,9 +67,9 @@ drawn, which its fidelity baselines hold byte for byte.
 | | PowerPoint (`POWERPOINT`) | Word (`WORD`), measured |
 | --- | --- | --- |
 | A transformed channel's level | the nearest, a half to even | the nearest, **a half down** (black at `lumMod 50000 lumOff 50000` is `7F7F7F`) |
-| Composing transforms | `lumMod` with `lumOff` in one pass wherever they are; a level rounded after each; saturation clamped at 1; `hueMod`, `hueOff`, `satOff`, `gray`, `inv`, `comp` not applied | **in document order, unrounded**, saturation unbounded above, all of them applied (`inv` in linear light); `a:scrgbClr` read as linear light. 54 / 54 swatches, against 43 |
+| Composing transforms | `lumMod` with `lumOff` in one pass wherever they are; a level rounded after each; saturation clamped at 1; `hueMod`, `hueOff`, `satOff`, `gray`, `inv`, `comp` not applied | **in document order, unrounded**, saturation unbounded above, all of them applied (`inv` in linear light); `a:scrgbClr` read as linear light. 54 / 54 swatches, against 36 |
 | A linear gradient's span | the box's width, in box units | through the centre, **corner to corner** projected on the direction; `scaled` stretches the unit square's; `rotWithShape="0"` holds the angle to the page |
-| A two-stop 0-100% gradient | blended in sRGB | blended **in linear light** |
+| A two-stop 0-100% gradient | blended in sRGB | eased (cosine) **in linear light**; a stop's alpha not drawn |
 | Path gradients | radial, to the farthest corner | `circle` from the `fillToRect` point to the corners' circle round the centre; `rect` / `shape` rectangular rings |
 | Dashes | preset times width, the cap on each dash | round cap: each dash a width shorter, each gap a width longer; square cap: squared only at the line's ends; `sysDashDot`, `sysDashDotDot` |
 | Arrowheads | SVG markers, 5 / 8 / 12 px | 2 / 3 / 5 times the width (2 pt at least), the line cut back under a triangle or stealth |

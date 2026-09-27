@@ -3,7 +3,7 @@
 The renderers here were moved from pptx2svg, where every rule was measured against
 PowerPoint -- or, where it was not measured, is pptx2svg's long-standing behaviour, which
 its fidelity baselines hold byte for byte.  docx2svg measured the same markup in Word
-(its ``tools/make_dml_probe.py``: 73 pages of colour transforms, gradients, patterns,
+(its ``tools/make_dml_probe.py``: 81 pages of colour transforms, gradients, patterns,
 dashes, caps, joins, arrowheads, theme style references, group fills and effects, read
 off Word's PDF).  Where Word's drawing differs from what the renderers did, the
 difference is a field here rather than a second renderer, and the caller says which
@@ -36,8 +36,9 @@ class DrawingRules:
       against the shape's rotation and flips; a ``circle`` path gradient runs from its
       ``fillToRect`` point to a circle round the box's centre through its corners; a
       ``rect`` path gradient is rectangular rings about the ``fillToRect`` rectangle; a
-      gradient of exactly two stops, at 0 and 100%, blends in linear light (Word writes
-      it in a linear profile), any other in sRGB.
+      gradient of exactly two stops, at 0 and 100%, eases between them in linear light
+      (Word writes it in a linear profile, with a cosine ease), any other blends straight
+      in sRGB; a stop's ``alpha`` is not drawn.
     * ``dashes`` -- ``"stroke-width"``: the preset's dash and gap times the width, with the
       line's own cap on every dash (pptx2svg's).  ``"office"``, measured on Word: a flat
       cap draws exactly that; a round cap shortens each dash by the width and lengthens

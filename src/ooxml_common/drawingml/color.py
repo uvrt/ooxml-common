@@ -21,7 +21,7 @@ measured against its own application:
 
 * **How transforms compose** -- measured on Word by docx2svg's
   ``tools/make_dml_probe.py`` (ROADMAP.md, "DrawingML drawn by the shared renderers"): 54
-  swatches, every one Word's to the level under :data:`WORD` and 43 of them under
+  swatches, every one Word's to the level under :data:`WORD` and 36 of them under
   :data:`POWERPOINT`.  Word applies the transforms **in document order**
   (``lumOff 40000`` before ``lumMod 60000`` is ``517CC8``, not the paired ``8FAADC``), **on
   unrounded channels** clamped to 0-1 between steps (Office's theme gradient stops, three
