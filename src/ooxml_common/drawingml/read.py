@@ -1,17 +1,22 @@
 """DrawingML readers: colours, fills, outlines, effects, transforms and geometry.
 
+Moved from ``pptx2svg.parse.drawing`` (which re-exports this module) so that a Word
+document's shapes are read into the same :mod:`~ooxml_common.drawingml.source` types as a
+slide's.  Nothing here knows which application wrote the XML: a ``wps:spPr`` and a
+``p:spPr`` hold the same ``a:`` children, and a theme's ``a:fmtScheme`` is the same part.
+
 Everything here stays unresolved -- ``a:schemeClr val="tx1"`` becomes a
 :class:`SchemeColor`, not a hex string, because the colour map that gives ``tx1`` a
-meaning lives on the slide master, not on the shape.  Likewise ``lumMod``/``tint`` are
-recorded but not applied.
+meaning lives with the document (a slide master's ``p:clrMap``, Word's
+``w:clrSchemeMapping``), not on the shape.  Likewise ``lumMod``/``tint`` are recorded but
+not applied: :mod:`~ooxml_common.drawingml.color` applies them, under the application's
+rules.
 """
 
 from __future__ import annotations
 
 from xml.etree.ElementTree import Element
 
-from ..guides import arc_segments, evaluate_guides, resolve_value
-from ..model import ArrowEndpoint, CustomGeometryPath
 from ..xmlutil import (
     attr,
     child,
@@ -22,6 +27,8 @@ from ..xmlutil import (
     ns_attr,
     num_attr,
 )
+from .guides import arc_segments, evaluate_guides, resolve_value
+from .model import ArrowEndpoint, CustomGeometryPath
 from .source import (
     ColorTransform,
     SchemeColor,
@@ -29,6 +36,7 @@ from .source import (
     SourceCustomGeometry,
     SourceEffectList,
     SourceFill,
+    SourceFormatScheme,
     SourceGeometry,
     SourceGlow,
     SourceGradientFill,
@@ -807,3 +815,65 @@ def _fmt(value: float) -> str:
     if rounded == int(rounded):
         return str(int(rounded))
     return f"{rounded:g}"
+
+
+# --------------------------------------------------------------------------------------
+# The theme: its colour scheme and format scheme
+# --------------------------------------------------------------------------------------
+
+#: ``a:clrScheme``'s slots, in schema order.
+COLOR_SCHEME_KEYS = (
+    "dk1", "lt1", "dk2", "lt2", "accent1", "accent2", "accent3", "accent4", "accent5", "accent6",
+    "hlink", "folHlink",
+)
+
+
+def parse_color_scheme(clr_scheme: Element | None) -> dict:
+    """``a:clrScheme`` as ``{slot: colour choice}`` (moved from ``pptx2svg.parse.parts``)."""
+    if clr_scheme is None:
+        return {}
+    scheme = {}
+    for key in COLOR_SCHEME_KEYS:
+        color = parse_color(child(clr_scheme, key))
+        if color is not None:
+            scheme[key] = color
+    return scheme
+
+
+def parse_format_scheme(fmt_scheme: Element | None) -> SourceFormatScheme:
+    """``a:fmtScheme``: the fill, line, effect and background fill styles a shape style's
+    ``idx`` selects (moved from ``pptx2svg.parse.parts``)."""
+    if fmt_scheme is None:
+        return SourceFormatScheme()
+    return SourceFormatScheme(
+        fill_styles=[
+            fill
+            for fill in (parse_fill_style(node) for node in children(child(fmt_scheme, "fillStyleLst")))
+            if fill is not None
+        ],
+        line_styles=[
+            line
+            for line in (parse_line(node) for node in children(child(fmt_scheme, "lnStyleLst"), "ln"))
+            if line is not None
+        ],
+        effect_styles=[
+            parse_effect_list(child(node, "effectLst"))
+            for node in children(child(fmt_scheme, "effectStyleLst"), "effectStyle")
+        ],
+        bg_fill_styles=[
+            fill
+            for fill in (
+                parse_fill_style(node) for node in children(child(fmt_scheme, "bgFillStyleLst"))
+            )
+            if fill is not None
+        ],
+    )
+
+
+def parse_fill_style(node: Element | None):
+    """A fill style list holds bare fill elements; wrap each so ``parse_fill`` can read it."""
+    if node is None:
+        return None
+    wrapper = Element("wrapper")
+    wrapper.append(node)
+    return parse_fill(wrapper)

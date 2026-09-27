@@ -40,6 +40,8 @@ started to write (its ROADMAP.md, "Floating drawings -- measured", F.10).
 | `ooxml_common.text.measure` | The `TextMeasurer` protocol and both implementations |
 | `ooxml_common.imagemeta` | A picture's natural size, which a tiled fill is measured in |
 | `ooxml_common.drawingml.model` | DrawingML's value types: colour choices and resolved colours, fills, outlines, effects, transforms, geometry, picture tiling |
+| `ooxml_common.drawingml.source` | DrawingML as the XML states it: unresolved fills, outlines, shape styles, effects, transforms, geometry, the theme's format scheme |
+| `ooxml_common.drawingml.read` | The reader: `a:` XML (a slide's or a Word shape's) into those types, and a theme's colour and format schemes |
 | `ooxml_common.drawingml.color` | Colour resolution through a colour map and theme, with every transform, under per-application `ColorRules` |
 | `ooxml_common.drawingml.guides` | Shape-guide formula evaluation |
 | `ooxml_common.drawingml.preset_specs` | The preset geometries pptx2svg draws from ECMA-376 |
@@ -75,7 +77,9 @@ deck, so it waits for a change that is allowed to.
   own output, not in advance.
 - **Anything that takes a document model.** `render/text.py` lays out an `a:bodyPr`
   text box, which a Word body does not have; the shape renderer that places elements on a
-  slide, and the parser that reads DrawingML XML into these types, are pptx2svg's.
+  slide, and the resolver that turns what the reader read into drawable values through a
+  slide's inheritance, are pptx2svg's.  (The reader itself is here: what it reads is the
+  same in both formats.)
 - **The fidelity harnesses.** pptx2svg scores rasterised slides by SSIM; docx2svg
   measures glyph boxes in a vector PDF. They share the idea of an oracle and none of the
   code.

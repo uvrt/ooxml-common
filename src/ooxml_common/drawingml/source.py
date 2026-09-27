@@ -1,14 +1,18 @@
-"""The source model: OOXML as parsed, before any inheritance or theme resolution.
+"""DrawingML as the XML states it, before any theme or inheritance resolves it.
 
-Deliberately *unresolved*.  Theme colours stay as ``SourceSchemeColor("accent1")`` with
-their lumMod/tint/shade transforms unapplied, images stay as relationship ids, and
-``+mn-lt`` stays as the literal string.  Resolution needs context the reader does not
-have -- which theme, which colour map, which layout a placeholder inherits from -- so it
-belongs in :mod:`pptx2svg.resolve`.
+Moved from ``pptx2svg.parse.source`` (whose slide, text, table and chart types stayed
+there, and which re-exports every name here, so the classes are the same objects through
+either path).  These are what :mod:`~ooxml_common.drawingml.read` reads a fill, an
+outline, a shape style, an effect list, a transform or a geometry into.
+
+Deliberately *unresolved*.  Theme colours stay as ``SchemeColor("accent1")`` with their
+``lumMod`` / ``tint`` / ``shade`` transforms unapplied, and images stay as relationship
+ids.  Resolution needs context the reader does not have -- which theme, which colour
+map, what a placeholder or a group gives -- so it belongs to the consumer, which turns
+these into :mod:`~ooxml_common.drawingml.model`'s values for the renderers.
 
 ``None`` means "not specified here, inherit from the layer above"; that distinction is
-what makes placeholder and list-style inheritance work, so no field gets a concrete
-default at parse time.
+what makes inheritance work, so no field gets a concrete default at parse time.
 """
 
 from __future__ import annotations
@@ -16,35 +20,21 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal, Union
 
-from ..model import (
+from .model import (  # noqa: F401 -- the colour choices are re-exported
     ArrowEndpoint,
-    BulletType,
+    ColorTransform,
+    ColorTransformKind,
     CompoundLineType,
     CustomGeometryPath,
     DashStyle,
     LineCap,
     LineJoin,
     RectangleAlignment,
-    SpacingValue,
-    TabStop,
-    TextVerticalType,
-)
-
-# --------------------------------------------------------------------------------------
-# Colour
-# --------------------------------------------------------------------------------------
-
-# The unresolved colour choices moved to ooxml-common with the rest of DrawingML's value
-# types; they are the same classes here.
-from ooxml_common.drawingml.model import (  # noqa: E402,F401
-    ColorTransform,
-    ColorTransformKind,
     SchemeColor,
     SourceColor,
     SrgbColor,
     SystemColor,
 )
-
 
 # --------------------------------------------------------------------------------------
 # Fill and line
@@ -243,458 +233,15 @@ SourceGeometry = Union[SourcePresetGeometry, SourceCustomGeometry]
 
 
 # --------------------------------------------------------------------------------------
-# Text
+# The theme's format scheme
 # --------------------------------------------------------------------------------------
-
-
-@dataclass
-class SourceRunProperties:
-    bold: bool | None = None
-    italic: bool | None = None
-    underline: bool | None = None
-    #: ``a:rPr@u`` verbatim (``"dbl"``, ``"wavy"``, ``"dotDash"``...) when it is not
-    #: ``"sng"``; the bool above only says *whether* the run is underlined.
-    underline_style: str | None = None
-    strikethrough: bool | None = None
-    baseline: float | None = None
-    #: points
-    font_size: float | None = None
-    typeface: str | None = None
-    typeface_ea: str | None = None
-    typeface_cs: str | None = None
-    color: SourceColor | None = None
-    highlight: SourceColor | None = None
-    outline_width: float | None = None
-    outline_color: SourceColor | None = None
-    hyperlink_rel_id: str | None = None
-    hyperlink_tooltip: str | None = None
-
-
-@dataclass
-class SourceTextRun:
-    text: str
-    properties: SourceRunProperties | None = None
-
-
-@dataclass
-class SourceBlipBullet:
-    """``a:buBlip`` as parsed -- a relationship id, not yet an image.
-
-    The model's :class:`~pptx2svg.model.BlipBullet` carries the bytes; turning one into
-    the other needs the package, which is the resolver's to hold and not the reader's.
-    """
-
-    relationship_id: str
-    type: Literal["blip"] = "blip"
-
-
-#: A bullet as *parsed*.  Identical to the model's union except for the picture bullet,
-#: which is still a relationship id at this stage.
-SourceBulletType = Union[BulletType, SourceBlipBullet]
-
-
-@dataclass
-class SourceParagraphProperties:
-    align: Literal["l", "ctr", "r", "just"] | None = None
-    level: int | None = None
-    line_spacing: SpacingValue | None = None
-    space_before: SpacingValue | None = None
-    space_after: SpacingValue | None = None
-    margin_left: float | None = None
-    indent: float | None = None
-    bullet: SourceBulletType | None = None
-    bullet_font: str | None = None
-    bullet_color: SourceColor | None = None
-    bullet_size_pct: float | None = None
-    #: ``a:buSzPts@val`` in points -- the absolute spelling of a bullet's size.
-    bullet_size_points: float | None = None
-    tab_stops: list[TabStop] | None = None
-    default_run_properties: SourceRunProperties | None = None
-
-
-@dataclass
-class SourceParagraph:
-    runs: list[SourceTextRun] = field(default_factory=list)
-    properties: SourceParagraphProperties | None = None
-    end_para_run_properties: SourceRunProperties | None = None
-
-
-@dataclass
-class SourceTextStyle:
-    """``a:lstStyle`` / ``p:titleStyle`` -- per-outline-level default paragraph properties."""
-
-    default_paragraph: SourceParagraphProperties | None = None
-    #: index 0 == lvl1pPr ... index 8 == lvl9pPr
-    levels: list[SourceParagraphProperties | None] = field(
-        default_factory=lambda: [None] * 9
-    )
-
-
-@dataclass
-class SourceTextBodyProperties:
-    margin_left: float | None = None
-    margin_right: float | None = None
-    margin_top: float | None = None
-    margin_bottom: float | None = None
-    anchor: Literal["t", "ctr", "b"] | None = None
-    wrap: Literal["square", "none"] | None = None
-    auto_fit: Literal["noAutofit", "normAutofit", "spAutofit"] | None = None
-    font_scale: float | None = None
-    ln_spc_reduction: float | None = None
-    num_col: int | None = None
-    vert: TextVerticalType | None = None
-    rotation: float | None = None
-    #: ``a:bodyPr@defTabSz`` -- the interval of the implicit tab stops, in EMU.
-    default_tab_size: float | None = None
-
-
-@dataclass
-class SourceTextBody:
-    paragraphs: list[SourceParagraph] = field(default_factory=list)
-    properties: SourceTextBodyProperties | None = None
-    list_style: SourceTextStyle | None = None
-
-
-# --------------------------------------------------------------------------------------
-# Shape tree nodes
-# --------------------------------------------------------------------------------------
-
-
-@dataclass
-class SourcePlaceholder:
-    type: str | None = None
-    idx: int | None = None
-
-
-@dataclass
-class SourceShape:
-    name: str | None = None
-    shape_id: str | None = None
-    alt_text: str | None = None
-    placeholder: SourcePlaceholder | None = None
-    transform: SourceTransform | None = None
-    geometry: SourceGeometry | None = None
-    fill: SourceFill | None = None
-    outline: SourceOutline | None = None
-    effects: SourceEffectList | None = None
-    style: SourceShapeStyle | None = None
-    text_body: SourceTextBody | None = None
-    #: ``dsp:txXfrm`` -- SmartArt places a shape's text box separately from the shape.
-    text_transform: SourceTransform | None = None
-    #: ``p:cNvPr@hidden`` -- the shape exists but is not drawn.
-    hidden: bool = False
-    hyperlink_rel_id: str | None = None
-    kind: Literal["shape"] = "shape"
-
-
-@dataclass
-class SourceConnector:
-    name: str | None = None
-    shape_id: str | None = None
-    alt_text: str | None = None
-    transform: SourceTransform | None = None
-    geometry: SourceGeometry | None = None
-    outline: SourceOutline | None = None
-    effects: SourceEffectList | None = None
-    #: ``p:cNvPr@hidden`` -- the shape exists but is not drawn.
-    hidden: bool = False
-    style: SourceShapeStyle | None = None
-    kind: Literal["connector"] = "connector"
-
-
-@dataclass
-class SourceImage:
-    blip_relationship_id: str | None = None
-    #: ``asvg:svgBlip@r:embed`` -- the vector original, when the blip carries one.
-    svg_relationship_id: str | None = None
-    name: str | None = None
-    shape_id: str | None = None
-    alt_text: str | None = None
-    placeholder: SourcePlaceholder | None = None
-    transform: SourceTransform | None = None
-    geometry: SourceGeometry | None = None
-    outline: SourceOutline | None = None
-    effects: SourceEffectList | None = None
-    blip_effects: SourceBlipEffects | None = None
-    src_rect: tuple[float, float, float, float] | None = None
-    stretch: tuple[float, float, float, float] | None = None
-    tile: SourceImageFillTile | None = None
-    #: ``p:cNvPr@hidden`` -- the shape exists but is not drawn.
-    hidden: bool = False
-    hyperlink_rel_id: str | None = None
-    kind: Literal["image"] = "image"
-
-
-@dataclass
-class SourceTableCell:
-    text_body: SourceTextBody | None = None
-    fill: SourceFill | None = None
-    border_top: SourceOutline | None = None
-    border_bottom: SourceOutline | None = None
-    border_left: SourceOutline | None = None
-    border_right: SourceOutline | None = None
-    grid_span: int = 1
-    row_span: int = 1
-    h_merge: bool = False
-    v_merge: bool = False
-    margin_left: float | None = None
-    margin_right: float | None = None
-    margin_top: float | None = None
-    margin_bottom: float | None = None
-    anchor: Literal["t", "ctr", "b"] | None = None
-
-
-@dataclass
-class SourceTableRow:
-    height: float = 0.0
-    cells: list[SourceTableCell] = field(default_factory=list)
-
-
-@dataclass
-class SourceTable:
-    name: str | None = None
-    shape_id: str | None = None
-    alt_text: str | None = None
-    transform: SourceTransform | None = None
-    columns: list[float] = field(default_factory=list)
-    rows: list[SourceTableRow] = field(default_factory=list)
-    #: ``a:tblPr`` flags saying which conditional regions of the table style apply.
-    first_row: bool = False
-    last_row: bool = False
-    first_col: bool = False
-    last_col: bool = False
-    band_row: bool = False
-    band_col: bool = False
-    #: ``a:tableStyleId`` -- a GUID, resolved against ``tableStyles.xml`` or the built-in
-    #: catalogue.  ``None`` means "use the presentation's default table style".
-    #: ``p:cNvPr@hidden`` -- the shape exists but is not drawn.
-    hidden: bool = False
-    style_id: str | None = None
-    kind: Literal["table"] = "table"
-
-
-#: ``a:tblStyle`` conditional regions, lowest precedence first.  A cell takes its
-#: formatting from every region that covers it, with later entries winning -- so the
-#: header row beats the banding, and a corner cell beats the header row.  The element
-#: names are the OOXML ones; the attribute names are the Python ones.
-TABLE_STYLE_REGIONS: tuple[tuple[str, str], ...] = (
-    ("wholeTbl", "whole_table"),
-    ("band2V", "band2_v"),
-    ("band1V", "band1_v"),
-    ("band2H", "band2_h"),
-    ("band1H", "band1_h"),
-    ("lastCol", "last_col"),
-    ("firstCol", "first_col"),
-    ("lastRow", "last_row"),
-    ("firstRow", "first_row"),
-    ("swCell", "sw_cell"),
-    ("seCell", "se_cell"),
-    ("nwCell", "nw_cell"),
-    ("neCell", "ne_cell"),
-)
-
-
-@dataclass
-class SourceTableCellStyle:
-    """One conditional region of a table style.
-
-    ``border_inside_h`` / ``border_inside_v`` are the edges *within* the region; the four
-    named sides are the region's own outer boundary.  For ``wholeTbl`` that boundary is
-    the table's outline and the inside borders are every gridline; for ``firstRow`` the
-    boundary is the header row's four sides and ``insideV`` separates its cells.
-    """
-
-    fill: SourceFill | None = None
-    #: ``a:tcStyle/a:fillRef`` -- an index into the theme's fill style list.
-    fill_ref: SourceStyleReference | None = None
-    #: ``a:tcTxStyle`` as run properties, so it can join the text cascade unchanged.
-    text: SourceRunProperties | None = None
-    border_left: SourceOutline | None = None
-    border_right: SourceOutline | None = None
-    border_top: SourceOutline | None = None
-    border_bottom: SourceOutline | None = None
-    border_inside_h: SourceOutline | None = None
-    border_inside_v: SourceOutline | None = None
-
-
-@dataclass
-class SourceTableStyle:
-    style_id: str
-    name: str | None = None
-    whole_table: SourceTableCellStyle | None = None
-    band1_h: SourceTableCellStyle | None = None
-    band2_h: SourceTableCellStyle | None = None
-    band1_v: SourceTableCellStyle | None = None
-    band2_v: SourceTableCellStyle | None = None
-    first_row: SourceTableCellStyle | None = None
-    last_row: SourceTableCellStyle | None = None
-    first_col: SourceTableCellStyle | None = None
-    last_col: SourceTableCellStyle | None = None
-    nw_cell: SourceTableCellStyle | None = None
-    ne_cell: SourceTableCellStyle | None = None
-    sw_cell: SourceTableCellStyle | None = None
-    se_cell: SourceTableCellStyle | None = None
-
-
-@dataclass
-class SourceTableStyles:
-    """``ppt/tableStyles.xml`` -- the deck's custom styles and its default style id."""
-
-    default_style_id: str | None = None
-    styles: dict[str, SourceTableStyle] = field(default_factory=dict)
-
-
-@dataclass
-class SourceGroup:
-    name: str | None = None
-    shape_id: str | None = None
-    alt_text: str | None = None
-    transform: SourceTransform | None = None
-    child_transform: SourceTransform | None = None
-    fill: SourceFill | None = None
-    effects: SourceEffectList | None = None
-    #: ``p:cNvPr@hidden`` -- the shape exists but is not drawn.
-    hidden: bool = False
-    children: list["SourceShapeNode"] = field(default_factory=list)
-    kind: Literal["group"] = "group"
-
-
-@dataclass
-class SourceUnsupported:
-    """A graphic frame we can position but not draw (chart, SmartArt, OLE, media)."""
-
-    what: str
-    name: str | None = None
-    shape_id: str | None = None
-    alt_text: str | None = None
-    transform: SourceTransform | None = None
-    #: Relationship id of a rendered fallback, when the frame ships one.
-    fallback_rel_id: str | None = None
-    #: ``p:cNvPr@hidden`` -- the shape exists but is not drawn.
-    hidden: bool = False
-    fallback_part: str | None = None
-    kind: Literal["unsupported"] = "unsupported"
-
-
-SourceShapeNode = Union[
-    SourceShape, SourceConnector, SourceImage, SourceTable, SourceGroup, SourceUnsupported
-]
-
-
-# --------------------------------------------------------------------------------------
-# Parts
-# --------------------------------------------------------------------------------------
-
-
-@dataclass
-class SourceColorMap:
-    """``p:clrMap`` / ``p:clrMapOvr`` -- slot name -> colour-scheme key."""
-
-    mapping: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass
 class SourceFormatScheme:
+    """``a:fmtScheme``: what a shape style's ``idx`` indexes (ECMA-376 20.1.4.1.14)."""
+
     fill_styles: list[SourceFill] = field(default_factory=list)
     line_styles: list[SourceOutline] = field(default_factory=list)
     effect_styles: list[SourceEffectList | None] = field(default_factory=list)
     bg_fill_styles: list[SourceFill] = field(default_factory=list)
-
-
-@dataclass
-class SourceFontScheme:
-    major_latin: str | None = None
-    minor_latin: str | None = None
-    major_east_asian: str | None = None
-    minor_east_asian: str | None = None
-    major_complex_script: str | None = None
-    minor_complex_script: str | None = None
-    major_japanese: str | None = None
-    minor_japanese: str | None = None
-
-
-@dataclass
-class SourceTheme:
-    part_path: str
-    color_scheme: dict[str, SourceColor] = field(default_factory=dict)
-    font_scheme: SourceFontScheme = field(default_factory=SourceFontScheme)
-    format_scheme: SourceFormatScheme = field(default_factory=SourceFormatScheme)
-
-
-@dataclass
-class SourceBackground:
-    fill: SourceFill | None = None
-    #: ``p:bgRef`` -- index into the theme's bgFillStyleLst plus an override colour.
-    bg_ref: SourceStyleReference | None = None
-
-
-@dataclass
-class SourceSlideBase:
-    part_path: str
-    shapes: list[SourceShapeNode] = field(default_factory=list)
-    background: SourceBackground | None = None
-    color_map_override: SourceColorMap | None = None
-
-
-@dataclass
-class SourceSlideMaster(SourceSlideBase):
-    theme_part_path: str | None = None
-    color_map: SourceColorMap | None = None
-    title_style: SourceTextStyle | None = None
-    body_style: SourceTextStyle | None = None
-    other_style: SourceTextStyle | None = None
-
-
-@dataclass
-class SourceSlideLayout(SourceSlideBase):
-    master_part_path: str | None = None
-    show_master_shapes: bool = True
-    layout_type: str | None = None
-
-
-@dataclass
-class SourceSlide(SourceSlideBase):
-    layout_part_path: str | None = None
-    show_master_shapes: bool = True
-    slide_number: int = 1
-    #: ``p:sldId/@id`` from the presentation's slide list -- deck-unique and, unlike
-    #: ``slide_number``, unaffected by reordering.
-    slide_id: int | None = None
-
-
-@dataclass(frozen=True)
-class SourceEmbeddedFont:
-    """One ``<p:embeddedFont>``: a family name and the parts carrying its four cuts.
-
-    Relationship ids rather than part paths, because that is what the element holds and
-    resolving them needs the package.  ``part_path`` is the part whose relationships they
-    belong to -- ``ppt/presentation.xml`` -- carried along so the reader does not have to
-    be told twice.
-
-    The four slots are an assertion by the deck about which file plays which role, and
-    the file behind a slot need not agree with it: PowerPoint substitutes when a family
-    has no cut for a slot, so ``bold`` can point at a regular-weight face.  The deck's
-    claim is the one that governs rendering -- see :func:`pptx2svg.fonts.sfnt.relabel`.
-    """
-
-    typeface: str
-    part_path: str
-    regular: str | None = None
-    bold: str | None = None
-    italic: str | None = None
-    bold_italic: str | None = None
-
-
-@dataclass
-class SourcePresentation:
-    part_path: str
-    slide_width: float = 9144000
-    slide_height: float = 6858000
-    default_text_style: SourceTextStyle | None = None
-    table_styles: SourceTableStyles | None = None
-    slides: list[SourceSlide] = field(default_factory=list)
-    layouts: dict[str, SourceSlideLayout] = field(default_factory=dict)
-    masters: dict[str, SourceSlideMaster] = field(default_factory=dict)
-    themes: dict[str, SourceTheme] = field(default_factory=dict)
-    #: ``<p:embeddedFontLst>``, in document order.  Empty for the great majority of decks.
-    embedded_fonts: list[SourceEmbeddedFont] = field(default_factory=list)
