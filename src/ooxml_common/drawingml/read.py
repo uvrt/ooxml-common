@@ -61,7 +61,12 @@ from .source import (
 )
 
 COLOR_ELEMENTS = ("srgbClr", "schemeClr", "sysClr", "prstClr", "scrgbClr", "hslClr")
-COLOR_TRANSFORM_KINDS = {"lumMod", "lumOff", "tint", "shade", "alpha", "satMod", "satOff"}
+COLOR_TRANSFORM_KINDS = {
+    "lumMod", "lumOff", "tint", "shade", "alpha", "satMod", "satOff", "hueMod", "hueOff", "gray", "inv",
+    "comp",
+}
+#: The transforms that take no value (ECMA-376 20.1.2.3): read as 0.
+VALUELESS_TRANSFORMS = {"gray", "inv", "comp"}
 
 DASH_STYLES = {
     "solid",
@@ -73,6 +78,8 @@ DASH_STYLES = {
     "lgDashDotDot",
     "sysDash",
     "sysDot",
+    "sysDashDot",
+    "sysDashDotDot",
 }
 ARROW_TYPES = {"triangle", "stealth", "diamond", "oval", "arrow"}
 ARROW_SIZES = {"sm", "med", "lg"}
@@ -87,37 +94,184 @@ LINE_CAP_MAP = {"flat": "butt", "sq": "square", "rnd": "round"}
 #: silence about that is the defect this field exists to stop.
 COMPOUND_LINE_TYPES = {"sng", "dbl", "thickThin", "thinThick", "tri"}
 
-#: ``a:prstClr`` names we map; the full ECMA-376 list is ~140 entries and the rest fall
-#: back to black.
-PRESET_COLOR_HEX = {
-    "black": "000000",
-    "white": "FFFFFF",
-    "red": "FF0000",
-    "green": "008000",
-    "lime": "00FF00",
-    "blue": "0000FF",
-    "yellow": "FFFF00",
-    "cyan": "00FFFF",
+#: ``a:prstClr`` (``ST_PresetColorVal``, ECMA-376 20.1.10.48): the CSS named colours, keyed
+#: in lower case.  The schema spells them in camel case and abbreviates ``dark``,
+#: ``light`` and ``medium`` as ``dk``, ``lt`` and ``med`` in a second spelling of each
+#: (``dkSeaGreen``); :func:`preset_color_hex` reads either.  Word draws ``darkSeaGreen``
+#: as ``8FBC8F``, the CSS value (docx2svg ``tools/make_dml_probe.py``).
+CSS_COLOR_HEX = {
+    "aliceblue": "F0F8FF",
+    "antiquewhite": "FAEBD7",
     "aqua": "00FFFF",
-    "magenta": "FF00FF",
-    "fuchsia": "FF00FF",
-    "gray": "808080",
-    "grey": "808080",
-    "darkGray": "A9A9A9",
-    "lightGray": "D3D3D3",
-    "silver": "C0C0C0",
-    "maroon": "800000",
-    "olive": "808000",
-    "navy": "000080",
-    "purple": "800080",
-    "teal": "008080",
-    "orange": "FFA500",
-    "pink": "FFC0CB",
+    "aquamarine": "7FFFD4",
+    "azure": "F0FFFF",
+    "beige": "F5F5DC",
+    "bisque": "FFE4C4",
+    "black": "000000",
+    "blanchedalmond": "FFEBCD",
+    "blue": "0000FF",
+    "blueviolet": "8A2BE2",
     "brown": "A52A2A",
+    "burlywood": "DEB887",
+    "cadetblue": "5F9EA0",
+    "chartreuse": "7FFF00",
+    "chocolate": "D2691E",
+    "coral": "FF7F50",
+    "cornflowerblue": "6495ED",
+    "cornsilk": "FFF8DC",
+    "crimson": "DC143C",
+    "cyan": "00FFFF",
+    "darkblue": "00008B",
+    "darkcyan": "008B8B",
+    "darkgoldenrod": "B8860B",
+    "darkgray": "A9A9A9",
+    "darkgreen": "006400",
+    "darkgrey": "A9A9A9",
+    "darkkhaki": "BDB76B",
+    "darkmagenta": "8B008B",
+    "darkolivegreen": "556B2F",
+    "darkorange": "FF8C00",
+    "darkorchid": "9932CC",
+    "darkred": "8B0000",
+    "darksalmon": "E9967A",
+    "darkseagreen": "8FBC8F",
+    "darkslateblue": "483D8B",
+    "darkslategray": "2F4F4F",
+    "darkslategrey": "2F4F4F",
+    "darkturquoise": "00CED1",
+    "darkviolet": "9400D3",
+    "deeppink": "FF1493",
+    "deepskyblue": "00BFFF",
+    "dimgray": "696969",
+    "dimgrey": "696969",
+    "dodgerblue": "1E90FF",
+    "firebrick": "B22222",
+    "floralwhite": "FFFAF0",
+    "forestgreen": "228B22",
+    "fuchsia": "FF00FF",
+    "gainsboro": "DCDCDC",
+    "ghostwhite": "F8F8FF",
     "gold": "FFD700",
-    "violet": "EE82EE",
+    "goldenrod": "DAA520",
+    "gray": "808080",
+    "green": "008000",
+    "greenyellow": "ADFF2F",
+    "grey": "808080",
+    "honeydew": "F0FFF0",
+    "hotpink": "FF69B4",
+    "indianred": "CD5C5C",
     "indigo": "4B0082",
+    "ivory": "FFFFF0",
+    "khaki": "F0E68C",
+    "lavender": "E6E6FA",
+    "lavenderblush": "FFF0F5",
+    "lawngreen": "7CFC00",
+    "lemonchiffon": "FFFACD",
+    "lightblue": "ADD8E6",
+    "lightcoral": "F08080",
+    "lightcyan": "E0FFFF",
+    "lightgoldenrodyellow": "FAFAD2",
+    "lightgray": "D3D3D3",
+    "lightgreen": "90EE90",
+    "lightgrey": "D3D3D3",
+    "lightpink": "FFB6C1",
+    "lightsalmon": "FFA07A",
+    "lightseagreen": "20B2AA",
+    "lightskyblue": "87CEFA",
+    "lightslategray": "778899",
+    "lightslategrey": "778899",
+    "lightsteelblue": "B0C4DE",
+    "lightyellow": "FFFFE0",
+    "lime": "00FF00",
+    "limegreen": "32CD32",
+    "linen": "FAF0E6",
+    "magenta": "FF00FF",
+    "maroon": "800000",
+    "mediumaquamarine": "66CDAA",
+    "mediumblue": "0000CD",
+    "mediumorchid": "BA55D3",
+    "mediumpurple": "9370DB",
+    "mediumseagreen": "3CB371",
+    "mediumslateblue": "7B68EE",
+    "mediumspringgreen": "00FA9A",
+    "mediumturquoise": "48D1CC",
+    "mediumvioletred": "C71585",
+    "midnightblue": "191970",
+    "mintcream": "F5FFFA",
+    "mistyrose": "FFE4E1",
+    "moccasin": "FFE4B5",
+    "navajowhite": "FFDEAD",
+    "navy": "000080",
+    "oldlace": "FDF5E6",
+    "olive": "808000",
+    "olivedrab": "6B8E23",
+    "orange": "FFA500",
+    "orangered": "FF4500",
+    "orchid": "DA70D6",
+    "palegoldenrod": "EEE8AA",
+    "palegreen": "98FB98",
+    "paleturquoise": "AFEEEE",
+    "palevioletred": "DB7093",
+    "papayawhip": "FFEFD5",
+    "peachpuff": "FFDAB9",
+    "peru": "CD853F",
+    "pink": "FFC0CB",
+    "plum": "DDA0DD",
+    "powderblue": "B0E0E6",
+    "purple": "800080",
+    "red": "FF0000",
+    "rosybrown": "BC8F8F",
+    "royalblue": "4169E1",
+    "saddlebrown": "8B4513",
+    "salmon": "FA8072",
+    "sandybrown": "F4A460",
+    "seagreen": "2E8B57",
+    "seashell": "FFF5EE",
+    "sienna": "A0522D",
+    "silver": "C0C0C0",
+    "skyblue": "87CEEB",
+    "slateblue": "6A5ACD",
+    "slategray": "708090",
+    "slategrey": "708090",
+    "snow": "FFFAFA",
+    "springgreen": "00FF7F",
+    "steelblue": "4682B4",
+    "tan": "D2B48C",
+    "teal": "008080",
+    "thistle": "D8BFD8",
+    "tomato": "FF6347",
+    "turquoise": "40E0D0",
+    "violet": "EE82EE",
+    "wheat": "F5DEB3",
+    "white": "FFFFFF",
+    "whitesmoke": "F5F5F5",
+    "yellow": "FFFF00",
+    "yellowgreen": "9ACD32",
 }
+
+#: The names this reader mapped before it carried the whole table, kept as the reader's
+#: public name for them; every value is the CSS one.
+PRESET_COLOR_HEX = {
+    name: CSS_COLOR_HEX[name.lower()]
+    for name in (
+        "black", "white", "red", "green", "lime", "blue", "yellow", "cyan", "aqua", "magenta",
+        "fuchsia", "gray", "grey", "darkGray", "lightGray", "silver", "maroon", "olive", "navy",
+        "purple", "teal", "orange", "pink", "brown", "gold", "violet", "indigo",
+    )
+}
+
+_PRESET_PREFIXES = (("dk", "dark"), ("lt", "light"), ("med", "medium"))
+
+
+def preset_color_hex(name: str) -> str | None:
+    """``RRGGBB`` for an ``a:prstClr@val``, in either of the schema's spellings."""
+    key = name.lower()
+    if key in CSS_COLOR_HEX:
+        return CSS_COLOR_HEX[key]
+    for short, long in _PRESET_PREFIXES:
+        if name.startswith(short) and name[len(short):len(short) + 1].isupper():
+            return CSS_COLOR_HEX.get(long + key[len(short):])
+    return None
 
 
 # --------------------------------------------------------------------------------------
@@ -160,7 +314,7 @@ def parse_color_node(node: Element) -> SourceColor | None:
             transforms=parse_color_transforms(node),
         )
     if name == "prstClr":
-        hex_value = PRESET_COLOR_HEX.get(attr(node, "val") or "", None)
+        hex_value = preset_color_hex(attr(node, "val") or "")
         if hex_value is None:
             return None
         return SrgbColor(hex=hex_value, transforms=parse_color_transforms(node))
@@ -170,7 +324,8 @@ def parse_color_node(node: Element) -> SourceColor | None:
             max(0.0, min(1.0, (num_attr(node, key) or 0) / 100000)) for key in ("r", "g", "b")
         ]
         hex_value = "".join(f"{round(component * 255):02X}" for component in components)
-        return SrgbColor(hex=hex_value, transforms=parse_color_transforms(node))
+        return SrgbColor(hex=hex_value, transforms=parse_color_transforms(node),
+                         linear=(components[0], components[1], components[2]))
     if name == "hslClr":
         hue = (num_attr(node, "hue") or 0) / 60000 / 360
         sat = (num_attr(node, "sat") or 0) / 100000
@@ -186,6 +341,8 @@ def parse_color_transforms(node: Element) -> list[ColorTransform]:
         if kind not in COLOR_TRANSFORM_KINDS:
             continue
         value = num_attr(item, "val")
+        if value is None and kind in VALUELESS_TRANSFORMS:
+            value = 0
         if value is None:
             continue
         transforms.append(ColorTransform(kind=kind, value=value))  # type: ignore[arg-type]
@@ -278,13 +435,23 @@ def parse_gradient_fill(gradient: Element) -> SourceFill | None:
             gradient_type="radial",
             center_x=(left + (100000 - right)) / 2 / 100000,
             center_y=(top + (100000 - bottom)) / 2 / 100000,
+            path=attr(path, "path") or "circle",
+            focus=(left / 100000, top / 100000, right / 100000, bottom / 100000),
+            rotate_with_shape=_optional_bool(attr(gradient, "rotWithShape")),
         )
 
+    lin = child(gradient, "lin")
     return SourceGradientFill(
         stops=stops,
         gradient_type="linear",
-        angle=num_attr(child(gradient, "lin"), "ang") or 0,
+        angle=num_attr(lin, "ang") or 0,
+        scaled=_optional_bool(attr(lin, "scaled")),
+        rotate_with_shape=_optional_bool(attr(gradient, "rotWithShape")),
     )
+
+
+def _optional_bool(value: str | None) -> bool | None:
+    return None if value is None else is_true(value)
 
 
 def parse_blip_fill(blip_fill: Element) -> SourceFill | None:
@@ -714,6 +881,50 @@ def parse_custom_geometry(cust_geom: Element | None) -> list[CustomGeometryPath]
         if commands:
             result.append(CustomGeometryPath(width=width, height=height, commands=commands))
     return result
+
+
+#: ``a:pathLst`` commands as the preset table's command letters.
+_SPEC_LETTERS = {"moveTo": "M", "lnTo": "L", "quadBezTo": "Q", "cubicBezTo": "C", "arcTo": "A", "close": "Z"}
+
+
+def parse_geometry_spec(sp_pr: Element | None) -> tuple | None:
+    """A shape's geometry for :mod:`~ooxml_common.drawingml.geometry`'s path-data
+    functions: ``("preset", name, {adjustment: formula})`` for ``a:prstGeom``, or
+    ``("custom", spec)`` for ``a:custGeom`` with ``spec`` in the preset table's form --
+    ``(adjustments, guides, paths)``, each path ``(fill, stroke, (w, h), commands)`` and
+    each command a letter with its operands as written (guide names or literals) -- which
+    :func:`~ooxml_common.drawingml.geometry.spec_path_data` draws at any size, keeping each
+    path's ``@fill`` and ``@stroke``.  ``None`` when the shape states neither.
+
+    :func:`parse_geometry` evaluates a custom geometry into path strings at its own size
+    and drops the paint flags; a consumer that draws each ``a:path`` itself reads this."""
+    preset = child(sp_pr, "prstGeom")
+    if preset is not None:
+        adjust = {attr(g, "name") or "": attr(g, "fmla") or "" for g in children(child(preset, "avLst"), "gd")}
+        return ("preset", attr(preset, "prst") or "rect", adjust)
+    custom = child(sp_pr, "custGeom")
+    if custom is None:
+        return None
+    adjustments = tuple(_parse_guide_list(child(custom, "avLst")))
+    guides = tuple(_parse_guide_list(child(custom, "gdLst")))
+    paths = []
+    for path in children(child(custom, "pathLst"), "path"):
+        commands = []
+        for node in path:
+            letter = _SPEC_LETTERS.get(local_name(node.tag))
+            if letter is None:
+                continue
+            if letter == "A":
+                commands.append(("A",) + tuple(attr(node, key) or "0" for key in ("wR", "hR", "stAng", "swAng")))
+            elif letter == "Z":
+                commands.append(("Z",))
+            else:
+                commands.append((letter,) + tuple(value for point in children(node, "pt")
+                                                  for value in (attr(point, "x") or "0", attr(point, "y") or "0")))
+        space = (num_attr(path, "w") or 0, num_attr(path, "h") or 0)
+        paths.append((attr(path, "fill") or "norm", attr(path, "stroke") not in ("0", "false"),
+                      space if any(space) else None, tuple(commands)))
+    return ("custom", (adjustments, guides, tuple(paths)))
 
 
 def _parse_guide_list(parent: Element | None) -> list[tuple[str, str]]:

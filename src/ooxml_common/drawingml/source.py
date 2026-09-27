@@ -67,6 +67,14 @@ class SourceGradientFill:
     center_x: float | None = None
     center_y: float | None = None
     kind: Literal["gradient"] = "gradient"
+    #: ``a:path@path`` -- ``circle``, ``rect`` or ``shape`` -- for a path gradient.
+    path: str | None = field(default=None, compare=False)
+    #: ``a:fillToRect`` as 0-1 insets ``(l, t, r, b)``, for a path gradient.
+    focus: tuple[float, float, float, float] | None = field(default=None, compare=False)
+    #: ``a:lin@scaled``: whether the angle is scaled with the shape's aspect.
+    scaled: bool | None = field(default=None, compare=False)
+    #: ``a:gradFill@rotWithShape``.
+    rotate_with_shape: bool | None = field(default=None, compare=False)
 
 
 @dataclass

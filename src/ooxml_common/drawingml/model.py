@@ -27,7 +27,13 @@ from typing import Literal, Union
 # Colour choices, as the XML states them
 # --------------------------------------------------------------------------------------
 
-ColorTransformKind = Literal["lumMod", "lumOff", "tint", "shade", "alpha", "satMod", "satOff"]
+ColorTransformKind = Literal[
+    "lumMod", "lumOff", "tint", "shade", "alpha", "satMod", "satOff",
+    # Read since the reader moved here; applied only under rules that measured them
+    # (:data:`~ooxml_common.drawingml.color.WORD`).  ``gray``, ``inv`` and ``comp`` take no
+    # value and are carried with 0.
+    "hueMod", "hueOff", "gray", "inv", "comp",
+]
 
 
 @dataclass(frozen=True)
@@ -42,6 +48,11 @@ class SrgbColor:
     hex: str
     transforms: list[ColorTransform] = field(default_factory=list)
     kind: Literal["srgb"] = "srgb"
+    #: For an ``a:scrgbClr``, its channels as stated -- *linear* light, 0-1 -- which
+    #: ``hex`` approximates by reading them as sRGB (the reader's long-standing reading).
+    #: Rules that measured the conversion (Word's) start from these instead.  Not part of
+    #: the value's identity.
+    linear: tuple[float, float, float] | None = field(default=None, compare=False, repr=False)
 
 
 @dataclass
@@ -98,6 +109,14 @@ class GradientFill:
     center_x: float | None = None
     center_y: float | None = None
     type: Literal["gradient"] = "gradient"
+    #: What rules that measured the gradient's geometry need (Word's; see
+    #: :mod:`~ooxml_common.drawingml.fill`), and pptx2svg's renderer does not read:
+    #: ``a:path@path`` (``circle`` / ``rect`` / ``shape``), ``a:fillToRect`` as 0-1 insets,
+    #: ``a:lin@scaled`` and ``@rotWithShape``.  Not part of the value's identity.
+    path: str | None = field(default=None, compare=False)
+    focus: tuple[float, float, float, float] | None = field(default=None, compare=False)
+    scaled: bool | None = field(default=None, compare=False)
+    rotate_with_shape: bool | None = field(default=None, compare=False)
 
 
 @dataclass
