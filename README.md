@@ -2,8 +2,9 @@
 
 The format-neutral half of an Office Open XML renderer, shared by
 [pptx2svg](https://github.com/uvrt/pptx2svg) and
-[docx2svg](https://github.com/uvrt/docx2svg): the OPC container, units, DrawingML
-data, embedded-font decoding and, above all, the measured text metrics.
+[docx2svg](https://github.com/uvrt/docx2svg): the OPC container, units, embedded-font
+decoding, the measured text metrics, and DrawingML -- its value types, colour resolution,
+the complete preset geometry table, and fills, outlines, markers and effects drawn as SVG.
 
 Standard library only at runtime. Python 3.10+.
 
@@ -15,9 +16,15 @@ on a PowerPoint renderer in order to measure a Word document, or to copy the tab
 let two copies of each measured constant drift apart. This package holds one copy that
 both use.
 
-It was extracted from pptx2svg **with its git history**. Every constant here came with a
+It was extracted from pptx2svg **with its git history**, in two steps: first what
+already imported nothing from pptx2svg's slide model, then DrawingML's value types lifted
+out of that model with the renderers that take them. Every constant here came with a
 record of the observations that fixed it and the hypotheses they refuted; `git log
 --follow` on any moved file shows that record back to pptx2svg's first commit.
+
+docx2svg needs DrawingML drawn too -- a Word document's floating shapes are DrawingML --
+and the alternative was a second copy of pptx2svg's renderers, which docx2svg had
+started to write (its ROADMAP.md, "Floating drawings -- measured", F.10).
 
 ## What is in it
 
@@ -31,9 +38,34 @@ record of the observations that fixed it and the hypotheses they refuted; `git l
 | `ooxml_common.text.kerning` | Kerning class matrices, measured from each face's GPOS |
 | `ooxml_common.text.fontmap` | Clone substitution with its grading (`exact`, `compatible`, `approximate`, `missing`) |
 | `ooxml_common.text.measure` | The `TextMeasurer` protocol and both implementations |
+| `ooxml_common.imagemeta` | A picture's natural size, which a tiled fill is measured in |
+| `ooxml_common.drawingml.model` | DrawingML's value types: colour choices and resolved colours, fills, outlines, effects, transforms, geometry, picture tiling |
+| `ooxml_common.drawingml.color` | Colour resolution through a colour map and theme, with every transform, under per-application `ColorRules` |
 | `ooxml_common.drawingml.guides` | Shape-guide formula evaluation |
-| `ooxml_common.drawingml.preset_specs` | Preset shape geometries compiled from ECMA-376 |
+| `ooxml_common.drawingml.preset_specs` | The preset geometries pptx2svg draws from ECMA-376 |
+| `ooxml_common.drawingml.presets` | The rest, and `PRESETS`: every name `ST_ShapeType` allows |
+| `ooxml_common.drawingml.geometry` | A geometry as SVG: pptx2svg's one element per shape, or path data per `a:path` |
+| `ooxml_common.drawingml.fill` | Solid, gradient, pattern and picture fills; outlines with dashes, caps and joins; arrowheads |
+| `ooxml_common.drawingml.effect` | Shadows, glow, soft edges and picture effects as SVG filters |
 | `ooxml_common.drawingml.pattern` | The 54 `a:pattFill` presets |
+| `ooxml_common.drawingml.svg` | What the renderers need of the consumer's SVG document (`SvgDefs`), and `num` |
+
+## Where Word and PowerPoint differ
+
+Where the two applications measurably draw the same DrawingML differently, the shared code
+takes the application as a parameter rather than choosing one rule for both. Today there
+is one such difference, and `ooxml_common.drawingml.color.ColorRules` carries it:
+
+| | PowerPoint (`POWERPOINT`, the default) | Word (`WORD`) |
+| --- | --- | --- |
+| A transformed channel's level | the nearest, a half to even (pptx2svg's rule; its swatches are within 2/255 of PowerPoint) | the nearest, **a half down** -- black at `lumMod 50000 lumOff 50000` is `7F7F7F` (docx2svg ROADMAP.md, F.3) |
+
+Everything else follows PowerPoint's measurements and is **unmeasured for Word**:
+`tint` and `shade` in linear light, `satMod` in HLS, the order transforms apply in. And one
+known defect moved as it was: PowerPoint shades a chart's accent cycle in linear light,
+where the HLS `lumMod` here is up to 23 levels off (pptx2svg ROADMAP.md) -- pptx2svg's
+chart ramp carries its own conversion, and fixing the general transform would move every
+deck, so it waits for a change that is allowed to.
 
 ## What is deliberately not in it
 
@@ -41,17 +73,18 @@ record of the observations that fixed it and the hypotheses they refuted; `git l
   carries over to Word; the types do not. The paragraph protocol a shared line breaker
   should take is being decided by docx2svg's Phase 3, which breaks lines against Word's
   own output, not in advance.
-- **Anything that takes a document model.** pptx2svg's `render/fill.py` and
-  `render/geometry.py` are candidates once the DrawingML value types they take are lifted
-  out of its slide model. `render/text.py` lays out an `a:bodyPr` text box, which a Word
-  body does not have.
+- **Anything that takes a document model.** `render/text.py` lays out an `a:bodyPr`
+  text box, which a Word body does not have; the shape renderer that places elements on a
+  slide, and the parser that reads DrawingML XML into these types, are pptx2svg's.
 - **The fidelity harnesses.** pptx2svg scores rasterised slides by SSIM; docx2svg
   measures glyph boxes in a vector PDF. They share the idea of an oracle and none of the
   code.
 - **The metric generators.** `tools/extract_font_metrics.py` and
   `tools/derive_preset_geometry.py` stay in pptx2svg for now and write into this package:
   the first reads Office's faces through pptx2svg's fidelity-harness font profile, and
-  the second's manifest is pptx2svg's renderer policy.
+  the second's manifest is pptx2svg's renderer policy. The second also writes
+  `drawingml/presets.py` -- every preset its manifest leaves out -- so that `PRESETS` is
+  the whole table.
 
 ## Install
 
