@@ -46,7 +46,8 @@ started to write (its ROADMAP.md, "Floating drawings -- measured", F.10).
 | `ooxml_common.drawingml.guides` | Shape-guide formula evaluation |
 | `ooxml_common.drawingml.preset_specs` | The preset geometries pptx2svg draws from ECMA-376 |
 | `ooxml_common.drawingml.presets` | The rest, and `PRESETS`: every name `ST_ShapeType` allows |
-| `ooxml_common.drawingml.geometry` | A geometry as SVG: pptx2svg's one element per shape, or path data per `a:path` |
+| `ooxml_common.drawingml.preset_text_rects` | Every preset's text rectangle (`a:rect`), from the same source (`tools/derive_preset_text_rects.py`) |
+| `ooxml_common.drawingml.geometry` | A geometry as SVG: pptx2svg's one element per shape, or path data per `a:path`; the rectangle its text is laid out in (`text_rect`) |
 | `ooxml_common.drawingml.fill` | Solid, gradient, pattern and picture fills; outlines with dashes, caps and joins; arrowheads |
 | `ooxml_common.drawingml.effect` | Shadows, glow, soft edges and picture effects as SVG filters |
 | `ooxml_common.drawingml.pattern` | The 54 `a:pattFill` presets |

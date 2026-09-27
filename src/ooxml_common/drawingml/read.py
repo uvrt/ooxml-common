@@ -927,6 +927,17 @@ def parse_geometry_spec(sp_pr: Element | None) -> tuple | None:
     return ("custom", (adjustments, guides, tuple(paths)))
 
 
+def parse_text_rect(sp_pr: Element | None) -> tuple[str, str, str, str] | None:
+    """A custom geometry's text rectangle (``a:custGeom/a:rect``): its ``l``, ``t``, ``r``
+    and ``b``, guide names or literals as written, for
+    :func:`~ooxml_common.drawingml.geometry.text_rect`; ``None`` when there is none (a
+    preset's comes from the specification)."""
+    rect = child(child(sp_pr, "custGeom"), "rect")
+    if rect is None:
+        return None
+    return tuple(attr(rect, key) or default for key, default in (("l", "l"), ("t", "t"), ("r", "r"), ("b", "b")))
+
+
 def _parse_guide_list(parent: Element | None) -> list[tuple[str, str]]:
     guides: list[tuple[str, str]] = []
     for guide in children(parent, "gd"):

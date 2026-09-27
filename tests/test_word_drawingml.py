@@ -223,3 +223,45 @@ def test_a_word_pattern_is_registered_to_the_page():
     fill.render_fill_attrs(patt, defs, rules=rules.WORD, dpi=300,
                            frame=fill.ShapeFrame(page_transform="rotate(-30 5 5)"))
     assert 'width="33.333" height="33.333" patternTransform="rotate(-30 5 5)"' in defs.defs[0]
+
+
+# (geometry, the text rectangle's insets from the box's left, top, right and bottom, EMU)
+# on a 2,000,000 x 700,000 box; Word 16.106 laid a text box's first glyph out this far in
+# (docx2svg's tools/make_text_box_probe.py: 11, 5, 96 / 34, 34, 164 / 115 and 55 / 134 px
+# at 300 dpi, where these are 11.2, 5.2, 96.1 / 33.6, 33.6, 164.0 / 114.8 and 54.7 / 134.0).
+TEXT_RECTS = [
+    (("preset", "rect", {}), (0, 0, 0, 0)),
+    (("preset", "roundRect", {}), (34171, 34171, 34171, 34171)),
+    (("preset", "roundRect", {"adj": "val 7705"}), (15797, 15797, 15797, 15797)),
+    (("preset", "ellipse", {}), (292893, 102513, 292893, 102513)),
+    (("preset", "octagon", {}), (102512, 102512, 102512, 102512)),
+    (("preset", "triangle", {}), (500000, 350000, 500000, 0)),
+    (None, (0, 0, 0, 0)),
+    (("preset", "no such preset", {}), (0, 0, 0, 0)),
+]
+
+
+@pytest.mark.parametrize("shape, insets", TEXT_RECTS)
+def test_a_preset_lays_its_text_out_in_its_text_rectangle(shape, insets):
+    left, top, right, bottom = geometry.text_rect(shape, 2000000, 700000)
+    got = (left, top, 2000000 - right, 700000 - bottom)
+    assert got == pytest.approx(insets, abs=1)
+
+
+def test_a_custom_geometry_lays_its_text_out_in_its_own_rectangle():
+    sp_pr = fromstring(
+        f'<wps:spPr xmlns:wps="urn:x" {A}><a:custGeom><a:avLst/><a:gdLst><a:gd name="q" fmla="*/ w 1 4"/>'
+        '<a:gd name="v" fmla="*/ h 1 4"/></a:gdLst><a:rect l="q" t="v" r="r" b="b"/><a:pathLst/></a:custGeom>'
+        "</wps:spPr>")
+    assert read.parse_text_rect(sp_pr) == ("q", "v", "r", "b")
+    assert geometry.text_rect(read.parse_geometry_spec(sp_pr), 2000000, 700000, x=10, y=20,
+                              rect=read.parse_text_rect(sp_pr)) == (500010, 175020, 2000010, 700020)
+    no_rect = fromstring(f'<wps:spPr xmlns:wps="urn:x" {A}><a:prstGeom prst="rect"/></wps:spPr>')
+    assert read.parse_text_rect(no_rect) is None
+
+
+def test_every_preset_has_a_text_rectangle():
+    from ooxml_common.drawingml.preset_text_rects import PRESET_TEXT_RECTS
+    from ooxml_common.drawingml.presets import PRESETS
+
+    assert set(PRESET_TEXT_RECTS) == set(PRESETS)

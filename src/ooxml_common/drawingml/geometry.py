@@ -36,6 +36,7 @@ from typing import Callable
 from . import model as m
 from .guides import arc_segments, evaluate_guides, resolve_value
 from .preset_specs import PRESET_SPECS
+from .preset_text_rects import PRESET_TEXT_RECTS
 from .presets import PRESETS
 
 Generator = Callable[[float, float, dict], str]
@@ -770,6 +771,47 @@ def spec_path_data(
         if data:
             out.append(GeometryPath(data, fill, stroke))
     return out
+
+
+def text_rect(
+    geometry: tuple | None,
+    width: float,
+    height: float,
+    *,
+    x: float = 0.0,
+    y: float = 0.0,
+    rect: tuple | None = None,
+) -> tuple[float, float, float, float]:
+    """The rectangle a geometry lays its text out in -- its ``a:rect`` -- as ``(left, top,
+    right, bottom)`` over the box ``x, y, width, height``.
+
+    ``geometry`` is what :func:`~ooxml_common.drawingml.read.parse_geometry_spec` returns:
+    a preset's rectangle comes from the specification
+    (:data:`~ooxml_common.drawingml.preset_text_rects.PRESET_TEXT_RECTS`), evaluated with
+    its guides and the shape's adjustments; a custom geometry's is ``rect``, its four guide
+    names or literals as :func:`~ooxml_common.drawingml.read.parse_text_rect` reads them,
+    evaluated with its own guides.  No geometry, an unknown preset or a custom geometry
+    without an ``a:rect`` is the whole box.
+    """
+    names = None
+    variables = None
+    if geometry is not None and geometry[0] == "preset":
+        name = PRESET_ALIASES.get(geometry[1], geometry[1])
+        spec, names = PRESETS.get(name), PRESET_TEXT_RECTS.get(name)
+        if spec is not None and names is not None:
+            adjust = geometry[2] or {}
+            adjustments = [
+                (key, _adjustment(adjust.get(key, default))) for key, default in spec[0]
+            ]
+            variables = evaluate_guides([adjustments, list(spec[1])], width, height, precise=True)
+    elif geometry is not None and geometry[0] == "custom" and rect is not None:
+        adjustments, guides, _ = geometry[1]
+        names = rect
+        variables = evaluate_guides([list(adjustments), list(guides)], width, height, precise=True)
+    if names is None or variables is None:
+        return (x, y, x + width, y + height)
+    left, top, right, bottom = (resolve_value(token, variables) for token in names)
+    return (x + left, y + top, x + right, y + bottom)
 
 
 def _adjustment(value) -> str:
