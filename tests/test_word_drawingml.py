@@ -265,3 +265,19 @@ def test_every_preset_has_a_text_rectangle():
     from ooxml_common.drawingml.presets import PRESETS
 
     assert set(PRESET_TEXT_RECTS) == set(PRESETS)
+
+
+def test_word_draws_its_text_area_in_by_half_the_outline_and_powerpoint_does_not():
+    """Word lays text out half the outline's width inside the text rectangle (docx2svg's
+    F.13); PowerPoint does not move it at all (pptx2svg's ``tools/make_exposed_probe.py``:
+    1 to 8 pt outlines, drawn or ``a:noFill``, on a rect, a roundRect and an ellipse, every
+    run where the unoutlined shape starts it, to 0.1 pt)."""
+    shape = ("preset", "roundRect", {})
+    box = geometry.text_rect(shape, 2000000, 700000)
+    assert geometry.text_area(shape, 2000000, 700000, outline_width=101600) == box
+    assert geometry.text_area(shape, 2000000, 700000, outline_width=101600, rules=rules.POWERPOINT) == box
+    left, top, right, bottom = geometry.text_area(shape, 2000000, 700000, outline_width=101600,
+                                                  rules=rules.WORD)
+    assert (left - box[0], top - box[1], box[2] - right, box[3] - bottom) == (50800,) * 4
+    assert rules.POWERPOINT.text_outline_inset == 0.0
+    assert rules.WORD.text_outline_inset == 0.5
