@@ -55,6 +55,17 @@ class DrawingRules:
       shape's corner (pptx2svg's).  ``"page"``: to the page's corner and square to the
       page whatever the shape's rotation (Word's, measured -- and PowerPoint's, measured
       by pptx2svg, which does not reproduce it: ``fill.py``).
+    * ``text_outline_inset`` -- how far inside its geometry's text rectangle a shape lays
+      its text out, as a fraction of the outline's width
+      (:func:`~.geometry.text_area`).  ``0.5`` for Word: half the outline, drawn or
+      ``a:noFill``, its width the shape's own or its style's (docx2svg's
+      ``make_text_box_probe.py``).  ``0.0`` for PowerPoint, measured: pptx2svg's
+      ``tools/make_exposed_probe.py`` set a ``rect``, a ``roundRect`` and an ``ellipse``
+      under a 1, 4 and 8 pt line, an 8 pt ``a:noFill`` one with its width, a theme line
+      through ``a:lnRef``, and an 8 pt line under zero insets, and every run started
+      where the same shape with no outline starts it, to 0.1 pt -- the text rectangle
+      and the insets, and nothing for the outline.  Both lay the text out in the text
+      rectangle itself (:func:`~.geometry.text_rect`).
     """
 
     name: str
@@ -64,6 +75,7 @@ class DrawingRules:
     arrowheads: str = "markers"
     default_join: str | None = None
     pattern_phase: str = "shape"
+    text_outline_inset: float = 0.0
 
 
 #: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
@@ -71,4 +83,4 @@ POWERPOINT = DrawingRules("powerpoint", color.POWERPOINT)
 
 #: Word, as docx2svg measured it.
 WORD = DrawingRules("word", color.WORD, gradients="office", dashes="office", arrowheads="office",
-                    default_join="round", pattern_phase="page")
+                    default_join="round", pattern_phase="page", text_outline_inset=0.5)

@@ -814,6 +814,32 @@ def text_rect(
     return (x + left, y + top, x + right, y + bottom)
 
 
+def text_area(
+    geometry: tuple | None,
+    width: float,
+    height: float,
+    *,
+    x: float = 0.0,
+    y: float = 0.0,
+    rect: tuple | None = None,
+    outline_width: float = 0.0,
+    rules=None,
+) -> tuple[float, float, float, float]:
+    """Where a shape lays its text out, before its own insets: its geometry's text
+    rectangle (:func:`text_rect`) drawn in on every side by ``rules.text_outline_inset``
+    of ``outline_width`` (:class:`~.rules.DrawingRules`: half of it for Word, none of it
+    for PowerPoint).  ``rules`` defaults to PowerPoint's.  Same units as the box, and
+    ``(left, top, right, bottom)`` like :func:`text_rect`; the caller rounds as its
+    application does (Word holds the half outline to whole EMU: docx2svg's F.14)."""
+    from .rules import POWERPOINT
+
+    left, top, right, bottom = text_rect(geometry, width, height, x=x, y=y, rect=rect)
+    inset = (rules or POWERPOINT).text_outline_inset * (outline_width or 0.0)
+    if not inset:
+        return (left, top, right, bottom)
+    return (left + inset, top + inset, right - inset, bottom - inset)
+
+
 def _adjustment(value) -> str:
     return value if isinstance(value, str) else f"val {value}"
 
