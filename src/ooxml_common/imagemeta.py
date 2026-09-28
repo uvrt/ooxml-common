@@ -40,6 +40,7 @@ return ``None`` and the caller falls back rather than guessing.
 from __future__ import annotations
 
 import struct
+import zlib
 
 #: PowerPoint's density for a picture that states none.  Not 96: measured at 144.
 DEFAULT_DENSITY_DPI = 144.0
@@ -154,3 +155,63 @@ def _bmp(data: bytes) -> tuple[int, int, float, float] | None:
     density_y = per_y * _INCHES_PER_METRE if per_y > 0 else DEFAULT_DENSITY_DPI
     width, height = abs(width), abs(height)
     return (width, height, density_x, density_y) if width and height else None
+
+
+# --------------------------------------------------------------------------------------
+# The colour profile a picture carries
+# --------------------------------------------------------------------------------------
+
+
+def icc_profile(data: bytes) -> bytes | None:
+    """The ICC profile embedded in a PNG (``iCCP``, deflated) or a JPEG (``APP2``
+    ``ICC_PROFILE``, possibly split over several markers), or ``None``.  PowerPoint honours
+    it: see :mod:`ooxml_common.icc`."""
+    if data.startswith(b"\x89PNG\r\n\x1a\n"):
+        return _png_profile(data)
+    if data.startswith(b"\xff\xd8"):
+        return _jpeg_profile(data)
+    return None
+
+
+def _png_profile(data: bytes) -> bytes | None:
+    offset = 8
+    while offset + 8 <= len(data):
+        (length,) = struct.unpack_from(">I", data, offset)
+        tag = data[offset + 4 : offset + 8]
+        if tag == b"iCCP":
+            body = data[offset + 8 : offset + 8 + length]
+            name_end = body.find(b"\x00")
+            # Name, NUL, compression method (0: deflate), then the profile.
+            if name_end < 0 or name_end + 2 > len(body) or body[name_end + 1] != 0:
+                return None
+            try:
+                return zlib.decompress(body[name_end + 2 :])
+            except zlib.error:
+                return None
+        if tag in (b"IDAT", b"IEND"):
+            return None
+        offset += 12 + length
+    return None
+
+
+def _jpeg_profile(data: bytes) -> bytes | None:
+    chunks: dict[int, bytes] = {}
+    offset = 2
+    while offset + 4 <= len(data):
+        if data[offset] != 0xFF:
+            offset += 1
+            continue
+        marker = data[offset + 1]
+        if marker in (0xD8, 0x01, 0xFF) or 0xD0 <= marker <= 0xD7:
+            offset += 1 if marker == 0xFF else 2
+            continue
+        if marker in (0xDA, 0xD9):
+            break
+        (length,) = struct.unpack_from(">H", data, offset + 2)
+        body = data[offset + 4 : offset + 2 + length]
+        if marker == 0xE2 and body.startswith(b"ICC_PROFILE\x00") and len(body) >= 14:
+            chunks[body[12]] = body[14:]
+        offset += 2 + length
+    if not chunks:
+        return None
+    return b"".join(chunks[index] for index in sorted(chunks))

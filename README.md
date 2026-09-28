@@ -38,7 +38,8 @@ started to write (its ROADMAP.md, "Floating drawings -- measured", F.10).
 | `ooxml_common.text.kerning` | Kerning class matrices, measured from each face's GPOS |
 | `ooxml_common.text.fontmap` | Clone substitution with its grading (`exact`, `compatible`, `approximate`, `missing`) |
 | `ooxml_common.text.measure` | The `TextMeasurer` protocol and both implementations |
-| `ooxml_common.imagemeta` | A picture's natural size, which a tiled fill is measured in |
+| `ooxml_common.imagemeta` | A picture's natural size, which a tiled fill is measured in, and the ICC profile it carries |
+| `ooxml_common.icc` | A matrix/TRC RGB profile read, and its colours converted to sRGB exactly, as PowerPoint converts a profiled picture |
 | `ooxml_common.drawingml.model` | DrawingML's value types: colour choices and resolved colours, fills, outlines, effects, transforms, geometry, picture tiling |
 | `ooxml_common.drawingml.source` | DrawingML as the XML states it: unresolved fills, outlines, shape styles, effects, transforms, geometry, the theme's format scheme |
 | `ooxml_common.drawingml.read` | The reader: `a:` XML (a slide's or a Word shape's) into those types, and a theme's colour and format schemes |
