@@ -8984,6 +8984,41 @@ def _labels_shown(axis: c.SourceChartAxis | None) -> bool:
     return (axis.tick_label_position or "nextTo") != "none"
 
 
+#: Chart groups the layout can draw.  Everything else warns and draws an empty frame
+#: rather than a wrong picture.
+DRAWABLE_CHART_KINDS = frozenset(
+    {
+        "barChart",
+        "lineChart",
+        "areaChart",
+        "scatterChart",
+        "bubbleChart",
+        "pieChart",
+        "doughnutChart",
+        "ofPieChart",
+        "radarChart",
+        "stockChart",
+        # Both spellings of the surface land here: `flat_chart_kind` maps
+        # `surface3DChart` to this one, and the two draw the identical picture.
+        "surfaceChart",
+    }
+)
+
+
+def drawable_plots(chart: c.SourceChart) -> list:
+    """Every plot group the layout knows how to draw, in document order.
+
+    ``barChart``, ``lineChart``, ``areaChart``, ``pieChart``, ``doughnutChart``,
+    ``radarChart`` and the rest (and their 3-D spellings, drawn flat).  A chart holding
+    several of them is a **combo**, and whether they can be drawn together is
+    :meth:`ChartBuilder._drawn_plots`' decision rather than this one -- it needs the
+    axes, which are the chart's and not the group's.  What this guarantees is only that
+    the *first* entry is drawable, so a chart whose first group is one we do not draw
+    still draws the second.
+    """
+    return [plot for plot in chart.plots if c.flat_chart_kind(plot.kind) in DRAWABLE_CHART_KINDS]
+
+
 def written_by_office_2007(app_version: str | None) -> bool:
     """Whether ``docProps/app.xml``'s ``AppVersion`` names PowerPoint 2007 (12.x).
 
