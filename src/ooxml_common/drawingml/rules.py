@@ -66,6 +66,26 @@ class DrawingRules:
       where the same shape with no outline starts it, to 0.1 pt -- the text rectangle
       and the insets, and nothing for the outline.  Both lay the text out in the text
       rectangle itself (:func:`~.geometry.text_rect`).
+    * ``custom_path_strokes`` -- how a custom geometry's path, authored in its own
+      coordinates, is put on its shape.  ``"scaled"``: by an SVG ``scale()`` on the path,
+      which scales the outline stroked along it with it (pptx2svg's: a chart's 1.5 pt
+      line series is drawn 2 pt wide on its points-to-pixels path).  ``"stated"``: the
+      coordinates are scaled instead, so the outline keeps its stated width -- Word's,
+      measured on docx2svg's ``make_chart_probe.py``: line, scatter and radar series of
+      1.5 and 2.25 pt and radar gridlines of 0.5 pt, each at its width.
+    * ``text_size_grid`` -- the resolution, in dots an inch, a run's glyphs are drawn on:
+      ``None`` for its size as stated (pptx2svg's), ``300`` for Word, whose PDF writes
+      chart text at its size rounded to the device's pixel (10 pt as 10.08, 8 pt as 7.92,
+      14 pt as 13.92) -- as it draws a document's own text (docx2svg ROADMAP.md, 5.4).
+      What is laid out keeps the stated size.
+    * ``first_baseline`` -- where a text body's first baseline stands at or below single
+      line spacing.  ``"box"``: the measurer's ascent ratio, scaled by the spacing with
+      the rest of the line (pptx2svg's, measured on PowerPoint).  ``"descent"``: the
+      spaced line box less the face's descent, which the spacing does not scale -- Word's,
+      measured on docx2svg's ``make_smartart_probe.py``: a SmartArt shape's text at 90%
+      spacing in Aptos of 19 to 47 pt stands 0.817 em below its block's top, which is
+      0.9 of Aptos's 1.2207 em box less its 0.2817 em descent, to Word's device pixel.  The
+      measurer says what the box and the descent are (docx2svg's gives the face's own).
     """
 
     name: str
@@ -76,6 +96,9 @@ class DrawingRules:
     default_join: str | None = None
     pattern_phase: str = "shape"
     text_outline_inset: float = 0.0
+    custom_path_strokes: str = "scaled"
+    text_size_grid: int | None = None
+    first_baseline: str = "box"
 
 
 #: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
@@ -83,4 +106,5 @@ POWERPOINT = DrawingRules("powerpoint", color.POWERPOINT)
 
 #: Word, as docx2svg measured it.
 WORD = DrawingRules("word", color.WORD, gradients="office", dashes="office", arrowheads="office",
-                    default_join="round", pattern_phase="page", text_outline_inset=0.5)
+                    default_join="round", pattern_phase="page", text_outline_inset=0.5,
+                    custom_path_strokes="stated", text_size_grid=300, first_baseline="descent")

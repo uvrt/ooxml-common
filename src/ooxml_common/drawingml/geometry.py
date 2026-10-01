@@ -673,33 +673,78 @@ def preset_geometry_svg(preset: str, width: float, height: float, adjust: dict) 
     return f'<rect width="{_n(width)}" height="{_n(height)}"/>'
 
 
-def render_geometry(geometry: m.Geometry, width: float, height: float) -> str:
+def render_geometry(
+    geometry: m.Geometry, width: float, height: float, *, scale_paths: bool = False
+) -> str:
+    """``scale_paths`` scales a custom path's coordinates onto the shape rather than
+    scaling the path by a transform, which would scale the outline stroked on it too
+    (:attr:`~ooxml_common.drawingml.rules.DrawingRules.custom_path_strokes`)."""
     if isinstance(geometry, m.PresetGeometry):
         return preset_geometry_svg(geometry.preset, width, height, geometry.adjust_values)
     if isinstance(geometry, m.CustomGeometry) and geometry.paths:
-        return _render_custom_geometry(geometry.paths, width, height)
+        return _render_custom_geometry(geometry.paths, width, height, scale_paths)
     return f'<rect width="{_n(width)}" height="{_n(height)}"/>'
 
 
 def _render_custom_geometry(
-    paths: list[m.CustomGeometryPath], shape_width: float, shape_height: float
+    paths: list[m.CustomGeometryPath], shape_width: float, shape_height: float,
+    scale_paths: bool = False,
 ) -> str:
     if len(paths) == 1:
-        return _render_custom_path(paths[0], shape_width, shape_height)
-    inner = "".join(_render_custom_path(path, shape_width, shape_height) for path in paths)
+        return _render_custom_path(paths[0], shape_width, shape_height, scale_paths)
+    inner = "".join(
+        _render_custom_path(path, shape_width, shape_height, scale_paths) for path in paths
+    )
     return f"<g>{inner}</g>"
 
 
 def _render_custom_path(
-    path: m.CustomGeometryPath, shape_width: float, shape_height: float
+    path: m.CustomGeometryPath, shape_width: float, shape_height: float,
+    scale_paths: bool = False,
 ) -> str:
     """Custom paths are authored in their own coordinate space; scale it onto the shape."""
     scale_x = shape_width / path.width if path.width > 0 else 1.0
     scale_y = shape_height / path.height if path.height > 0 else 1.0
+    if scale_paths:
+        return f'<path d="{scaled_path_data(path.commands, scale_x, scale_y)}"/>'
     return (
         f'<path d="{path.commands}" '
         f'transform="scale({_factor(scale_x)}, {_factor(scale_y)})"/>'
     )
+
+
+_PATH_TOKEN = re.compile(r"[A-Za-z]|[-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?")
+#: Which of each command's arguments is an x (``x``), a y (``y``), or left as it is (``-``):
+#: an arc's radii scale with their axes, its rotation and flags do not.
+_ARGUMENT_AXES = {
+    "M": "xy", "L": "xy", "T": "xy", "H": "x", "V": "y", "C": "xyxyxy", "S": "xyxy",
+    "Q": "xyxy", "A": "xy---xy", "Z": "",
+}
+
+
+def scaled_path_data(commands: str, scale_x: float, scale_y: float) -> str:
+    """SVG path data with every coordinate multiplied by ``scale_x`` / ``scale_y``, written
+    as a coordinate is (three decimals), relative and absolute commands alike."""
+    out: list[str] = []
+    command = ""
+    index = 0
+    for token in _PATH_TOKEN.findall(commands):
+        if token.isalpha():
+            command = token
+            index = 0
+            out.append(token)
+            continue
+        axes = _ARGUMENT_AXES.get(command.upper(), "")
+        value = float(token)
+        if axes:
+            axis = axes[index % len(axes)]
+            if axis == "x":
+                value *= scale_x
+            elif axis == "y":
+                value *= scale_y
+            index += 1
+        out.append(_n(value))
+    return " ".join(out)
 
 
 # --------------------------------------------------------------------------------------
