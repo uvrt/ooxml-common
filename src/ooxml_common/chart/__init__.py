@@ -8,7 +8,8 @@ the code that draws one on a slide:
 * :mod:`~ooxml_common.chart.layout` lays it out -- title, legend, axes, plot area, every
   mark and label -- and lowers it to :mod:`~ooxml_common.drawingml.scene` elements in the
   frame's own coordinate space, which :func:`~ooxml_common.drawingml.elements.render_element`
-  draws as a group.
+  draws as a group;
+* :mod:`~ooxml_common.chart.rules` is where Word and PowerPoint differ.
 
 There is no cached picture of a chart in either format: the part is data plus styling,
 and every position is computed.  What the layout cannot know is the consumer's: the

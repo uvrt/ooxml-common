@@ -116,8 +116,8 @@ def render_shape(shape: m.ShapeElement, context: RenderContext) -> str:
     width = emu_to_px(transform.extent_width)
     height = emu_to_px(transform.extent_height)
 
-    fill_attrs = render_fill_attrs(shape.fill, context, (0, 0, width, height))
-    outline_attrs = render_outline_attrs(shape.outline, context)
+    fill_attrs = render_fill_attrs(shape.fill, context, (0, 0, width, height), rules=context.rules)
+    outline_attrs = render_outline_attrs(shape.outline, context, rules=context.rules)
     filter_attr = render_effects(shape.effects, context)
 
     parts = [f'<g transform="{build_transform_attr(transform)}"' + (f" {filter_attr}" if filter_attr else "") + ">"]
@@ -137,7 +137,7 @@ def render_connector(connector: m.ConnectorElement, context: RenderContext) -> s
     width = emu_to_px(connector.transform.extent_width)
     height = emu_to_px(connector.transform.extent_height)
 
-    outline_attrs = render_outline_attrs(connector.outline, context)
+    outline_attrs = render_outline_attrs(connector.outline, context, rules=context.rules)
     filter_attr = render_effects(connector.effects, context)
     marker_attrs = render_markers(connector.outline, context)
     marker_suffix = f" {marker_attrs}" if marker_attrs else ""
@@ -244,7 +244,7 @@ def render_image(image: m.ImageElement, context: RenderContext) -> str:
         )
 
     if image.outline is not None:
-        outline_attrs = render_outline_attrs(image.outline, context)
+        outline_attrs = render_outline_attrs(image.outline, context, rules=context.rules)
         geometry = image.geometry or m.PresetGeometry(preset="rect")
         inner.append(_styled(render_geometry(geometry, width, height), f'fill="none" {outline_attrs}'))
 
@@ -305,7 +305,7 @@ def render_table(table: m.TableElement, context: RenderContext) -> str:
             height = row_offsets[end_row] - y
 
             if cell.fill is not None:
-                fill_attrs = render_fill_attrs(cell.fill, context, (x, y, width, height))
+                fill_attrs = render_fill_attrs(cell.fill, context, (x, y, width, height), rules=context.rules)
                 parts.append(
                     f'<rect x="{num(x)}" y="{num(y)}" width="{num(width)}" '
                     f'height="{num(height)}" {fill_attrs}/>'
@@ -381,7 +381,7 @@ def _cell_borders(
     for outline, (x1, y1, x2, y2) in edges:
         if outline is None or outline.fill is None:
             continue
-        attrs = render_outline_attrs(outline, context)
+        attrs = render_outline_attrs(outline, context, rules=context.rules)
         lines.append(
             f'<line x1="{num(x1)}" y1="{num(y1)}" x2="{num(x2)}" y2="{num(y2)}" {attrs}/>'
         )

@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 
 from ..text.fontmap import DEFAULT_FONT_MAPPING
 from ..text.measure import DefaultTextMeasurer, TextMeasurer
+from .rules import POWERPOINT, DrawingRules
 from .svg import num  # noqa: F401  (re-exported)
 
 
@@ -75,6 +76,10 @@ class RenderContext:
     #: with rotation and is therefore exact as a ``scale()`` -- still lands here.
     group_scale: tuple[float, float] = (1.0, 1.0)
     _next_id: int = 0
+    #: Which application's drawing rules the fills, outlines and text rectangles follow
+    #: (:mod:`~ooxml_common.drawingml.rules`).  PowerPoint's is the default, and what
+    #: pptx2svg has always drawn.
+    rules: DrawingRules = POWERPOINT
 
     def new_id(self, prefix: str) -> str:
         self._next_id += 1

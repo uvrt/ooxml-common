@@ -54,6 +54,7 @@ from dataclasses import dataclass, field, replace
 from ..drawingml import scene as m
 from ..drawingml import source_tree as s
 from . import read as c
+from .rules import POWERPOINT, ChartRules
 from ..text.fontmap import east_asian_family, metrics_for
 from ..text.measure import DEFAULT_LINE_HEIGHT_RATIO, is_cjk
 
@@ -2854,8 +2855,11 @@ class ChartBuilder:
         resolve_text,
         resolve_typeface=lambda typeface: typeface,
         plots: Sequence[c.SourceChartPlot] | None = None,
+        rules: ChartRules = POWERPOINT,
     ) -> None:
         self.chart = chart
+        #: Which application's layout this reproduces (:mod:`~ooxml_common.chart.rules`).
+        self.rules = rules
         self.plot = plot
         #: Every drawable group in the plot area, in **document** order.  ``plot`` is the
         #: first of them and stays the one the frame's own decisions -- the title, the

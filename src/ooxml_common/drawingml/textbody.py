@@ -28,7 +28,7 @@ from ..units import PX_PER_PT, emu_to_px, px_to_emu
 from . import scene as m
 from .context import RenderContext, escape_xml_attr, escape_xml_text, num
 from .geometry import text_area
-from .rules import POWERPOINT
+from .rules import POWERPOINT, DrawingRules
 from .wrap import LineSegment, wrap_paragraph
 
 DEFAULT_LINE_SPACING = 1.0
@@ -152,7 +152,10 @@ def _unscaled_text_frame(
 
 
 def _text_area(
-    frame: m.Transform, geometry: tuple | None, outline_width: float = 0.0
+    frame: m.Transform,
+    geometry: tuple | None,
+    outline_width: float = 0.0,
+    rules: DrawingRules = POWERPOINT,
 ) -> tuple[m.Transform, float, float]:
     """The frame shrunk to its geometry's text rectangle, and how far in that puts it.
 
@@ -164,7 +167,7 @@ def _text_area(
     (ROADMAP.md 0.5, *What it exposed*).  **PowerPoint does not draw it in by the
     outline**, which Word does: :data:`~ooxml_common.drawingml.rules.POWERPOINT`'s
     ``text_outline_inset`` is 0, so ``outline_width`` is carried for the rule's sake and
-    moves nothing here.
+    moves nothing under ``rules`` (the render context's) when they are PowerPoint's.
 
     ``geometry`` is :func:`~ooxml_common.drawingml.geometry.text_rect`'s ``(spec, rect)``:
     a preset's spec, or a custom geometry's spec and its ``a:rect``; ``None`` is the whole
@@ -177,7 +180,7 @@ def _text_area(
     spec, rect = geometry
     left, top, right, bottom = text_area(
         spec, frame.extent_width, frame.extent_height, rect=rect,
-        outline_width=outline_width, rules=POWERPOINT,
+        outline_width=outline_width, rules=rules,
     )
     if (left, top, right, bottom) == (0, 0, frame.extent_width, frame.extent_height):
         return frame, 0.0, 0.0
@@ -202,7 +205,7 @@ def render_text_body(
     ``geometry`` puts the text in the shape's text rectangle (:func:`_text_area`)."""
     body = text_body.body_properties
     frame, undo_group_scale = _unscaled_text_frame(transform, context)
-    frame, left, top = _text_area(frame, geometry, outline_width)
+    frame, left, top = _text_area(frame, geometry, outline_width, context.rules)
     if body.num_col > 1 and body.vert == "horz":
         rendered = _render_columns(text_body, frame, context)
     else:
@@ -1675,7 +1678,7 @@ def compute_sp_autofit_height(
 
     frame, _ = _unscaled_text_frame(transform, context)
     whole = frame.extent_height
-    frame, _, _ = _text_area(frame, geometry, outline_width)
+    frame, _, _ = _text_area(frame, geometry, outline_width, context.rules)
     outside = whole - frame.extent_height
     _, scale_y = context.group_scale
     dims = _resolve_dimensions(
