@@ -122,7 +122,9 @@ def render_shape(shape: m.ShapeElement, context: RenderContext) -> str:
 
     parts = [f'<g transform="{build_transform_attr(transform)}"' + (f" {filter_attr}" if filter_attr else "") + ">"]
 
-    geometry_svg = render_geometry(shape.geometry, width, height)
+    geometry_svg = render_geometry(
+        shape.geometry, width, height, scale_paths=context.rules.custom_path_strokes == "stated"
+    )
     if geometry_svg:
         parts.append(_styled(geometry_svg, f"{fill_attrs} {outline_attrs}"))
 
@@ -148,7 +150,9 @@ def render_connector(connector: m.ConnectorElement, context: RenderContext) -> s
         + ">"
     ]
 
-    geometry_svg = render_geometry(connector.geometry, width, height)
+    geometry_svg = render_geometry(
+        connector.geometry, width, height, scale_paths=context.rules.custom_path_strokes == "stated"
+    )
     if geometry_svg:
         parts.append(_styled(geometry_svg, f'{outline_attrs} fill="none"{marker_suffix}'))
     else:
@@ -246,7 +250,9 @@ def render_image(image: m.ImageElement, context: RenderContext) -> str:
     if image.outline is not None:
         outline_attrs = render_outline_attrs(image.outline, context, rules=context.rules)
         geometry = image.geometry or m.PresetGeometry(preset="rect")
-        inner.append(_styled(render_geometry(geometry, width, height), f'fill="none" {outline_attrs}'))
+        scale_paths = context.rules.custom_path_strokes == "stated"
+        inner.append(_styled(render_geometry(geometry, width, height, scale_paths=scale_paths),
+                             f'fill="none" {outline_attrs}'))
 
     attrs_str = "".join(attrs)
     group_open = (

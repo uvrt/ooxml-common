@@ -352,6 +352,18 @@ def _render_column(
     is_first_line = True
     auto_num_counters: dict[str, int] = {} if counters is None else counters
     previous_space_after = 0.0
+    # Word steps from one baseline to the next by the first line's descent, the gap, and
+    # the next line's box less its descent (:attr:`~.rules.DrawingRules.first_baseline`):
+    # the same step as a line box's height where the two lines are alike.
+    word_steps = context.rules.first_baseline == "descent"
+    previous_descent: float | None = None
+
+    def stepped(height: float, descent: float) -> float:
+        nonlocal previous_descent
+        if word_steps and previous_descent is not None:
+            height += previous_descent - descent
+        previous_descent = descent
+        return height
     # SVG has no text background, so `a:highlight` is drawn as rectangles behind the
     # <text> element.  Their vertical position is the running sum of the `dy` advances,
     # which is why it is accumulated here rather than recovered afterwards.
@@ -400,7 +412,10 @@ def _render_column(
             # in it.
             dy = _compute_dy(
                 is_first_line,
-                _line_height_px(paragraph, para_natural, ln_spc_reduction),
+                stepped(
+                    _line_height_px(paragraph, para_natural, ln_spc_reduction),
+                    _paragraph_descent(paragraph, default_font_size, font_scale, context),
+                ),
                 paragraph_gap,
             )
             tspans.append(f'<tspan x="{num(x_pos)}" dy="{dy}" text-anchor="{anchor}"> </tspan>')
@@ -423,7 +438,10 @@ def _render_column(
                 if not line.segments:
                     dy = _compute_dy(
                         is_first_line,
-                        _line_height_px(paragraph, default_natural_height, ln_spc_reduction),
+                        stepped(
+                            _line_height_px(paragraph, default_natural_height, ln_spc_reduction),
+                            _paragraph_descent(paragraph, default_font_size, font_scale, context),
+                        ),
                         line_gap,
                     )
                     tspans.append(
@@ -438,7 +456,10 @@ def _render_column(
                 )
                 dy = _compute_dy(
                     is_first_line,
-                    _line_height_px(paragraph, natural_height, ln_spc_reduction),
+                    stepped(
+                        _line_height_px(paragraph, natural_height, ln_spc_reduction),
+                        _line_descent(line.segments, default_font_size, font_scale, context),
+                    ),
                     line_gap,
                 )
 
@@ -488,15 +509,19 @@ def _render_column(
                 )
                 is_first_line = False
         else:
+            segments = [LineSegment(run.text, run.properties) for run in paragraph.runs]
             natural_height = _line_natural_height(
-                [LineSegment(run.text, run.properties) for run in paragraph.runs],
+                segments,
                 default_font_size,
                 font_scale,
                 context,
             )
             dy = _compute_dy(
                 is_first_line,
-                _line_height_px(paragraph, natural_height, ln_spc_reduction),
+                stepped(
+                    _line_height_px(paragraph, natural_height, ln_spc_reduction),
+                    _line_descent(segments, default_font_size, font_scale, context),
+                ),
                 paragraph_gap,
             )
             if bullet_text:
@@ -1321,7 +1346,14 @@ def _style_attrs(
     # rejects unit suffixes on font-size, and px is understood by every backend.
     size = properties.font_size or default_font_size
     if size:
-        styles.append(f'font-size="{num(size * font_scale * PX_PER_PT)}"')
+        drawn = size * font_scale
+        grid = context.rules.text_size_grid
+        if grid:
+            # The glyphs at their size rounded to the device's pixel, as the application
+            # draws them (:attr:`~.rules.DrawingRules.text_size_grid`); the layout keeps
+            # the stated size.
+            drawn = max(round(drawn * grid / 72), 1) * 72 / grid
+        styles.append(f'font-size="{num(drawn * PX_PER_PT)}"')
 
     # `a:cs` names the typeface for complex scripts -- Arabic, Hebrew, Thai, Devanagari.
     # There is no per-script selection to make here the way `_split_by_script` makes one
@@ -1435,6 +1467,10 @@ def _first_baseline_px(
     factor = line_px / natural_px
     if factor > 1.0:
         return 0.75 * line_px
+    if context.rules.first_baseline == "descent":
+        # Word's (:attr:`~.rules.DrawingRules.first_baseline`): the spaced line box less
+        # the face's own descent, which spacing does not scale.
+        return line_px - (natural_px - font_size_pt * ascender_ratio * PX_PER_PT)
     return font_size_pt * ascender_ratio * factor * PX_PER_PT
 
 
@@ -1549,6 +1585,37 @@ def _line_natural_height(
         )
         tallest = max(tallest, font_size * ratio)
     return tallest if tallest > 0 else default_font_size * font_scale * 1.2
+
+
+def _line_descent(
+    segments: list[LineSegment],
+    default_font_size: float,
+    font_scale: float,
+    context: RenderContext,
+) -> float:
+    """The descent of a line's tallest run, px: its line box less its ascent, as the
+    measurer has them."""
+    tallest, descent = 0.0, 0.0
+    for segment in segments:
+        font_size = (segment.properties.font_size or default_font_size) * font_scale
+        fonts = (segment.properties.font_family, segment.properties.font_family_ea)
+        height = font_size * context.measurer.line_height_ratio(*fonts)
+        if height > tallest:
+            tallest = height
+            descent = height - font_size * context.measurer.ascender_ratio(*fonts)
+    return descent * PX_PER_PT
+
+
+def _paragraph_descent(
+    paragraph: m.Paragraph, default_font_size: float, font_scale: float, context: RenderContext
+) -> float:
+    return _line_descent(
+        [LineSegment(run.text, run.properties) for run in paragraph.runs]
+        or [LineSegment("", paragraph.end_para_run_properties or m.RunProperties())],
+        default_font_size,
+        font_scale,
+        context,
+    )
 
 
 def _default_line_height_ratio(paragraphs: list[m.Paragraph], context: RenderContext) -> float:
