@@ -200,7 +200,7 @@ def tile_pattern(
     PNG at ``sx=60%`` is 16 x 0.6 = 9.6 pt, which is what PowerPoint drew there, against
     the 82.08 pt this drew from the box.
 
-    Shared with pptx2svg's ``p:pic`` path (``pptx2svg.render.shape``), which carries the
+    Shared with the ``p:pic`` path (:mod:`~ooxml_common.drawingml.shape`), which carries the
     identical ``a:tile`` and used to size it from the frame for the stated reason that the
     two paths agreeing mattered more than either being right.  They agree here too, on the
     measurement.

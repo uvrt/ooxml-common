@@ -22,15 +22,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from ooxml_common.drawingml.geometry import text_area
-from ooxml_common.drawingml.rules import POWERPOINT
-
-from .. import model as m
 from ..text.fontmap import font_family_value, synthesises_italic
 from ..text.measure import is_cjk
-from ..text.wrap import LineSegment, wrap_paragraph
 from ..units import PX_PER_PT, emu_to_px, px_to_emu
+from . import scene as m
 from .context import RenderContext, escape_xml_attr, escape_xml_text, num
+from .geometry import text_area
+from .rules import POWERPOINT
+from .wrap import LineSegment, wrap_paragraph
 
 DEFAULT_LINE_SPACING = 1.0
 DEFAULT_FONT_SIZE_PT = 18.0
@@ -1145,7 +1144,7 @@ def _bullet_size_pt(properties: m.ParagraphProperties, text_font_size_pt: float)
     DrawingML spells it two ways and they are mutually exclusive: ``a:buSzPct`` as a
     fraction of the run it leads, ``a:buSzPts`` as an absolute size.  Only the first was
     read here, which made every ``buSzPts`` bullet silently take the *run's* size -- the
-    theme in ``real-basic-theme.pptx`` alone sets it 184 times.  The absolute spelling
+    theme of one fixture deck of pptx2svg's alone sets it 184 times.  The absolute spelling
     wins if a deck somehow carries both, because it needs no context to apply.
     """
     if properties.bullet_size_points is not None:

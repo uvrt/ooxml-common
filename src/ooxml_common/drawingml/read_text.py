@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from xml.etree.ElementTree import Element
 
-from ..model import (
+from .scene import (
     AutoNumBullet,
     CharBullet,
     NoBullet,
@@ -34,8 +34,8 @@ from ..xmlutil import (
     ns_attr,
     num_attr,
 )
-from .drawing import parse_color
-from .source import (
+from .read import parse_color
+from .source_tree import (
     SourceBlipBullet,
     SourceBulletType,
     SourceParagraph,

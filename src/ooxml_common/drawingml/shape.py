@@ -9,13 +9,13 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from .. import model as m
+from . import scene as m
 from ..units import emu_to_px
 from .context import RenderContext, num
 from .effect import render_blip_effects, render_effects
 from .fill import render_fill_attrs, render_markers, render_outline_attrs, tile_pattern
 from .geometry import render_geometry
-from .text import compute_sp_autofit_height, render_text_body
+from .textbody import compute_sp_autofit_height, render_text_body
 
 
 def build_transform_attr(transform: m.Transform) -> str:
@@ -83,7 +83,7 @@ def _render_shape_text(
 def text_geometry(shape: m.ShapeElement) -> tuple | None:
     """The shape's geometry as :func:`~ooxml_common.drawingml.geometry.text_rect` takes it,
     ``(spec, rect)``: a preset's name and adjustments, or a custom geometry's own
-    ``a:rect`` (:attr:`~pptx2svg.model.ShapeElement.text_rect`).  ``None`` -- the whole
+    ``a:rect`` (:attr:`~ooxml_common.drawingml.scene.ShapeElement.text_rect`).  ``None`` -- the whole
     box -- for a plain ``rect`` and a custom geometry stating no rectangle."""
     geometry = shape.geometry
     if isinstance(geometry, m.PresetGeometry):

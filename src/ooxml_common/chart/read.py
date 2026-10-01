@@ -39,14 +39,14 @@ from ..xmlutil import (
     local_name,
     num_attr,
 )
-from .drawing import parse_fill, parse_line, parse_outline
-from .source import (
+from ..drawingml.read import parse_fill, parse_line, parse_outline
+from ..drawingml.source_tree import (
     SourceColorMap,
     SourceFill,
     SourceOutline,
     SourceTextBody,
 )
-from .text import parse_text_body
+from ..drawingml.read_text import parse_text_body
 
 #: The ``c:*Chart`` group elements this reader recognises.  3-D variants are read as
 #: their 2-D equivalents by :func:`flat_chart_kind`; the renderer decides what to do
@@ -91,7 +91,7 @@ SURFACE_CHART_KINDS = frozenset({"surfaceChart", "surface3DChart"})
 #: Every group element that is a 3-D spelling.  :func:`flat_chart_kind` erases this, and
 #: the difference is not cosmetic: a 3-D value axis is **not padded**, so a chart that
 #: forgets which spelling it came from draws the wrong numbers.  See
-#: :func:`~pptx2svg.resolve.chart.nice_axis_scale` and ROADMAP.md 3.4.
+#: :func:`~ooxml_common.chart.layout.nice_axis_scale` and ROADMAP.md 3.4.
 THREE_D_CHART_KINDS = frozenset(_THREE_D_EQUIVALENT) | SURFACE_CHART_KINDS
 
 #: ``c:catAx`` / ``c:valAx`` / ``c:dateAx`` / ``c:serAx`` -- the four axis elements.
@@ -308,7 +308,7 @@ class SourceChartPlot:
     #: ``c:gapDepth`` in percent of one series row's depth.  A 3-D group only: it is what
     #: divides the scene's depth between its series, and it scales the plot rectangle's
     #: own depth reservation.  See
-    #: :func:`~pptx2svg.resolve.chart.three_d_plot_rect`.
+    #: :func:`~ooxml_common.chart.layout.three_d_plot_rect`.
     gap_depth: float | None = None
     #: ``c:overlap`` in percent; negative separates clustered bars.
     overlap: float | None = None
@@ -370,7 +370,7 @@ class SourceChartView3D:
     which is PowerPoint's own 3-D default *except* for ``rAngAx`` -- ECMA-376 gives that
     one a default of 1, and the picture PowerPoint draws is the one a 0 draws.
 
-    :func:`~pptx2svg.resolve.chart.three_d_plot_rect` reads these and returns the plot
+    :func:`~ooxml_common.chart.layout.three_d_plot_rect` reads these and returns the plot
     rectangle they imply -- the scene's own front face, displaced and shrunk by the depth
     -- for the charts it is measured on.  The scene itself is still drawn flat, so the
     fields are also the record of what the flattening threw away.  See ROADMAP.md 3.4 for
@@ -394,7 +394,7 @@ class SourceChartView3D:
     h_percent: float | None = None
     #: ``c:rAngAx`` -- right-angle axes, which turns the perspective off.  A true keeps
     #: the front face a true rectangle and draws the depth as a fixed offset, which is the
-    #: projection :func:`~pptx2svg.resolve.chart.three_d_plot_rect` models; a false, and
+    #: projection :func:`~ooxml_common.chart.layout.three_d_plot_rect` models; a false, and
     #: the element's own absence, select a perspective scene that is not modelled.
     right_angle_axes: bool | None = None
     #: ``c:perspective`` -- 0..240, and ignored while :attr:`right_angle_axes` is true.
@@ -945,7 +945,7 @@ def _tick_mark(node: Element | None) -> str | None:
 
     ``None`` is kept for the *absent* element because what PowerPoint draws for that
     depends on the application that wrote the deck, which the chart part cannot know;
-    see :data:`pptx2svg.resolve.chart.OFFICE_2007_TICK_MARKS`.
+    see :data:`ooxml_common.chart.layout.OFFICE_2007_TICK_MARKS`.
     """
     if node is None:
         return None

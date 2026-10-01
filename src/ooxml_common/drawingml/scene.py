@@ -1,10 +1,15 @@
-"""The render model: a display-oriented, fully-resolved description of a slide.
+"""The drawable scene: resolved text bodies and elements, ready to draw.
 
-This is the Python port of ``packages/renderer/src/model/*`` from pptx-glimpse.  Every
-colour here is a concrete hex string (theme lookups and lumMod/tint/shade transforms
-have already been applied), every font is a real typeface name (``+mn-lt`` resolved),
-and every inherited placeholder property has been merged down.  The renderer consumes
-this and nothing else -- it never sees the OOXML.
+Moved from pptx2svg's ``model.py``, where it was the render model of a slide, so that a
+chart or a SmartArt diagram in a Word document is lowered to the same elements and drawn
+by the same renderers (:mod:`~ooxml_common.drawingml.elements`,
+:mod:`~ooxml_common.drawingml.shape`, :mod:`~ooxml_common.drawingml.textbody`).  The
+slide, its background and the theme's font scheme stayed in pptx2svg.
+
+Every colour here is a concrete hex string (theme lookups and lumMod/tint/shade
+transforms have already been applied), every font is a real typeface name (``+mn-lt``
+resolved), and every inherited property has been merged down.  The renderers consume
+this and nothing else -- they never see the OOXML.
 
 Lengths stay in EMU because shape geometry, text margins and line widths all arrive in
 EMU and only become pixels at the moment they are written into the SVG.
@@ -15,11 +20,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal, Union
 
-# DrawingML's value types -- colour, fills, outline, effects, transform, geometry, picture
-# tiling and the theme's colour scheme -- moved to ooxml-common, so that docx2svg draws
-# with the same types and the same renderers.  Every name stays importable from here, and
-# each *is* the shared class, so ``isinstance`` and identity hold through either path.
-from ooxml_common.drawingml.model import (  # noqa: F401
+# DrawingML's value types, which the elements carry.  Every name is importable from here
+# too, so a caller holding this module holds the whole vocabulary of the scene.
+from .model import (  # noqa: F401
     ArrowEndpoint,
     ArrowSize,
     ArrowType,
@@ -429,13 +432,13 @@ class Chart3DView:
     Half spent, half carried.  The **plot rectangle** this camera implies is applied where
     it is measured -- a ``bar3DChart`` with right-angle axes is laid out in its scene's
     front face, displaced and shrunk by the depth, see
-    :func:`~pptx2svg.resolve.chart.three_d_plot_rect` -- and the scene itself is still
+    :func:`~ooxml_common.chart.layout.three_d_plot_rect` -- and the scene itself is still
     drawn flat (see :attr:`ChartData.three_d`).  So this is both the record of what the
     flattening threw away and the input whoever draws that scene will want.
 
     ``None`` fields are elements the file did not state; the defaults they take are
     PowerPoint's rather than the schema's, and which is which is documented on
-    :class:`~pptx2svg.parse.chart.SourceChartView3D`.
+    :class:`~ooxml_common.chart.read.SourceChartView3D`.
     """
 
     #: Degrees of pitch and yaw.
@@ -500,46 +503,3 @@ class ChartElement:
 SlideElement = Union[
     ShapeElement, ImageElement, ConnectorElement, GroupElement, TableElement, ChartElement
 ]
-
-
-# --------------------------------------------------------------------------------------
-# Slide and presentation
-# --------------------------------------------------------------------------------------
-
-
-@dataclass
-class Background:
-    fill: Fill | None = None
-
-
-@dataclass
-class Slide:
-    slide_number: int
-    background: Background | None = None
-    elements: list[SlideElement] = field(default_factory=list)
-    show_master_sp: bool = True
-
-
-@dataclass
-class SlideSize:
-    #: EMU
-    width: float = 9144000
-    height: float = 6858000
-
-
-# --------------------------------------------------------------------------------------
-# Theme
-# --------------------------------------------------------------------------------------
-
-
-@dataclass
-class FontScheme:
-    major_font: str = "Calibri Light"
-    minor_font: str = "Calibri"
-    major_font_ea: str | None = None
-    minor_font_ea: str | None = None
-    major_font_cs: str | None = None
-    minor_font_cs: str | None = None
-    #: script-based font (Jpan) -- final fallback for CJK text
-    major_font_jpan: str | None = None
-    minor_font_jpan: str | None = None

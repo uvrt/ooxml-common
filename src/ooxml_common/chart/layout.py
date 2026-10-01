@@ -2,7 +2,7 @@
 
 Unlike SmartArt there is nothing cached to lean on -- ``c:chartSpace`` is data plus
 styling, and every position in the picture has to be computed.  The output is a plain
-list of :class:`~pptx2svg.model.ShapeElement`, so the SVG writer, the text engine, the
+list of :class:`~ooxml_common.drawingml.scene.ShapeElement`, so the SVG writer, the text engine, the
 fill resolver and the font substitution all apply to a chart exactly as they do to a
 slide.  Nothing here knows about SVG.
 
@@ -13,7 +13,7 @@ at an identical frame size and exported by PowerPoint 16.106; the plot rectangle
 bars and every text baseline come out of the PDF as exact vector coordinates, so the
 formulas could be fitted rather than guessed.  Each one records its residual against the
 measurement.  Two font families are represented (Aptos and Arial, from the corpus), which
-is what allowed the size-proportional and metric-proportional terms to be separated.
+is what allowed the terms proportional to size and to the face's metrics to be separated.
 
 The layout PowerPoint actually performs, as far as the measurements can tell:
 
@@ -51,9 +51,9 @@ import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 
-from .. import model as m
-from ..parse import chart as c
-from ..parse import source as s
+from ..drawingml import scene as m
+from ..drawingml import source_tree as s
+from . import read as c
 from ..text.fontmap import east_asian_family, metrics_for
 from ..text.measure import DEFAULT_LINE_HEIGHT_RATIO, is_cjk
 
@@ -125,7 +125,7 @@ CATEGORY_LABEL_GAP_ASCENT = 2.0 / 3.0
 #:
 #: **That chart cannot arbitrate, and the reason is worth recording.**  Its labels are
 #: drawn in Yu Gothic, and pulling the font program straight out of
-#: ``real-financial-report.pdf`` gives ``YuGothic-Regular`` at 0.8799 ascent, 0.2222
+#: ``real-financial-report.pdf`` gives Yu Gothic's regular cut at 0.8799 ascent, 0.2222
 #: descent and a **0.5 em line gap**, where this library carries Noto Sans JP's 1.1600 and
 #: 0.2880 for that name and no gap at all.  So its anchor is built from an ascent 32% too
 #: large and its band from a box 1.84 pt too small, and the 0.95 pt this rule currently
@@ -609,7 +609,7 @@ BUBBLE_CHART_KINDS = frozenset({"bubbleChart"})
 STOCK_CHART_KINDS = frozenset({"stockChart"})
 
 #: The surface, both spellings of which flatten to this one.  It is a 3-D scene whatever
-#: its name says; see :data:`~pptx2svg.parse.chart.SURFACE_CHART_KINDS`.
+#: its name says; see :data:`~ooxml_common.chart.read.SURFACE_CHART_KINDS`.
 SURFACE_CHART_KINDS = frozenset({"surfaceChart"})
 
 #: **How many colours a surface's band ramp behaves as if it needed**, beyond the bands
@@ -1329,7 +1329,7 @@ def side_axis_intervals(available_pt: float, pitch_pt: float) -> int:
     14, 20 and 28 pt labels -- bracket it to (1.2143, 1.225] ems, and Aptos' own pitch is
     1.2207.  Arial labels cross their transition 4 to 9 pt lower, which is a *face* ratio
     and not a constant one, so this asks the face rather than
-    :data:`~pptx2svg.text.measure.DEFAULT_LINE_HEIGHT_RATIO`.
+    :data:`~ooxml_common.text.measure.DEFAULT_LINE_HEIGHT_RATIO`.
 
     **Pitch, not line box, and Arial is what says so.**  Every one of those ten scans is
     Aptos, whose ``hhea`` lineGap is zero, so they cannot tell the two apart; Arial's is
@@ -1891,7 +1891,7 @@ class ChartFont:
     #: Latin one: ``real-financial-report.pptx``'s axes name ``<a:latin typeface="Arial"/>``
     #: and nothing else, and PowerPoint drew their Japanese labels in the theme's
     #: ``<a:font script="Jpan" typeface="游ゴシック"/>``.  See
-    #: :func:`pptx2svg.text.fontmap.east_asian_family` for the cascade and the export it
+    #: :func:`ooxml_common.text.fontmap.east_asian_family` for the cascade and the export it
     #: was read out of.
     family_ea: str | None = None
     #: That face's vertical metrics, for the reserves a CJK label's line box drives.
@@ -2183,17 +2183,17 @@ def text_width(
     The CJK branch is not decoration: ``real-financial-report.pptx`` legends its series
     in Japanese, and measuring those with the Latin mean advance under-counted the legend
     band by 32 pt -- a quarter of the chart's width.  The rule is the same one
-    :mod:`pptx2svg.text.measure` uses, so chart text is measured exactly as slide text is.
+    :mod:`ooxml_common.text.measure` uses, so chart text is measured exactly as slide text is.
 
     ``family_ea`` is which face those East Asian characters resolve to, and it is
     per-character rather than per-string because one label really does mix the two:
     PowerPoint drew ``DX投資額`` with ``DX`` in ArialMT and ``投資額`` in
-    YuGothic-Regular, both inside one label.  Measuring the whole string through either
+    Yu Gothic's regular cut, both inside one label.  Measuring the whole string through either
     face alone gets the other half wrong -- and for a proportional Japanese face the
     error is large, ``ＭＳ Ｐゴシック`` running from 0.648 em to 1.0 across its katakana.
 
     **It is a sum of advances with no ``kern`` term, and that is measured rather than
-    left over.**  :mod:`pptx2svg.text.measure` applies the face's ``kern`` feature because
+    left over.**  :mod:`ooxml_common.text.measure` applies the face's ``kern`` feature because
     PowerPoint applies it to slide text; the chart engine does not apply it to the text it
     *lays out*, although it does draw that text kerned.  The two are separable in
     PowerPoint's own export and the answer is not close:
@@ -2837,7 +2837,7 @@ class ChartBuilder:
     """Lowers one bar chart to slide elements, in the frame's own coordinate space.
 
     Coordinates are EMU with the frame's top-left at the origin, which is what
-    :class:`~pptx2svg.model.GroupElement`'s child transform expects.  Internally
+    :class:`~ooxml_common.drawingml.scene.GroupElement`'s child transform expects.  Internally
     everything is points, because every measured constant is.
     """
 
@@ -5363,7 +5363,7 @@ class ChartBuilder:
         family = self._resolve_typeface(typeface) if typeface else None
         family = family or self.style.font_family
         # The East Asian face is its own cascade and does not fall back to the Latin one
-        # until everything else has failed -- see `pptx2svg.text.fontmap.east_asian_family`.
+        # until everything else has failed -- see `ooxml_common.text.fontmap.east_asian_family`.
         family_ea = east_asian_family(
             self._resolve_typeface(typeface_ea) if typeface_ea else None,
             self.style.font_family_ea,
@@ -5822,7 +5822,7 @@ class ChartBuilder:
         **The gap it carries is Arial's, not Arimo's**, and that distinction is the whole
         reason the column could be added at all: Tinos' lineGap is 87 where Office's own
         ``times.ttf`` is 0, so reading the substitute would have traded Arial's 0.33 pt
-        error for a 0.42 pt one on Times New Roman.  :class:`~pptx2svg.text.metrics.FontMetrics`
+        error for a 0.42 pt one on Times New Roman.  :class:`~ooxml_common.text.metrics.FontMetrics`
         now carries the *Office* face's gap as a measured number, on the footing the Aptos
         advance widths already stand on.
 
@@ -8950,7 +8950,7 @@ def _resolve_view_3d(view: "c.SourceChartView3D | None") -> m.Chart3DView | None
     Nothing is defaulted on the way through.  A ``None`` here is the file's silence, and
     that silence has a meaning of its own: it selects the perspective scene
     :func:`three_d_camera` refuses.  The layout reads
-    :attr:`~pptx2svg.parse.chart.SourceChart.view_3d` directly; this is the copy callers
+    :attr:`~ooxml_common.chart.read.SourceChart.view_3d` directly; this is the copy callers
     of ``convert_pptx_to_model`` get.
     """
     if view is None:

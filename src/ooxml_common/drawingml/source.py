@@ -1,8 +1,9 @@
 """DrawingML as the XML states it, before any theme or inheritance resolves it.
 
-Moved from ``pptx2svg.parse.source`` (whose slide, text, table and chart types stayed
-there, and which re-exports every name here, so the classes are the same objects through
-either path).  These are what :mod:`~ooxml_common.drawingml.read` reads a fill, an
+Moved from ``pptx2svg.parse.source`` (which re-exports every name here, so the classes are
+the same objects through either path; its text and shape tree types followed to
+:mod:`~ooxml_common.drawingml.source_tree`, and its slide, theme and table-style types
+stayed there).  These are what :mod:`~ooxml_common.drawingml.read` reads a fill, an
 outline, a shape style, an effect list, a transform or a geometry into.
 
 Deliberately *unresolved*.  Theme colours stay as ``SchemeColor("accent1")`` with their

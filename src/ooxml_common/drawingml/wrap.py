@@ -12,7 +12,7 @@ Break opportunities follow the two scripts PowerPoint decks actually mix:
   spaces.
 
 ``WRAP_TOLERANCE_RATIO`` used to be an allowance for the ``kern`` feature we did not
-apply.  We apply it now -- see :mod:`pptx2svg.text.kerning` -- and the constant is a
+apply.  We apply it now -- see :mod:`ooxml_common.text.kerning` -- and the constant is a
 floating-point epsilon, which is what **PowerPoint's own budget has no slack in it at
 all** means once the measurement it was covering for is right.  See the constant.
 
@@ -26,8 +26,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from .. import model as m
-from .measure import DefaultTextMeasurer, TextMeasurer, is_cjk
+from ..text.measure import DefaultTextMeasurer, TextMeasurer, is_cjk
+from . import scene as m
 
 DEFAULT_FONT_SIZE = 18.0
 
@@ -45,7 +45,7 @@ DEFAULT_FONT_SIZE = 18.0
 #: face's OpenType ``kern`` feature and we did not, so every line we measured was wider
 #: than the one it laid out -- by 0% to 0.684% over ``sample-cjk``'s fifteen lines, and by
 #: 1.5% for a string of nothing but kerned pairs (キスキスキス), which is outside any
-#: window a single constant could sit in.  :mod:`pptx2svg.text.kerning` removed the error
+#: window a single constant could sit in.  :mod:`ooxml_common.text.kerning` removed the error
 #: instead of budgeting for it.
 #:
 #: What is left is arithmetic, not typography.  A line of ``k`` full-width glyphs is a sum
@@ -57,7 +57,7 @@ DEFAULT_FONT_SIZE = 18.0
 #: times smaller than the constant it replaces.
 #:
 #: The one caller still measuring wide is an **embedded** face:
-#: :mod:`pptx2svg.fonts.embedded` builds its table from a cut-down sfnt reader that does
+#: :mod:`ooxml_common.fonts.embedded` builds its table from a cut-down sfnt reader that does
 #: not parse GPOS, so its ``FontMetrics.kerning`` is ``None``.  Widening this constant is
 #: not the fix for that -- the fix is a GPOS reader -- and no deck in the corpus embeds a
 #: face that kerns.
@@ -66,7 +66,7 @@ WRAP_TOLERANCE_RATIO = 1e-6
 #: Characters a line may not *begin* with (行頭禁則), and which therefore pull their
 #: left-hand neighbour down with them when a break would land before one.
 #:
-#: Every member is inside :func:`~pptx2svg.text.measure.is_cjk`'s ranges, which is
+#: Every member is inside :func:`~ooxml_common.text.measure.is_cjk`'s ranges, which is
 #: deliberate and is tested: the ASCII members of the same class -- ``)``, ``.``, ``,`` --
 #: would change where *Latin* wraps, and nothing here measured that.
 NOT_LINE_START = frozenset(

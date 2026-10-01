@@ -14,8 +14,6 @@ from __future__ import annotations
 
 from xml.etree.ElementTree import Element
 
-from ooxml_common.drawingml.read import parse_geometry_spec, parse_text_rect
-
 from ..xmlutil import (
     attr,
     child,
@@ -27,11 +25,12 @@ from ..xmlutil import (
     ns_attr,
     num_attr,
 )
-from .drawing import (
+from .read import (
     parse_blip_effects,
     parse_effect_list,
     parse_fill,
     parse_geometry,
+    parse_geometry_spec,
     parse_group_transforms,
     parse_image_fill_tile,
     parse_line,
@@ -39,10 +38,11 @@ from .drawing import (
     parse_relative_rect,
     parse_shape_style,
     parse_svg_blip_rel_id,
+    parse_text_rect,
     parse_text_transform,
     parse_transform,
 )
-from .source import (
+from .source_tree import (
     SourceConnector,
     SourceGroup,
     SourceImage,
@@ -54,7 +54,7 @@ from .source import (
     SourceTableRow,
     SourceUnsupported,
 )
-from .text import parse_text_body
+from .read_text import parse_text_body
 
 #: ``a:graphicData@uri`` values that tell us what a graphic frame actually holds.
 GRAPHIC_DATA_TABLE = "http://schemas.openxmlformats.org/drawingml/2006/table"
