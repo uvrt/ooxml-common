@@ -23,6 +23,18 @@ Drawing, moved from pptx2svg with their history:
 * :mod:`~ooxml_common.drawingml.effect` gives shadows, glow, soft edges and picture
   effects as SVG filters.
 
-Each consumer keeps its own layout and its own measured positioning; only the values and
-their drawing are here.
+And the scene drawn with them, moved from pptx2svg with the charts that lower to it:
+
+* :mod:`~ooxml_common.drawingml.scene` -- resolved text bodies, shapes, connectors,
+  pictures, groups, tables and charts; :mod:`~ooxml_common.drawingml.source_tree` -- a
+  shape tree and its text as the XML states them;
+* :mod:`~ooxml_common.drawingml.read_tree` and :mod:`~ooxml_common.drawingml.read_text`
+  read them, and :mod:`~ooxml_common.drawingml.diagram` finds SmartArt's cached drawing;
+* :mod:`~ooxml_common.drawingml.elements`, :mod:`~ooxml_common.drawingml.shape` and
+  :mod:`~ooxml_common.drawingml.textbody` draw them through a
+  :class:`~ooxml_common.drawingml.context.RenderContext`, breaking lines with
+  :mod:`~ooxml_common.drawingml.wrap`.
+
+Each consumer keeps its own document layout and its own inheritance; the values, the
+scene and their drawing are here.
 """
