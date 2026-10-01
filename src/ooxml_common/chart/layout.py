@@ -234,6 +234,20 @@ LEGEND_SIDE_MAX_FRACTION = 0.40
 LEGEND_SIDE_LEAD_EM = 1.60
 LEGEND_SIDE_TRAIL_EM = 1.01
 
+#: Word's side-legend pads (:attr:`~ooxml_common.chart.rules.ChartRules.side_legend`
+#: ``"word"``): between the plot and the key, :data:`WORD_LEGEND_LEAD_PT` and half the
+#: key; between the widest name and the frame's edge, :data:`WORD_LEGEND_TRAIL_PT`; and a
+#: left legend's key :data:`WORD_LEGEND_LEFT_PT` and half the key in from the frame.
+#: Measured on docx2svg's ``make_chart_probe.py`` at 6, 8, 10, 12, 14 and 18 pt of legend
+#: text and with names three times as long: the lead 14.898 to 18.193 pt, which is
+#: 13.25 pt and half the 0.549 em key at every size to 0.002 pt; the trail 10.124 to
+#: 10.137 pt at every size; the left inset 10.447 to 13.193 pt, 8.25 pt and half the key.
+#: At 10 pt the lead is the 1.6 em above to 0.004 pt and the trail the 1.01 em to
+#: 0.03 pt, the one size PowerPoint's were measured at.
+WORD_LEGEND_LEAD_PT = 13.25
+WORD_LEGEND_TRAIL_PT = 10.13
+WORD_LEGEND_LEFT_PT = 8.25
+
 #: The **cell** a horizontal legend entry puts its key in, before the name.  It is not the
 #: drawn key: the key is *centred* in it, so the cell is what the layout advances by and
 #: the swatch is what the eye sees.  Twice the swatch for a swatch key, and 1.25x the rule
@@ -323,6 +337,18 @@ def legend_row_pitch(box: "FontBox", lines: int = 1) -> float:
 #: read through that clamp would settle it; see ROADMAP.md 3.2b.
 TITLE_BAND_LINES = 1.4769
 TITLE_BASELINE_ASCENTS = 1.5046
+
+#: Word's title band and baseline (:attr:`~ooxml_common.chart.rules.ChartRules.title`
+#: ``"pitch"``): the band is the title's line pitch plus :data:`WORD_TITLE_PAD_PT`, and
+#: the baseline :data:`WORD_TITLE_BASELINE_PT` plus :data:`WORD_TITLE_BASELINE_EM` of the
+#: title's size below the frame's top.  Measured on docx2svg's ``make_chart_probe.py``:
+#: the band to 0.003 pt over Arial and Aptos titles of 8 to 36 pt, bold and not; the
+#: baseline on Word's device pixel for every Aptos title from 8 to 36 pt, whatever the
+#: face (an Arial title of 28 pt a pixel higher).  The two are this file's own 1.4769
+#: line boxes and 1.5046 ascents for an 18 pt Arial title, to 0.002 and 0.18 pt.
+WORD_TITLE_PAD_PT = 9.0
+WORD_TITLE_BASELINE_PT = 7.5
+WORD_TITLE_BASELINE_EM = 0.9412
 
 #: Default chart text size, in points.  ECMA-376's chart default and what PowerPoint drew
 #: for every axis label and legend entry with no ``c:txPr``.
@@ -3503,7 +3529,10 @@ class ChartBuilder:
         )
         scale = self._scale(series, value_axis, radial_pt=radius)
 
-        self._draw_background(region)
+        self._draw_background(
+            region,
+            _Rect(centre[0] - radius, centre[1] - radius, centre[0] + radius, centre[1] + radius),
+        )
         self._draw_title()
         self._draw_radar_web(centre, radius, scale, len(categories), value_axis)
         filled = self._radar_style == "filled"
@@ -4498,7 +4527,7 @@ class ChartBuilder:
         top = frame.top + self._top_inset(y_font.box)
         title = self._title_box()
         if title is not None:
-            top += TITLE_BAND_LINES * title.line_height
+            top += self._title_band(title)
 
         legend_bottom = 0.0
         legend = self._legend_position()
@@ -4602,7 +4631,7 @@ class ChartBuilder:
 
         title = self._title_box()
         if title is not None:
-            top += TITLE_BAND_LINES * title.line_height
+            top += self._title_band(title)
 
         legend = self._legend_position()
         if legend is not None and not self._legend_overlays():
@@ -4989,8 +5018,11 @@ class ChartBuilder:
             self._read_marker_style(item, source, index)
             return
         if outline is None or outline.fill is None:
+            width = DEFAULT_LINE_SERIES_WIDTH_EMU
+            if self.rules.stated_line_width and outline is not None and outline.width is not None:
+                width = outline.width
             outline = m.Outline(
-                width=DEFAULT_LINE_SERIES_WIDTH_EMU,
+                width=width,
                 fill=m.SolidFill(color=item.color),
             )
         if outline.line_cap is None:
@@ -5476,7 +5508,7 @@ class ChartBuilder:
         height = self.frame.height
         title = self._title_box()
         if title is not None:
-            height -= TITLE_BAND_LINES * title.line_height
+            height -= self._title_band(title)
         legend = self._legend_position()
         if legend in ("b", "t", "tr") and not self._legend_overlays():
             height -= self._legend_band_height(self._legend_font())
@@ -5624,7 +5656,7 @@ class ChartBuilder:
 
         title = self._title_box()
         if title is not None:
-            top += TITLE_BAND_LINES * title.line_height
+            top += self._title_band(title)
 
         legend_bottom = 0.0
         legend = self._legend_position()
@@ -5634,11 +5666,19 @@ class ChartBuilder:
         if legend is not None and not self._legend_overlays():
             legend_font = self._legend_font()
             band = self._legend_band_height(legend_font)
+            top_column = legend == "tr" and self.rules.top_right_legend == "column"
             if legend in ("b",):
                 legend_bottom = band
+            elif top_column:
+                # Word's top-right legend (:mod:`.rules`): a column at the right, its rows
+                # taken off the plot's top and the band's pad off its bottom.
+                top += len([n for n in self._legend_names(per_point=False) if n]) * legend_row_pitch(
+                    legend_font.box
+                )
+                legend_bottom = LEGEND_BAND_PAD_PT
             elif legend in ("t", "tr"):
                 top += band
-            elif legend == "r":
+            if legend == "r" or top_column:
                 # The side band *replaces* the plain edge inset rather than adding to it:
                 # it already ends in its own trailing pad.  Measured on
                 # real-financial-report's two bar charts, whose legends are Japanese and
@@ -5657,6 +5697,11 @@ class ChartBuilder:
                     - (second_band - EDGE_INSET_PT)
                     - overhang_right
                 )
+                if self.rules.side_legend == "word" and horizontal and show_values:
+                    # The last value label's half still hangs off the plot's right edge,
+                    # and the legend, which stands against the frame, does not move for
+                    # it (:mod:`.rules`).
+                    right -= max((value_font.width(text) for text in tick_labels), default=0.0) / 2
             elif legend == "l":
                 # On the left the value-label column follows the legend instead of the
                 # frame edge, so the band contributes one edge inset less.  Measured:
@@ -5751,7 +5796,7 @@ class ChartBuilder:
         height = self.frame.height
         title = self._title_box()
         if title is not None:
-            height -= TITLE_BAND_LINES * title.line_height
+            height -= self._title_band(title)
         legend = self._legend_position()
         if legend in ("b", "t", "tr") and not self._legend_overlays():
             height -= self._legend_band_height(self._legend_font())
@@ -5916,7 +5961,7 @@ class ChartBuilder:
 
         title = self._title_box()
         if title is not None:
-            top = frame.top + TITLE_BAND_LINES * title.line_height + EDGE_INSET_PT
+            top = frame.top + self._title_band(title) + EDGE_INSET_PT
 
         legend = self._legend_position()
         if legend is not None and not self._legend_overlays():
@@ -6227,7 +6272,10 @@ class ChartBuilder:
         """
         names = [name for name in self._legend_names(per_point=per_point) if name]
         key, key_gap = self._legend_key_size(font)
-        pads = key + key_gap + (LEGEND_SIDE_LEAD_EM + LEGEND_SIDE_TRAIL_EM) * font.size
+        if self.rules.side_legend == "word":
+            pads = key + key_gap + self._legend_side_lead(font) + self._legend_side_trail(font)
+        else:
+            pads = key + key_gap + (LEGEND_SIDE_LEAD_EM + LEGEND_SIDE_TRAIL_EM) * font.size
         widest = max((font.width(name) for name in names), default=0.0)
         cap = self.frame.width * LEGEND_SIDE_MAX_FRACTION
         if widest + pads <= cap:
@@ -6253,6 +6301,18 @@ class ChartBuilder:
         predicts.
         """
         return self._legend_side_metrics(font, per_point=per_point)[1]
+
+    def _legend_side_lead(self, font: ChartFont) -> float:
+        """The pad between the plot and a side legend's key (:attr:`~.rules.ChartRules.side_legend`)."""
+        if self.rules.side_legend == "word":
+            return WORD_LEGEND_LEAD_PT + LEGEND_SWATCH_EM * font.size / 2
+        return LEGEND_SIDE_LEAD_EM * font.size
+
+    def _legend_side_trail(self, font: ChartFont) -> float:
+        """The pad between a side legend's widest name and the frame's edge."""
+        if self.rules.side_legend == "word":
+            return WORD_LEGEND_TRAIL_PT
+        return LEGEND_SIDE_TRAIL_EM * font.size
 
     def _legend_side_width(self, font: ChartFont, *, per_point: bool = False) -> float:
         return self._legend_side_metrics(font, per_point=per_point)[0]
@@ -6308,28 +6368,55 @@ class ChartBuilder:
 
     # -- drawing ------------------------------------------------------------------------
 
-    def _draw_background(self, rect: _Rect) -> None:
+    def _draw_background(self, rect: _Rect, plot: "_Rect | None" = None) -> None:
         """The chart frame's own fill, then the plot rectangle's.
 
         A chart with no ``c:spPr`` at all is transparent -- the slide shows through, which
         is what PowerPoint drew for ``authoring-integration.pptx`` -- so an absent fill is
         not the same as a white one and nothing is emitted for it.
         """
+        rules = self.rules
         fill = self._resolve_fill(self.chart.fill)
         outline = self._resolve_outline(self.chart.outline)
+        # What an unstated fill or line means is the application's: nothing for
+        # PowerPoint, white and a 0.5 pt grey line for Word (:mod:`.rules`).
+        if self.chart.fill is None and rules.chart_fill is not None:
+            fill = m.SolidFill(color=m.ResolvedColor(hex="#" + rules.chart_fill))
+        if self.chart.outline is None and rules.chart_line is not None:
+            colour, width = rules.chart_line
+            outline = m.Outline(width=width, fill=m.SolidFill(color=m.ResolvedColor(hex="#" + colour)))
         if (fill is not None and not isinstance(fill, m.NoFill)) or outline is not None:
             self._rect(self.frame, fill=fill, outline=outline)
 
         plot_fill = self._resolve_fill(self.chart.plot_area_fill)
+        if rules.plot_fill is not None:
+            # Word's plot area: a radar's is the square round its web, and a pie has none
+            # unless it states one (:mod:`.rules`).
+            if plot is not None:
+                rect = plot
+            if self.chart.plot_area_fill is None and not (self._is_polar and not self._is_radar):
+                plot_fill = m.SolidFill(color=m.ResolvedColor(hex="#" + rules.plot_fill))
+        plot_line = self._resolve_outline(self.chart.plot_area_outline) if rules.plot_line else None
         if plot_fill is not None and not isinstance(plot_fill, m.NoFill):
-            self._rect(rect, fill=plot_fill, outline=None)
+            self._rect(rect, fill=plot_fill, outline=plot_line)
+        elif plot_line is not None:
+            self._rect(rect, fill=None, outline=plot_line)
+
+    def _title_band(self, title: FontBox) -> float:
+        """What a title takes off the top of the frame (:attr:`~.rules.ChartRules.title`)."""
+        if self.rules.title == "pitch":
+            return title.pitch + WORD_TITLE_PAD_PT
+        return TITLE_BAND_LINES * title.line_height
 
     def _draw_title(self) -> None:
         title = self._title()
         if title is None:
             return
         body, box = title
-        baseline = self.frame.top + TITLE_BASELINE_ASCENTS * box.ascent
+        if self.rules.title == "pitch":
+            baseline = self.frame.top + WORD_TITLE_BASELINE_PT + WORD_TITLE_BASELINE_EM * box.size
+        else:
+            baseline = self.frame.top + TITLE_BASELINE_ASCENTS * box.ascent
         self._text(
             body,
             left=self.frame.left,
@@ -7188,6 +7275,9 @@ class ChartBuilder:
                 else:
                     start, end = 0.0, value
                     slot = order
+                    if horizontal and self.rules.bars_upward:
+                        # The first series at the bottom of its group: see :mod:`.rules`.
+                        slot = slots - 1 - order
 
                 offset = centre - cluster / 2 + slot * step
                 self._bar(rect, item, point, offset, bar_size, start, end, scale, horizontal)
@@ -7921,7 +8011,7 @@ class ChartBuilder:
                 font.width(LABEL_ELLIPSIS) if text.endswith(LABEL_ELLIPSIS) else 0.0
             )
             offset_x = width / 2 - box.size / 2 - overhang
-            offset_y = box.first_baseline - height / 2
+            offset_y = self._first_baseline(box) - height / 2
             turned_x = offset_x * cos - offset_y * sin
             turned_y = offset_x * sin + offset_y * cos
             centre_x = position + ROTATED_LABEL_OFFSET_X_PT - turned_x
@@ -8453,6 +8543,8 @@ class ChartBuilder:
                 for index, item in enumerate(series)
                 if index not in deleted and item.name
             ]
+            if self._legend_reversed():
+                entries.reverse()
         if not entries:
             return
 
@@ -8460,7 +8552,8 @@ class ChartBuilder:
         box = font.box
         swatch, gap = self._legend_key_size(font)
 
-        if position in ("b", "t", "tr"):
+        top_column = position == "tr" and self.rules.top_right_legend == "column"
+        if position in ("b", "t", "tr") and not top_column:
             # The layout advances by a **key cell** and the name; the drawn key is centred
             # in the cell, so the swatch is inset by half the difference.  See
             # :data:`LEGEND_ENTRY_SLACK` for where the gap comes from and what measured it.
@@ -8485,6 +8578,9 @@ class ChartBuilder:
                 )
             else:
                 first = self.frame.top + LEGEND_BAND_PAD_PT + inside
+                title = self._title_box()
+                if self.rules.legend_under_title and title is not None:
+                    first += self._title_band(title)
             if rows > 1:
                 # **Past the cap the run becomes a grid**: equal columns as wide as the
                 # widest entry, packed with no gap, the block centred on the frame.  See
@@ -8528,7 +8624,17 @@ class ChartBuilder:
         # A side legend sits one lead gap outside the plot area.  Measured 15.996 pt at
         # 10 pt with the legend on the right, and the band on the left came out exactly
         # the same width, so the left case mirrors it against the frame edge.
-        if position == "l":
+        if self.rules.side_legend == "word" or top_column:
+            # Against the frame, not the plot: see :mod:`.rules`.
+            if position == "l":
+                x = self.frame.left + WORD_LEGEND_LEFT_PT + LEGEND_SWATCH_EM * box.size / 2
+            else:
+                x = (
+                    self.frame.right
+                    - self._legend_side_width(font, per_point=per_point)
+                    + self._legend_side_lead(font)
+                )
+        elif position == "l":
             # Measured 10.996 pt from the frame's left edge in the legend-l probe, which
             # is the plain edge inset and not the 6.5 pt the label column starts at.
             x = self.frame.left + EDGE_INSET_PT
@@ -8568,9 +8674,29 @@ class ChartBuilder:
             + band
             + (self.frame.height - band - pitch * len(entries)) / 2
         )
+        if top_column:
+            # From the top, where a top legend's first row stands.
+            title = self._title_box()
+            y = self.frame.top + LEGEND_BAND_PAD_PT + (
+                self._title_band(title) if title is not None else 0.0
+            )
         for _, item in entries:
             self._legend_entry(item, x, y + inside, swatch, gap, font, column=column)
             y += pitch
+
+    def _legend_reversed(self) -> bool:
+        """Whether the legend lists the series last first (:attr:`~.rules.ChartRules.legend_order`):
+        clustered horizontal bars, wherever the legend is, and stacked columns beside one
+        at the side."""
+        if self.rules.legend_order != "stack" or self.plot.kind not in ("barChart", "bar3DChart"):
+            return False
+        stacked = (self.plot.grouping or "clustered") in ("stacked", "percentStacked")
+        horizontal = (self.plot.bar_direction or "col") == "bar"
+        if horizontal:
+            return not stacked
+        # Stacked columns reverse at the side only; a legend under them reads left to
+        # right in series order.
+        return stacked and self._legend_position() in ("l", "r")
 
     def _legend_title_band(self) -> float:
         """What the title takes off the height a **side** legend centres itself in.
@@ -8683,7 +8809,9 @@ class ChartBuilder:
                 # and empty.  Measured on the wireframe legend probe, whose five keys
                 # carry a stroke and no fill at all.  An entry that has a fill draws no
                 # outline, which is every other chart's key and is left alone.
-                outline=item.outline if item.fill is None else None,
+                outline=item.outline
+                if item.fill is None or self.rules.legend_key_outlines
+                else None,
             )
         # An entry wider than the band it sits in wraps rather than running out of the
         # frame.  ``column`` is the width a **side** legend leaves for the name -- see
@@ -8907,6 +9035,14 @@ class ChartBuilder:
             body_properties=CHART_TEXT_BODY,
         )
 
+    def _first_baseline(self, box: FontBox) -> float:
+        """Where the renderer puts a one-line label's baseline below its box's top: under
+        Word's rule (:attr:`~ooxml_common.drawingml.rules.DrawingRules.first_baseline`)
+        the face's ascent, its line box being the face's own."""
+        if self.rules.drawing.first_baseline == "descent":
+            return box.ascent
+        return box.first_baseline
+
     def _text(
         self, body: m.TextBody, *, left: float, width: float, baseline: float, box: FontBox
     ) -> None:
@@ -8915,7 +9051,7 @@ class ChartBuilder:
         The box's own top is derived from the renderer's first-baseline rule rather than
         assumed, so chart text stays aligned with the rest of the deck if that rule moves.
         """
-        top = baseline - box.first_baseline
+        top = baseline - self._first_baseline(box)
         self.elements.append(
             m.ShapeElement(
                 transform=m.Transform(
