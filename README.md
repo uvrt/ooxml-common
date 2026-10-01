@@ -99,6 +99,9 @@ drawn, which its fidelity baselines hold byte for byte.
 | Arrowheads | SVG markers, 5 / 8 / 12 px | 2 / 3 / 5 times the width (2 pt at least), the line cut back under a triangle or stealth |
 | An outline's join when none is stated | miter (SVG's) | **round** |
 | A pattern's 8 pt cell | registered to the shape | registered to the **page**, square to it on a rotated shape |
+| A custom path's outline (`custom_path_strokes`) | scaled with the path by its `scale()` | at its **stated width**: the coordinates are scaled instead |
+| A run's glyphs (`text_size_grid`) | at the stated size | at the size **rounded to the 300 dpi device pixel** (10 pt drawn 10.08) |
+| A text body's first baseline (`first_baseline`) | the measurer's ascent, scaled by the spacing | the **spaced line box less the face's descent**; the next line a descent on, then its box less its descent |
 
 Most of Word's column is probably Office's shared engine and so PowerPoint's too; that is
 not measured, and pptx2svg's output is not moved on a guess. `tint` and `shade` in linear
@@ -116,7 +119,25 @@ The shape, text body and group renderers read the rules from their `RenderContex
 `ooxml_common.chart.rules.ChartRules` (`POWERPOINT`, the default), which carries the
 `DrawingRules` its scene is drawn with. Every constant of the layout was measured on
 PowerPoint (pptx2svg ROADMAP.md, Phase 3); where Word is measured to lay a chart out
-differently, the difference becomes a field there.
+differently, the difference becomes a field there.  `WORD` carries what docx2svg's
+`tools/make_chart_probe.py` measured on 58 charts of its own, read off Word's PDF in three
+documents (no settings part, compatibility modes 14 and 15, which draw every chart alike):
+
+| | PowerPoint (`POWERPOINT`) | Word (`WORD`), measured |
+| --- | --- | --- |
+| A chart space stating no fill, no line | transparent | **white**, outlined `898989` at **0.5 pt**, each default on its own |
+| A plot area stating no fill; its own line | nothing; not drawn | **white** (a radar's: the square round its web; a pie's: none); drawn |
+| A title's band and baseline | 1.4769 line boxes; 1.5046 ascents down | its **pitch + 9 pt**; **7.5 pt + 0.9412 em** down, whatever the face |
+| A side legend's pads | 1.6 em to the plot, 1.01 em to the edge; placed off the plot | **13.25 pt and half the key**, and **10.13 pt**; placed against the **frame** (a left one 8.25 pt and half the key in) |
+| A top legend with a title; `legendPos="tr"` | over the title; a top band | **under** the title; a **column** at the right from the top |
+| Legend order | series order | **reversed** for clustered bars, and for stacked columns at the side |
+| Clustered horizontal bars | the first series at the top of its group | the first series at the **bottom** |
+| A line series stating a width and no colour | 1.5 pt | its **stated width** |
+| A legend key of a series with a line | not outlined | **outlined** |
+
+At 10 pt the side legend's pads are PowerPoint's to 0.03 pt and an 18 pt Arial title's band
+its to 0.002 pt, the one size and face each was measured at in PowerPoint; where the two
+part, PowerPoint was not measured, and pptx2svg's output does not move.
 
 What a chart cannot know is the consumer's, and comes in as parameters: the theme's faces,
 text colour and accent cycle (`chart.layout.ChartStyle`), and how a fill, an outline, a
