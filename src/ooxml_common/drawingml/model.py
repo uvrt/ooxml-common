@@ -1,8 +1,8 @@
 """DrawingML's value types: colours, fills, outlines, effects, transforms and geometry.
 
-Moved from ``pptx2svg.model`` (whose slide, text, table and chart types stayed there, and
-which re-exports every name here, so the classes are the same objects through either
-path).  They are what :mod:`~ooxml_common.drawingml.fill`,
+Moved from ``pptx2svg.model`` (which re-exports every name here, so the classes are the
+same objects through either path; its text, element and chart types followed to
+:mod:`~ooxml_common.drawingml.scene`, and its slide types stayed there).  They are what :mod:`~ooxml_common.drawingml.fill`,
 :mod:`~ooxml_common.drawingml.geometry` and :mod:`~ooxml_common.drawingml.effect` draw,
 and what :mod:`~ooxml_common.drawingml.color` resolves a colour choice into.
 

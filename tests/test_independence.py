@@ -66,6 +66,20 @@ def test_the_package_has_the_modules_it_claims():
         "ooxml_common.drawingml.fill",
         "ooxml_common.drawingml.effect",
         "ooxml_common.drawingml.svg",
+        "ooxml_common.drawingml.scene",
+        "ooxml_common.drawingml.source_tree",
+        "ooxml_common.drawingml.read_text",
+        "ooxml_common.drawingml.read_tree",
+        "ooxml_common.drawingml.context",
+        "ooxml_common.drawingml.shape",
+        "ooxml_common.drawingml.textbody",
+        "ooxml_common.drawingml.elements",
+        "ooxml_common.drawingml.wrap",
+        "ooxml_common.drawingml.diagram",
+        "ooxml_common.chart",
+        "ooxml_common.chart.read",
+        "ooxml_common.chart.layout",
+        "ooxml_common.chart.rules",
     } <= names
 
 

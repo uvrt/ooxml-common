@@ -4,7 +4,9 @@ The format-neutral half of an Office Open XML renderer, shared by
 [pptx2svg](https://github.com/uvrt/pptx2svg) and
 [docx2svg](https://github.com/uvrt/docx2svg): the OPC container, units, embedded-font
 decoding, the measured text metrics, and DrawingML -- its value types, colour resolution,
-the complete preset geometry table, and fills, outlines, markers and effects drawn as SVG.
+the complete preset geometry table, and fills, outlines, markers and effects drawn as SVG
+-- and what is drawn with them: shapes, text bodies and groups, SmartArt's cached drawing,
+and charts, read, laid out and drawn.
 
 Standard library only at runtime. Python 3.10+.
 
@@ -16,15 +18,22 @@ on a PowerPoint renderer in order to measure a Word document, or to copy the tab
 let two copies of each measured constant drift apart. This package holds one copy that
 both use.
 
-It was extracted from pptx2svg **with its git history**, in two steps: first what
+It was extracted from pptx2svg **with its git history**, in three steps: first what
 already imported nothing from pptx2svg's slide model, then DrawingML's value types lifted
-out of that model with the renderers that take them. Every constant here came with a
+out of that model with the renderers that take them, then the charts and the shape tree
+with the shape and text body renderers that draw them. Every constant here came with a
 record of the observations that fixed it and the hypotheses they refuted; `git log
 --follow` on any moved file shows that record back to pptx2svg's first commit.
 
 docx2svg needs DrawingML drawn too -- a Word document's floating shapes are DrawingML --
 and the alternative was a second copy of pptx2svg's renderers, which docx2svg had
 started to write (its ROADMAP.md, "Floating drawings -- measured", F.10).
+
+And a Word document holds charts and SmartArt diagrams, which pptx2svg draws. A chart is
+data plus styling in both formats -- the same `c:chartSpace` part -- and is lowered to
+ordinary shapes, lines and text bodies; a SmartArt diagram carries the same cached
+`dsp:drawing` shape tree in both. So the chart reader and layout, the shape tree and text
+body readers, and the renderers that draw the result moved here too.
 
 ## What is in it
 
@@ -54,6 +63,19 @@ started to write (its ROADMAP.md, "Floating drawings -- measured", F.10).
 | `ooxml_common.drawingml.pattern` | The 54 `a:pattFill` presets |
 | `ooxml_common.drawingml.rules` | Where Word and PowerPoint draw the same DrawingML differently, as a parameter of the renderers |
 | `ooxml_common.drawingml.svg` | What the renderers need of the consumer's SVG document (`SvgDefs`), and `num` |
+| `ooxml_common.drawingml.scene` | The drawable scene: resolved text bodies, shapes, connectors, pictures, groups, tables and charts |
+| `ooxml_common.drawingml.source_tree` | A shape tree and its text as the XML states them, before inheritance |
+| `ooxml_common.drawingml.read_tree` | The shape tree reader (`p:spTree`, a group, SmartArt's `dsp:spTree`) |
+| `ooxml_common.drawingml.read_text` | The text body reader (`a:txBody`, `c:rich`, `c:txPr`) |
+| `ooxml_common.drawingml.context` | `RenderContext`: the text measurer, font map, definitions, ids and `DrawingRules` of one render |
+| `ooxml_common.drawingml.elements` | An element or a group as SVG, through a group's child space |
+| `ooxml_common.drawingml.shape` | A shape, connector, picture or table as SVG |
+| `ooxml_common.drawingml.textbody` | A text body laid out in its frame (`a:bodyPr`) and drawn as SVG text |
+| `ooxml_common.drawingml.wrap` | Breaking a DrawingML paragraph into lines |
+| `ooxml_common.drawingml.diagram` | SmartArt: finding a diagram's cached drawing from its data part |
+| `ooxml_common.chart.read` | A chart part (`c:chartSpace`) read, with its cached values |
+| `ooxml_common.chart.layout` | A chart laid out and lowered to scene elements, every constant measured on PowerPoint |
+| `ooxml_common.chart.rules` | Where Word and PowerPoint lay a chart out differently, as a parameter |
 
 ## Where Word and PowerPoint differ
 
@@ -89,17 +111,30 @@ deck, so it waits for a change that is allowed to.
 Every renderer also takes `dpi`, the pixels per inch of the caller's user space: 96 for
 pptx2svg, 300 for docx2svg, which draws on Word's device grid.
 
+The shape, text body and group renderers read the rules from their `RenderContext`
+(`rules`, `POWERPOINT` by default), and a chart's layout takes
+`ooxml_common.chart.rules.ChartRules` (`POWERPOINT`, the default), which carries the
+`DrawingRules` its scene is drawn with. Every constant of the layout was measured on
+PowerPoint (pptx2svg ROADMAP.md, Phase 3); where Word is measured to lay a chart out
+differently, the difference becomes a field there.
+
+What a chart cannot know is the consumer's, and comes in as parameters: the theme's faces,
+text colour and accent cycle (`chart.layout.ChartStyle`), and how a fill, an outline, a
+title's rich text and a theme typeface (`+mn-lt`) resolve -- `ChartBuilder`'s
+`resolve_fill`, `resolve_outline`, `resolve_text` and `resolve_typeface`, each the
+consumer's own inheritance. Text is measured through the `TextMeasurer` protocol, as
+everywhere here.
+
 ## What is deliberately not in it
 
-- **Line breaking.** pptx2svg's `text/wrap.py` breaks DrawingML paragraphs. The method
-  carries over to Word; the types do not. The paragraph protocol a shared line breaker
-  should take is being decided by docx2svg's Phase 3, which breaks lines against Word's
-  own output, not in advance.
-- **Anything that takes a document model.** `render/text.py` lays out an `a:bodyPr`
-  text box, which a Word body does not have; the shape renderer that places elements on a
-  slide, and the resolver that turns what the reader read into drawable values through a
-  slide's inheritance, are pptx2svg's.  (The reader itself is here: what it reads is the
-  same in both formats.)
+- **Line breaking for a Word paragraph.** `drawingml.wrap` breaks DrawingML paragraphs
+  -- a text body's, which a chart and a SmartArt shape carry in Word too. A Word body's
+  paragraphs are a different model and docx2svg breaks them against Word's own output.
+- **Anything that takes a document model.** The resolver that turns what the reader read
+  into drawable values through a slide's inheritance -- placeholders, masters, list
+  styles -- is pptx2svg's, and a Word document's is docx2svg's; so is drawing a whole
+  slide or page. (The readers and the renderers of what they resolve to are here: what
+  they read and draw is the same in both formats.)
 - **The fidelity harnesses.** pptx2svg scores rasterised slides by SSIM; docx2svg
   measures glyph boxes in a vector PDF. They share the idea of an oracle and none of the
   code.

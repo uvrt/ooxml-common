@@ -5,7 +5,8 @@ Extracted from `pptx2svg <https://github.com/uvrt/pptx2svg>`_ with its history, 
 rather than a second copy of them, and draw DrawingML with the same renderers.  Nothing
 here imports either consumer.  The first extraction took what was already free of
 pptx2svg's slide model; the second lifted DrawingML's value types out of that model so its
-fill, outline, effect, geometry and colour renderers could follow.
+fill, outline, effect, geometry and colour renderers could follow; the third brought the
+charts and the shape tree, with the shape and text body renderers that draw them.
 
 * :mod:`ooxml_common.opc` -- the OPC container: ZIP parts, content types, relationships;
 * :mod:`ooxml_common.xmlutil` -- namespace-agnostic helpers over ``xml.etree``;
@@ -18,15 +19,18 @@ fill, outline, effect, geometry and colour renderers could follow.
   measured in;
 * :mod:`ooxml_common.drawingml` -- DrawingML's value types, colour resolution with every
   transform, shape-guide formulas, the complete ECMA-376 preset table with geometry as
-  SVG path data, and fills, outlines, markers and effects as SVG.
+  SVG path data, and fills, outlines, markers and effects as SVG; and the drawable scene
+  -- shapes, text bodies, groups -- with its readers and renderers, and SmartArt's cached
+  drawing;
+* :mod:`ooxml_common.chart` -- a chart part read, laid out and lowered to that scene.
 
 Standard library only at runtime, like both consumers.  Capability arrives through
 extras: ``[measure]`` (fontTools, for measuring real font files) and ``[fonts]`` (the
 OFL font files the tables were measured from).
 
-Line breaking is deliberately **not** here.  pptx2svg's ``text/wrap.py`` breaks DrawingML
-paragraphs, and which paragraph protocol a shared line breaker should take is a question
-docx2svg's Phase 3 answers by breaking lines against Word, not one to settle in advance.
+A Word paragraph's line breaking is deliberately **not** here: docx2svg breaks a Word
+body's paragraphs against Word's own output.  :mod:`ooxml_common.drawingml.wrap` breaks a
+DrawingML text body's, which a chart and a SmartArt shape carry in either format.
 """
 
-__version__ = "0.3.2"
+__version__ = "0.4.0"
