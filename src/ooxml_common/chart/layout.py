@@ -953,11 +953,10 @@ ACCENT_KEYS = ("accent1", "accent2", "accent3", "accent4", "accent5", "accent6")
 #: ``L * 0.76`` for the first cycle and ``L + 0.23 * (1 - L)`` for the second --
 #: they reproduce **all 27 measured channels to the byte**; 0.75 and 0.25, the round
 #: numbers either side, are off by up to 1 and 5 respectively.  The conversion matters as
-#: much as the factor: the same modulation in HLS on sRGB, which is what
-#: :func:`resolve.color._apply_luminance` does for DrawingML's own ``lumMod``, puts
-#: accent1's blue channel at 150 against the 173 PowerPoint drew.  That is a real defect in
-#: the general colour transform and it is **not** fixed here -- changing it moves every
-#: deck in the corpus -- so this ramp carries its own conversion and says why.
+#: much as the factor: the same modulation in HLS on sRGB, which is what DrawingML's own
+#: ``lumMod`` is (:mod:`~ooxml_common.drawingml.color`, measured on PowerPoint swatch by
+#: swatch), puts accent1's blue channel at 150 against the 173 PowerPoint drew.  So this
+#: ramp is not a ``lumMod``, and it carries its own conversion.
 #:
 #: A third cycle is **not measured**: no probe had more than twelve points.  It repeats the
 #: second's tint, which is a guess and is marked as one.
