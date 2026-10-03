@@ -293,8 +293,7 @@ def _entries() -> list[Substitution]:
     #    1234/2048 = 0.602539 em on every character they draw, Cousine is 1229/2048 =
     #    0.600098, and 0.41% is the whole of the error: the line breaks are Cousine's and
     #    PowerPoint's alike, and each drawn line is four thousandths short.  That is the
-    #    closest any face we ship comes -- Consolas, the other Office monospace, is
-    #    0.549805 em and 9.1% away, which is why it is not here.
+    #    closest any face we ship comes.
     #
     #    `approximate` rather than `compatible`, because the widths we measure with are not
     #    the widths we draw with; the number is small enough that the caveat carries it.
@@ -309,6 +308,23 @@ def _entries() -> list[Substitution]:
                 ),
             )
         )
+
+    # -- Consolas, Office's code face, 1126/2048 = 0.549805 em on every character, and
+    #    9.1% narrower than Cousine, the nearest monospace we ship.  It is measured with
+    #    its own widths all the same, because those are what PowerPoint lays the line out
+    #    with: a run after a Consolas space starts 13.25 pt on at 24 pt
+    #    (pptx2svg's ``tools/make_run_probe.py``), where a face with no table was guessed
+    #    at 7.2.  Drawn with Cousine where Consolas is not installed, and 9.1% wide there.
+    rows.append(
+        Substitution(
+            "Consolas", "Cousine", "Consolas",
+            metric_compatible=False,
+            caveat=(
+                "Consolas is 0.549805 em fixed pitch and Cousine is 0.600098; "
+                "measured exactly, drawn 9.1% wide"
+            ),
+        )
+    )
 
     # -- The substitutes, under their own names.  Every row above answers "a deck asked
     #    for an Office face, what do we draw?", and for a long time that was the only

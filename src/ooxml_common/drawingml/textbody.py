@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from ..text.fontmap import font_family_value, synthesises_italic
+from ..text.fontmap import font_family_value, substitution_for, synthesises_italic
 from ..text.measure import is_cjk
 from ..units import PX_PER_PT, emu_to_px, px_to_emu
 from . import scene as m
@@ -737,7 +737,21 @@ def _render_line(
     alone -- so the positions we already computed to wrap the line are also what places
     each run.
 
-    A line that never changes face is left flowing, both because it costs nothing and
+    **A change of face within Latin text does not end a chunk.**  The fallback above is
+    resvg's answer to a character its face cannot draw, and every family stack here ends
+    in a generic family that draws Latin text; a chunk of Latin runs in several faces is
+    drawn in each run's own face (checked: ``iiiiii`` in Calibri then in Consolas, in one
+    chunk, draws the second six at Consolas's pitch).  Splitting there cost what
+    an absolute ``x`` always costs: the next run is put where *our* tables end the one
+    before, and a rasteriser drawing that one in a wider face than was measured -- a
+    substitute, or a host without the font -- draws it into the next.  ``Revenue grew
+    `` then ``12%`` in Consolas came out overlapped that way.  PowerPoint puts the second
+    run at the first one's advance, its trailing space included, in the first one's own
+    face (``tools/make_run_probe.py``, to 0.2 pt); flowing is that, in whatever face
+    draws it.  So the boundary is drawn only where a run is not plain Latin
+    (:func:`_chunk_key`).
+
+    A line that never needs a chunk is left flowing, both because it costs nothing and
     because letting the rasteriser accumulate advances with the real font is *better*
     than trusting our tables when there is no reason not to.
     """
@@ -753,11 +767,11 @@ def _render_line(
         else (piece, _segment_tspans(piece, font_scale, context, default_font_size))
         for piece in pieces
     ]
-    families = [
-        family
+    keys = [
+        _chunk_key(family, text)
         for entry in planned
         if entry is not None
-        for family, _styles, _text, _oblique in entry[1]
+        for family, _styles, text, _oblique in entry[1]
     ]
     any_oblique = any(
         oblique
@@ -766,7 +780,7 @@ def _render_line(
         for _family, _styles, _text, oblique in entry[1]
     )
 
-    if len(set(families)) <= 1 and not honour_tabs and not any_oblique:
+    if len(set(keys)) <= 1 and not honour_tabs and not any_oblique:
         out = []
         first = True
         for entry in planned:
@@ -867,12 +881,13 @@ def _render_line(
                 chunk_width += width
                 continue
 
+            key = _chunk_key(family, text)
             if pending is not None:
                 prefix = _leading(pending[0], take_advance(), pending[1])
                 pending = None
-                previous_family = family
-            elif family != previous_family:
-                previous_family = family
+                previous_family = key
+            elif key != previous_family:
+                previous_family = key
                 # A centre- or right-anchored tab chunk is positioned by its own total
                 # width, so a sub-chunk inside it has no absolute x to give.  Leave that
                 # one flowing and accept resvg's fallback rather than move the text.
@@ -910,6 +925,32 @@ def _advance_only(dy: str) -> str:
 
 #: Sentinel for "no chunk open yet", distinct from a real ``font-family`` of ``None``.
 _NO_FAMILY = object()
+
+#: The chunk key every plain-Latin run shares, whatever its face (:func:`_chunk_key`).
+_LATIN = object()
+
+
+def _chunk_key(family: str | None, text: str) -> object:
+    """What a run must share with the run before it to stay in its chunk.
+
+    A run of plain Latin text -- Latin letters with their accents and extensions,
+    punctuation, currency signs -- can flow on from any other: whatever face it asks for,
+    the stack's generic family draws it.  Anything else keeps its own face's chunk, as
+    every change of face used to (:func:`_render_line`): a run the face may not cover is
+    what makes resvg redraw a whole chunk in its default face.
+    """
+    if all(_plain_latin(ord(char)) for char in text):
+        return _LATIN
+    return family
+
+
+def _plain_latin(code_point: int) -> bool:
+    return (
+        code_point < 0x0370  # Basic Latin to the spacing modifiers
+        or 0x1E00 <= code_point <= 0x1EFF  # Latin Extended Additional
+        or 0x2000 <= code_point <= 0x206F  # General Punctuation
+        or 0x20A0 <= code_point <= 0x20CF  # Currency Symbols
+    )
 
 
 def _tspan_width(
@@ -1266,8 +1307,9 @@ def _segment_tspans(
 
     The family is returned alongside the attribute string it is already inside because
     :func:`_render_line` has to compare it against the next tspan's: an SVG text chunk
-    that changes face part-way through is the one thing resvg cannot draw (see
-    :func:`_render_line`), so the family is what decides where a chunk ends.
+    that changes to a face that cannot draw its text is the one thing resvg cannot draw
+    (see :func:`_render_line`), so the family, unless the text is plain Latin
+    (:func:`_chunk_key`), is what decides where a chunk ends.
 
     The last field says this run is italic in a face that has no italic to draw, so the
     slant has to be sheared on rather than asked for.  It also ends a chunk, because the
@@ -1293,10 +1335,12 @@ def _segment_tspans(
             properties.font_family, properties.font_family_ea, properties.font_family_cs
         ]
         # The face that will actually draw this run is the first name in the stack, which
-        # is the first name in the chain that resolves.
-        oblique = bool(properties.italic) and any(
-            synthesises_italic(name) for name in chain if name
-        )
+        # is the first name in the chain that resolves -- not any name in it.  A Latin run
+        # under a theme whose East Asian face has no italic (the Office theme's 游ゴシック)
+        # is drawn in its Latin face's own italic, as PowerPoint draws it, rather than
+        # sheared upright and lifted out of the line.
+        drawn = next((name for name in chain if name and substitution_for(name)), None)
+        oblique = bool(properties.italic) and synthesises_italic(drawn)
         if oblique:
             # We are about to shear the upright face ourselves, so asking for an italic
             # as well would be a second slant on any host that turns out to have one.
