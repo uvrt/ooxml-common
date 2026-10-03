@@ -91,12 +91,14 @@ def _theme(**slots):
 BLACK_HALF = [m.ColorTransform("lumMod", 50000), m.ColorTransform("lumOff", 50000)]
 
 
-def test_powerpoint_rounding_is_the_default_and_unchanged():
-    """pptx2svg's rule, which it has always had: Python's round, half to even."""
-    assert color.apply_transforms("000000", BLACK_HALF).hex == "#808080"
+def test_powerpoint_is_the_default_and_keeps_its_levels_in_scrgb():
+    """PowerPoint draws black at lumMod 50000 lumOff 50000 as 7F7F7F too, but because the
+    127.5 it computes is kept as 21404/100000 of linear light -- 127.4997 levels -- not by
+    rounding a half down (pptx2svg's tools/make_color_probe.py)."""
+    assert color.apply_transforms("000000", BLACK_HALF).hex == "#7f7f7f"
     context = color.ColorContext(_theme(dk1="000000"), color.build_effective_color_map())
     assert context.rules is color.POWERPOINT
-    assert color.resolve_color(context, m.SchemeColor("tx1", BLACK_HALF)).hex == "#808080"
+    assert color.resolve_color(context, m.SchemeColor("tx1", BLACK_HALF)).hex == "#7f7f7f"
 
 
 def test_word_rounds_a_half_down():

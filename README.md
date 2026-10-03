@@ -85,13 +85,14 @@ takes the application as a parameter rather than choosing one rule for both:
 carries `ooxml_common.drawingml.color.ColorRules`, and which `fill.render_fill_attrs`,
 `fill.render_outline_attrs` and `fill.render_arrowheads` take. Word's column was measured
 by docx2svg's `tools/make_dml_probe.py`, read off Word's PDF (docx2svg ROADMAP.md,
-"DrawingML drawn by the shared renderers"); PowerPoint's is what pptx2svg has always
-drawn, which its fidelity baselines hold byte for byte.
+"DrawingML drawn by the shared renderers"); PowerPoint's is what pptx2svg draws, which its
+fidelity baselines hold, and its colour rows were measured the same way by pptx2svg's
+`tools/make_color_probe.py` (pptx2svg ROADMAP.md, "Colour transforms, measured").
 
 | | PowerPoint (`POWERPOINT`) | Word (`WORD`), measured |
 | --- | --- | --- |
-| A transformed channel's level | the nearest, a half to even | the nearest, **a half down** (black at `lumMod 50000 lumOff 50000` is `7F7F7F`) |
-| Composing transforms | `lumMod` with `lumOff` in one pass wherever they are; a level rounded after each; saturation clamped at 1; `hueMod`, `hueOff`, `satOff`, `gray`, `inv`, `comp` not applied | **in document order, unrounded**, saturation unbounded above, all of them applied (`inv` in linear light); `a:scrgbClr` read as linear light. 54 / 54 swatches, against 36 |
+| A transformed channel's level | kept as linear light in **1/100000** (an `a:scrgbClr` percentage) between steps, rounded at the end (black at `lumOff 50000` is `7F7F7F`) | unrounded between steps, the nearest, **a half down** (black at `lumMod 50000 lumOff 50000` is `7F7F7F`) |
+| Composing transforms | in document order, a run of HLS steps on sRGB channels; saturation unbounded **above and below**, a grey given one red with its blue extrapolated; `gray` by **Rec. 709**; `gamma`, `invGamma`, `alphaMod`, `alphaOff` applied. 3,102 / 3,108 swatches (pptx2svg's `tools/make_color_probe.py`) | **in document order, unrounded**, saturation unbounded above, `gray` by Rec. 601, `inv` in linear light; `a:scrgbClr` read as linear light. 54 / 54 swatches |
 | A linear gradient's span | the box's width, in box units | through the centre, **corner to corner** projected on the direction; `scaled` stretches the unit square's; `rotWithShape="0"` holds the angle to the page |
 | A two-stop 0-100% gradient | blended in sRGB | eased (cosine) **in linear light**; a stop's alpha not drawn |
 | Path gradients | radial, to the farthest corner | `circle` from the `fillToRect` point to the corners' circle round the centre; `rect` / `shape` rectangular rings |
@@ -104,12 +105,12 @@ drawn, which its fidelity baselines hold byte for byte.
 | A text body's first baseline (`first_baseline`) | the measurer's ascent, scaled by the spacing | the **spaced line box less the face's descent**; the next line a descent on, then its box less its descent |
 
 Most of Word's column is probably Office's shared engine and so PowerPoint's too; that is
-not measured, and pptx2svg's output is not moved on a guess. `tint` and `shade` in linear
-light and `lumMod` / `lumOff` / `satMod` in HLS are measured the same in both. And one
-known defect moved as it was: PowerPoint shades a chart's accent cycle in linear light,
-where the HLS `lumMod` here is up to 23 levels off (pptx2svg ROADMAP.md) -- pptx2svg's
-chart ramp carries its own conversion, and fixing the general transform would move every
-deck, so it waits for a change that is allowed to.
+not measured, and pptx2svg's output is not moved on a guess. The colour rows are the
+exception, measured on both: they compose alike, and `tint` and `shade` in linear light and
+`lumMod` / `lumOff` / `satMod` in HLS are the same in both. And one known defect moved as
+it was: PowerPoint shades a chart's accent cycle in linear light, where HLS `lumMod` is up
+to 23 levels off (pptx2svg ROADMAP.md) -- that ramp is not a DrawingML transform, and
+pptx2svg's chart layout carries its own conversion for it.
 
 Every renderer also takes `dpi`, the pixels per inch of the caller's user space: 96 for
 pptx2svg, 300 for docx2svg, which draws on Word's device grid.

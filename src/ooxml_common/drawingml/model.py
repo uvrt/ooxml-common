@@ -29,10 +29,11 @@ from typing import Literal, Union
 
 ColorTransformKind = Literal[
     "lumMod", "lumOff", "tint", "shade", "alpha", "satMod", "satOff",
-    # Read since the reader moved here; applied only under rules that measured them
-    # (:data:`~ooxml_common.drawingml.color.WORD`).  ``gray``, ``inv`` and ``comp`` take no
-    # value and are carried with 0.
     "hueMod", "hueOff", "gray", "inv", "comp",
+    # Applied only under rules that measured them
+    # (:data:`~ooxml_common.drawingml.color.POWERPOINT`).  ``gray``, ``inv``, ``comp``,
+    # ``gamma`` and ``invGamma`` take no value and are carried with 0.
+    "gamma", "invGamma", "alphaMod", "alphaOff",
 ]
 
 

@@ -63,10 +63,10 @@ from .source import (
 COLOR_ELEMENTS = ("srgbClr", "schemeClr", "sysClr", "prstClr", "scrgbClr", "hslClr")
 COLOR_TRANSFORM_KINDS = {
     "lumMod", "lumOff", "tint", "shade", "alpha", "satMod", "satOff", "hueMod", "hueOff", "gray", "inv",
-    "comp",
+    "comp", "gamma", "invGamma", "alphaMod", "alphaOff",
 }
 #: The transforms that take no value (ECMA-376 20.1.2.3): read as 0.
-VALUELESS_TRANSFORMS = {"gray", "inv", "comp"}
+VALUELESS_TRANSFORMS = {"gray", "inv", "comp", "gamma", "invGamma"}
 
 DASH_STYLES = {
     "solid",

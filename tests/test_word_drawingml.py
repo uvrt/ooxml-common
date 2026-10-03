@@ -53,11 +53,12 @@ def test_word_composes_transforms_as_measured(base, transforms, expected):
     assert color.apply_transforms(base, transforms, color.WORD).hex == "#" + expected.lower()
 
 
-def test_powerpoint_composition_is_untouched():
-    # pptx2svg's pairing and per-step rounding, and its saturation clamp.
-    assert color.apply_transforms("4472C4", _t(("lumOff", 40000), ("lumMod", 60000))).hex == "#8faadc"
-    assert color.apply_transforms("4472C4", _t(("satMod", 200000))).hex == "#0961ff"
-    assert color.apply_transforms("4472C4", _t(("hueMod", 50000))).hex == "#4472c4"
+def test_word_does_not_apply_what_its_probe_did_not_measure():
+    # PowerPoint's gamma, invGamma, alphaMod and alphaOff (test_powerpoint_color.py).
+    for kind, value in (("gamma", 0), ("invGamma", 0)):
+        assert color.apply_transforms("4472C4", _t((kind, value)), color.WORD).hex == "#4472c4"
+    resolved = color.apply_transforms("4472C4", _t(("alpha", 50000), ("alphaMod", 50000)), color.WORD)
+    assert resolved.alpha == 0.5
 
 
 def test_scrgb_is_linear_light_for_word():

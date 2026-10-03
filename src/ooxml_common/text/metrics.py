@@ -2463,6 +2463,20 @@ METRICS: dict[str, FontMetrics] = {
         bold_widths={},
         kerning=_KERN.get("Lucida Sans Typewriter"),
     ),
+    "Consolas": FontMetrics(
+        # MEASURED ONLY -- monospace 1126/2048 = 0.5498 em; no CJK at all
+        units_per_em=2048,
+        ascender=1521,
+        descender=-527,
+        line_gap=350,
+        default_width=1126,
+        cjk_width=2048,
+        widths={},
+        bold_default_width=1126,
+        bold_cjk_width=2048,
+        bold_widths={},
+        kerning=_KERN.get("Consolas"),
+    ),
 }
 
 # --- END GENERATED METRICS ---

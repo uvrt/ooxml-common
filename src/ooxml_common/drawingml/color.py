@@ -6,40 +6,63 @@ theme colour; the slide master's ``p:clrMap`` says which theme entry (``dk1``, `
 transforms -- ``lumMod``, ``lumOff``, ``tint``, ``shade``, ``alpha`` -- apply, in the
 order PowerPoint applies them.
 
-**Where Word and PowerPoint measurably differ, the caller says which it is reproducing**,
-through :class:`ColorRules` -- :data:`POWERPOINT` (the default, and exactly what pptx2svg
-has always done) or :data:`WORD`.  One rule is not picked for both, because each was
+**Both applications apply the transforms in document order, on channels clamped to 0-1
+between steps, and where they measurably differ the caller says which it is reproducing**,
+through :class:`ColorRules` -- :data:`POWERPOINT` (the default) or :data:`WORD`.  Each was
 measured against its own application:
 
-* **Rounding a channel to a level.**  docx2svg measured Word resolving ``lumMod`` /
-  ``lumOff`` in HSL and rounding each channel to the nearest level **a half down**: black at
-  ``lumMod 50000 lumOff 50000`` (127.5 levels) is drawn ``7F7F7F`` (docx2svg ROADMAP.md,
-  "Floating drawings -- measured", F.3; ``tools/make_drawing_probe.py``).  pptx2svg rounds
-  with Python's ``round``, half to even -- 127.5 becomes 128, ``808080`` -- and its swatch
-  probe found ``lumMod`` / ``lumOff`` within 2/255 of PowerPoint on every swatch (pptx2svg
-  ROADMAP.md, "Also found on the way"), which does not settle a half level either way.
+* **Word** -- docx2svg's ``tools/make_dml_probe.py`` (its ROADMAP.md, "DrawingML drawn by
+  the shared renderers"), 54 swatches, every one Word's to the level under :data:`WORD`.
+  The order matters (``lumOff 40000`` before ``lumMod 60000`` is ``517CC8``, not the
+  paired ``8FAADC``); the channels stay unrounded between steps (Office's theme gradient
+  stops, three transforms each, came out a level off when every step rounded), and the
+  result is rounded a half down: black at ``lumMod 50000 lumOff 50000`` (127.5 levels)
+  is ``7F7F7F`` (F.3).  ``satMod`` leaves the saturation **unbounded above** --
+  ``satMod 200000`` on ``4472C4`` is ``0460FF``, the HLS formula evaluated with a
+  saturation over 1 and each channel clamped, where clamping the saturation gives
+  ``0961FF``.  ``tint`` and ``shade`` blend in linear light; ``lumMod``, ``lumOff``,
+  ``satMod``, ``satOff``, ``hueMod``, ``hueOff`` and ``comp`` (the hue turned half way)
+  work in HLS on the sRGB channels; ``gray`` is a Rec. 601 luma of the sRGB channels and
+  ``inv`` inverts in linear light; ``a:scrgbClr`` is linear light.
 
-* **How transforms compose** -- measured on Word by docx2svg's
-  ``tools/make_dml_probe.py`` (ROADMAP.md, "DrawingML drawn by the shared renderers"): 54
-  swatches, every one Word's to the level under :data:`WORD` and 36 of them under
-  :data:`POWERPOINT`.  Word applies the transforms **in document order**
-  (``lumOff 40000`` before ``lumMod 60000`` is ``517CC8``, not the paired ``8FAADC``), **on
-  unrounded channels** clamped to 0-1 between steps (Office's theme gradient stops, three
-  transforms each, came out a level off when every step rounded), with the **saturation
-  unbounded above** (``satMod 200000`` on ``4472C4`` is ``0460FF``: the HLS formula
-  evaluated with a saturation over 1, each channel clamped, where clamping the
-  saturation gives ``0961FF``), and it applies ``satOff``, ``hueMod``, ``hueOff``,
-  ``comp`` (the hue turned half way), ``gray`` (Rec. 601 luma on the sRGB channels) and
-  ``inv`` (in linear light), and reads ``a:scrgbClr`` as linear light.  ``tint`` and
-  ``shade`` in linear light, and ``lumMod`` / ``lumOff`` / ``satMod`` in HLS, are
-  PowerPoint's to the level.  pptx2svg's composition (``lumMod`` with ``lumOff`` in one
-  pass wherever they are, a level rounded after every transform, the saturation clamped
-  at 1) is unmeasured for PowerPoint beyond its swatches, so :data:`POWERPOINT` keeps it.
+* **PowerPoint** -- pptx2svg's ``tools/make_color_probe.py`` (its ROADMAP.md, "Colour
+  transforms, measured"): 3,108 swatches read exactly off PowerPoint 16's PDF export, of
+  which :data:`POWERPOINT` draws 3,102 to the level (the composition pptx2svg had before
+  drew 1,507, and :data:`WORD`'s draws 2,902).  It composes as Word does, in order and
+  with the saturation unbounded above: ``tint 95000 satMod 170000`` on ``ED7D31`` is
+  ``FF7818`` (a raster reading of the same fill had put it at ``FF7718``).  What differs:
+
+  - **the colour is kept as linear-light channels in 1/100000** -- an ``a:scrgbClr``'s
+    percentages -- from the base colour on, after every step except inside a run of HLS
+    transforms, which stays on sRGB channels (each step still clamped) and is kept where
+    it ends.  That quantum, and no other, puts the half levels where PowerPoint does:
+    3,102 swatches agree with it, against 2,997 kept in 1/1000000, 2,990 in 1/65535, 2,899
+    in 1/10000 and 2,960 unrounded; black at ``lumOff 50000`` is ``7F7F7F`` this way, not
+    by rounding a half down, and a level kept between two HLS steps puts 28 of the
+    swatches a level off;
+  - **the saturation is unbounded below** as well: ``satOff -50000`` on ``70AD47`` is
+    ``7C7084``, the hue turned over, not the grey ``7A7A7A`` a floor at 0 gives;
+  - **a grey given a saturation is red at hue 0 with its blue channel extrapolated**:
+    ``satOff 25000`` on ``808080`` is ``A06000`` -- red at the high level, green at the
+    low one, blue at ``3 * low - 2 * high``, which is the HLS ramp evaluated a third of a
+    turn back without wrapping it;
+  - ``gray`` weighs the sRGB channels by **Rec. 709**: ``ED7D31`` is ``8F8F8F``, where
+    Rec. 601 gives ``969696``.  (Word's one ``gray`` swatch, ``4472C4``, is ``6E6E6E``
+    under either weighting, so :data:`WORD` keeps the 601 it was written with.)
+  - ``gamma`` reads the channels as linear light and encodes them as sRGB (``4472C4``
+    is ``8DB2E3``), ``invGamma`` the reverse (``0F2B8D``); ``alphaMod`` multiplies the
+    opacity and ``alphaOff`` adds to it.  Word's probe had none of these, so :data:`WORD`
+    does not apply them.
+
+  What PowerPoint draws and :data:`POWERPOINT` does not: two swatches land within a few
+  thousandths of a half level and are drawn a level the other way; and ``lumMod 200000``
+  then ``lumOff`` on ``FFE699`` is ``FFDFDF`` (``00FFFF`` for ``lumOff -50000``), where
+  the seven other bases measured go white and then grey as the clamp says.
 
 **A known defect, moved as it is.**  PowerPoint shades a chart's accent cycle in linear
-light, and the HLS-on-sRGB ``lumMod`` here puts accent1's blue at 150 where PowerPoint drew
-173 (pptx2svg ROADMAP.md, the ``ofPie`` accent cycle).  pptx2svg's chart ramp carries its
-own conversion for that; fixing it here would move every deck, so it is not done in a move.
+light, and HLS ``lumMod`` on sRGB puts accent1's blue at 150 where PowerPoint drew 173
+(pptx2svg ROADMAP.md, the ``ofPie`` accent cycle).  That ramp is not a DrawingML transform,
+and pptx2svg's chart layout carries its own conversion for it.
 """
 
 from __future__ import annotations
@@ -53,22 +76,45 @@ from typing import Protocol
 from .model import ResolvedColor, SourceColor
 
 
+#: The transforms Word's probe measured, and so the ones :data:`WORD` applies.
+WORD_TRANSFORMS = frozenset({
+    "lumMod", "lumOff", "satMod", "satOff", "hueMod", "hueOff", "comp", "tint", "shade",
+    "inv", "gray", "alpha",
+})
+
+#: PowerPoint's, measured: Word's and ``gamma``, ``invGamma``, ``alphaMod``, ``alphaOff``.
+POWERPOINT_TRANSFORMS = WORD_TRANSFORMS | {"gamma", "invGamma", "alphaMod", "alphaOff"}
+
+#: Luma weights of the sRGB channels for ``gray``.
+REC_601 = (0.299, 0.587, 0.114)
+REC_709 = (0.2126, 0.7152, 0.0722)
+
+
 @dataclass(frozen=True)
 class ColorRules:
     """How one application applies a colour's transforms and turns the result into levels.
 
-    ``round_channel`` takes a channel as a float on 0-255 and returns the level drawn, before
-    clamping.  ``composition`` is ``"paired"`` (pptx2svg's) or ``"sequential"`` (Word's,
-    measured); see the module docstring for the evidence behind each instance.
+    Both apply the transforms in document order on channels clamped to 0-1 between steps
+    (module docstring).  ``round_channel`` takes a channel as a float on 0-255 and returns
+    the level drawn, before clamping.  ``precision`` is the quantum the channels are kept
+    in between steps, as linear-light fractions (100000: an ``a:scrgbClr``'s
+    percentages), or ``None`` to keep them unrounded.  ``transforms`` are the kinds
+    applied; any other is passed over.  ``luma`` weighs the sRGB channels for ``gray``.
+    ``negative_saturation`` lets ``satMod`` / ``satOff`` take the saturation below 0, and
+    ``achromatic_extrapolates`` draws a grey given a saturation as PowerPoint does.
     """
 
     name: str
     round_channel: Callable[[float], int]
-    composition: str = "paired"
+    precision: int | None = None
+    transforms: frozenset[str] = WORD_TRANSFORMS
+    luma: tuple[float, float, float] = REC_601
+    negative_saturation: bool = False
+    achromatic_extrapolates: bool = False
 
 
 def round_half_even(value: float) -> int:
-    """Python's ``round``: the nearest level, a tie to the even one.  pptx2svg's rule."""
+    """Python's ``round``: the nearest level, a tie to the even one."""
     return int(round(value))
 
 
@@ -81,12 +127,20 @@ def round_half_down(value: float) -> int:
     return math.ceil(value - 0.5 - 1e-9)
 
 
-#: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
-POWERPOINT = ColorRules("powerpoint", round_half_even)
+#: PowerPoint, as pptx2svg's colour probe measured it.  The default everywhere here.
+POWERPOINT = ColorRules(
+    "powerpoint",
+    round_half_even,
+    precision=100000,
+    transforms=POWERPOINT_TRANSFORMS,
+    luma=REC_709,
+    negative_saturation=True,
+    achromatic_extrapolates=True,
+)
 
 #: Word, as docx2svg measured it: every transform in document order on unrounded
 #: channels, the result rounded a half down.
-WORD = ColorRules("word", round_half_down, "sequential")
+WORD = ColorRules("word", round_half_down)
 
 
 class Theme(Protocol):
@@ -204,7 +258,7 @@ def resolve_color(
         return None
     rules = _rules(context)
     linear = getattr(color, "linear", None)
-    if linear is not None and rules.composition == "sequential":
+    if linear is not None:
         return apply_transforms_linear(linear, color.transforms, rules)
     base = _resolve_base_hex(context, color, visited)
     if base is None:
@@ -236,12 +290,7 @@ def apply_transforms(
 def apply_transforms_linear(
     linear: tuple[float, float, float], transforms, rules: ColorRules = POWERPOINT
 ) -> ResolvedColor:
-    """As :func:`apply_transforms`, from channels in linear light (an ``a:scrgbClr``'s),
-    for rules that compose in order (:data:`WORD`); others start from the reader's
-    sRGB reading of them."""
-    if rules.composition != "sequential":
-        hex_value = "".join(f"{round(max(0.0, min(1.0, v)) * 255):02x}" for v in linear)
-        return _apply_transforms("#" + hex_value, transforms, rules)
+    """As :func:`apply_transforms`, from channels in linear light (an ``a:scrgbClr``'s)."""
     return _apply_sequential([_linear_to_srgb(v) / 255 for v in linear], transforms, rules)
 
 
@@ -268,34 +317,10 @@ def _resolve_base_hex(context, color: SourceColor, visited: frozenset[str]) -> s
     return None
 
 
-def _apply_transforms(initial_hex: str, transforms, rules: ColorRules = POWERPOINT) -> ResolvedColor:
-    if rules.composition == "sequential":
-        return _apply_sequential([c / 255 for c in _hex_to_rgb(initial_hex)], transforms, rules)
-    hex_value = initial_hex
-    alpha = 1.0
-    kinds = {transform.kind for transform in transforms}
-
-    for transform in transforms:
-        kind = transform.kind
-        if kind == "lumMod":
-            # lumOff is a companion of lumMod; apply both in one pass.
-            lum_off = next((t.value for t in transforms if t.kind == "lumOff"), 0)
-            hex_value = _apply_luminance(
-                hex_value, transform.value / 100000, lum_off / 100000, rules
-            )
-        elif kind == "lumOff":
-            if "lumMod" not in kinds:
-                hex_value = _apply_luminance(hex_value, 1.0, transform.value / 100000, rules)
-        elif kind == "tint":
-            hex_value = _apply_tint(hex_value, transform.value / 100000, rules)
-        elif kind == "shade":
-            hex_value = _apply_shade(hex_value, transform.value / 100000, rules)
-        elif kind == "alpha":
-            alpha = transform.value / 100000
-        elif kind == "satMod":
-            hex_value = _apply_saturation(hex_value, transform.value / 100000, rules)
-
-    return ResolvedColor(hex=hex_value, alpha=alpha)
+def _apply_transforms(
+    initial_hex: str, transforms, rules: ColorRules = POWERPOINT
+) -> ResolvedColor:
+    return _apply_sequential([c / 255 for c in _hex_to_rgb(initial_hex)], transforms, rules)
 
 
 def _normalize_hex(value: str) -> str:
@@ -316,88 +341,48 @@ def _rgb_to_hex(r: float, g: float, b: float, rules: ColorRules = POWERPOINT) ->
     return "#" + "".join(f"{max(0, min(255, rules.round_channel(v))):02x}" for v in (r, g, b))
 
 
-def _apply_luminance(
-    value: str, lum_mod: float, lum_off: float, rules: ColorRules = POWERPOINT
-) -> str:
-    r, g, b = _hex_to_rgb(value)
-    hue, lum, sat = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
-    lum = max(0.0, min(1.0, lum * lum_mod + lum_off))
-    red, green, blue = colorsys.hls_to_rgb(hue, lum, sat)
-    return _rgb_to_hex(red * 255, green * 255, blue * 255, rules)
-
-
-def _apply_saturation(value: str, sat_mod: float, rules: ColorRules = POWERPOINT) -> str:
-    r, g, b = _hex_to_rgb(value)
-    hue, lum, sat = colorsys.rgb_to_hls(r / 255, g / 255, b / 255)
-    sat = max(0.0, min(1.0, sat * sat_mod))
-    red, green, blue = colorsys.hls_to_rgb(hue, lum, sat)
-    return _rgb_to_hex(red * 255, green * 255, blue * 255, rules)
-
-
-def _srgb_to_linear(channel: int) -> float:
-    value = channel / 255
-    if value <= 0.04045:
-        return value / 12.92
-    return ((value + 0.055) / 1.055) ** 2.4
-
-
 def _linear_to_srgb(value: float) -> float:
+    """A linear-light channel, 0-1, as an sRGB level on 0-255 (unrounded)."""
     value = max(0.0, min(1.0, value))
     if value <= 0.0031308:
         return value * 12.92 * 255
     return (1.055 * value ** (1 / 2.4) - 0.055) * 255
 
 
-def _apply_tint(value: str, amount: float, rules: ColorRules = POWERPOINT) -> str:
-    """Keep ``amount`` of the colour and make up the rest with white.
-
-    ECMA-376 defines tint as "a 10% tint is 10% of the input colour combined with 90%
-    white" -- so the value is how much of the *original* survives, not how far it moves.
-    PowerPoint does the blend in linear-light space, which is why a 40% tint of a mid
-    blue comes out visibly paler than a naive sRGB interpolation predicts; verified
-    swatch-by-swatch against PowerPoint's own PDF export.
-    """
-    return _rgb_to_hex(
-        *(
-            _linear_to_srgb(_srgb_to_linear(channel) * amount + (1 - amount))
-            for channel in _hex_to_rgb(value)
-        ),
-        rules=rules,
-    )
+def _srgb_to_linear_unit(value: float) -> float:
+    """An sRGB channel, 0-1, in linear light, 0-1."""
+    if value <= 0.04045:
+        return value / 12.92
+    return ((value + 0.055) / 1.055) ** 2.4
 
 
-def _apply_shade(value: str, amount: float, rules: ColorRules = POWERPOINT) -> str:
-    """Keep ``amount`` of the colour and make up the rest with black.
-
-    The linear-light note on :func:`_apply_tint` applies here too.
-    """
-    return _rgb_to_hex(
-        *(
-            _linear_to_srgb(_srgb_to_linear(channel) * amount)
-            for channel in _hex_to_rgb(value)
-        ),
-        rules=rules,
-    )
+#: The transforms worked in HLS on the sRGB channels.
+_HLS_TRANSFORMS = frozenset({"lumMod", "lumOff", "satMod", "satOff", "hueMod", "hueOff", "comp"})
 
 
 def _apply_sequential(rgb: list[float], transforms, rules: ColorRules) -> ResolvedColor:
-    """Word's composition (module docstring): each transform in document order on sRGB
-    channels 0-1 kept unrounded and clamped between steps, rounded once at the end."""
+    """Each transform in document order on sRGB channels 0-1, clamped between steps and
+    kept to ``rules.precision`` except within a run of HLS transforms, rounded to levels
+    once at the end (module docstring)."""
     alpha = 1.0
-    for transform in transforms:
+    keep = _keeper(rules.precision)
+    rgb = [keep(channel) for channel in rgb]
+    applied = [transform for transform in transforms if transform.kind in rules.transforms]
+    for index, transform in enumerate(applied):
         kind = transform.kind
         amount = transform.value / 100000
         rgb = [max(0.0, min(1.0, channel)) for channel in rgb]
-        if kind in ("lumMod", "lumOff", "satMod", "satOff", "hueMod", "hueOff", "comp"):
+        if kind in _HLS_TRANSFORMS:
+            achromatic = max(rgb) == min(rgb)
             hue, lum, sat = colorsys.rgb_to_hls(*rgb)
             if kind == "lumMod":
                 lum = max(0.0, min(1.0, lum * amount))
             elif kind == "lumOff":
                 lum = max(0.0, min(1.0, lum + amount))
             elif kind == "satMod":
-                sat = max(0.0, sat * amount)
+                sat = sat * amount if rules.negative_saturation else max(0.0, sat * amount)
             elif kind == "satOff":
-                sat = max(0.0, sat + amount)
+                sat = sat + amount if rules.negative_saturation else max(0.0, sat + amount)
             elif kind == "hueMod":
                 hue = (hue * amount) % 1.0
             elif kind == "hueOff":
@@ -405,30 +390,59 @@ def _apply_sequential(rgb: list[float], transforms, rules: ColorRules) -> Resolv
             else:
                 hue = (hue + 0.5) % 1.0
             rgb = _hls_to_rgb_unbounded(hue, lum, sat)
+            if achromatic and sat != 0 and rules.achromatic_extrapolates:
+                # PowerPoint's grey is red at hue 0, its blue a third of a turn back on
+                # the ramp, unwrapped (module docstring).
+                high, low = rgb[0], rgb[1]
+                rgb[2] = 3 * low - 2 * high
         elif kind == "tint":
-            rgb = [_linear_to_srgb(_srgb_to_linear_unit(c) * amount + (1 - amount)) / 255 for c in rgb]
+            rgb = [
+                _linear_to_srgb(_srgb_to_linear_unit(c) * amount + (1 - amount)) / 255 for c in rgb
+            ]
         elif kind == "shade":
             rgb = [_linear_to_srgb(_srgb_to_linear_unit(c) * amount) / 255 for c in rgb]
         elif kind == "inv":
             rgb = [_linear_to_srgb(1 - _srgb_to_linear_unit(c)) / 255 for c in rgb]
         elif kind == "gray":
-            luma = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
+            luma = sum(weight * c for weight, c in zip(rules.luma, rgb))
             rgb = [luma, luma, luma]
+        elif kind == "gamma":
+            rgb = [_linear_to_srgb(c) / 255 for c in rgb]
+        elif kind == "invGamma":
+            rgb = [_srgb_to_linear_unit(c) for c in rgb]
         elif kind == "alpha":
             alpha = amount
+        elif kind == "alphaMod":
+            alpha = max(0.0, min(1.0, alpha * amount))
+        elif kind == "alphaOff":
+            alpha = max(0.0, min(1.0, alpha + amount))
+        following = applied[index + 1].kind if index + 1 < len(applied) else None
+        if not (kind in _HLS_TRANSFORMS and following in _HLS_TRANSFORMS):
+            # A run of HLS transforms stays on sRGB channels; it is kept where it ends.
+            rgb = [keep(channel) for channel in rgb]
     return ResolvedColor(hex=_rgb_to_hex(*(c * 255 for c in rgb), rules=rules), alpha=alpha)
 
 
-def _srgb_to_linear_unit(value: float) -> float:
-    if value <= 0.04045:
-        return value / 12.92
-    return ((value + 0.055) / 1.055) ** 2.4
+def _keeper(precision: int | None) -> Callable[[float], float]:
+    """What a step's channel becomes before the next: itself, or -- PowerPoint -- its
+    linear-light value in ``1 / precision``, an ``a:scrgbClr`` percentage, as sRGB again."""
+    if precision is None:
+        return lambda channel: channel
+
+    def keep(channel: float) -> float:
+        linear = _srgb_to_linear_unit(max(0.0, min(1.0, channel)))
+        return _linear_to_srgb(math.floor(linear * precision + 0.5) / precision) / 255
+
+    return keep
 
 
 def _hls_to_rgb_unbounded(hue: float, lum: float, sat: float) -> list[float]:
-    """HLS to RGB by the textbook formula, *not* clamping the saturation to 1: Word lets
-    ``satMod`` push it past 1 and clamps the channels instead (module docstring)."""
-    if sat == 0:
+    """HLS to RGB by the textbook formula, *not* clamping the saturation to 0-1: both
+    applications let ``satMod`` push it past 1 and clamp the channels instead, and
+    PowerPoint lets it go below 0 (module docstring)."""
+    if sat == 0 or lum in (0.0, 1.0):
+        # Black and white whatever the saturation: exactly, not to a rounding error that
+        # the next transform would read as a hue.
         return [lum, lum, lum]
     high = lum * (1 + sat) if lum < 0.5 else lum + sat - lum * sat
     low = 2 * lum - high
