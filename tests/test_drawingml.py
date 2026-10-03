@@ -132,6 +132,34 @@ def test_scheme_resolution_through_the_colour_map_and_fallback():
     assert tint.alpha == 0.3
 
 
+# -- style references ------------------------------------------------------------------
+
+_A = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"'
+
+
+def test_a_font_reference_keeps_the_collection_it_names():
+    from xml.etree.ElementTree import fromstring
+
+    from ooxml_common.drawingml import read
+
+    style = read.parse_shape_style(fromstring(
+        f'<p:style {_A} xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
+        '<a:lnRef idx="2"><a:schemeClr val="accent1"><a:shade val="15000"/></a:schemeClr>'
+        '</a:lnRef><a:fillRef idx="1"><a:schemeClr val="accent1"/></a:fillRef>'
+        '<a:effectRef idx="0"><a:schemeClr val="accent1"/></a:effectRef>'
+        '<a:fontRef idx="major"><a:schemeClr val="lt1"/></a:fontRef></p:style>'
+    ))
+    assert style.font_ref.collection == "major"
+    assert style.font_ref.idx == 0
+    assert style.font_ref.color.scheme == "lt1"
+    # A numbered reference names no collection.
+    assert (style.fill_ref.idx, style.fill_ref.collection) == (1, None)
+    assert (style.line_ref.idx, style.line_ref.collection) == (2, None)
+    for value, expected in (("minor", "minor"), ("none", "none"), ("bogus", None)):
+        ref = read.parse_style_reference(fromstring(f'<a:fontRef {_A} idx="{value}"/>'))
+        assert ref.collection == expected
+
+
 # -- the complete preset table ---------------------------------------------------------
 
 #: ST_ShapeType in ECMA-376 Part 1, 5th edition, dml-main.xsd: 187 names.

@@ -604,7 +604,16 @@ def parse_arrow_endpoint(node: Element | None) -> ArrowEndpoint | None:
 def parse_style_reference(node: Element | None) -> SourceStyleReference | None:
     if node is None:
         return None
-    return SourceStyleReference(idx=int(num_attr(node, "idx") or 0), color=parse_color(node))
+    collection = attr(node, "idx")
+    return SourceStyleReference(
+        idx=int(num_attr(node, "idx") or 0),
+        color=parse_color(node),
+        collection=collection if collection in FONT_COLLECTIONS else None,
+    )
+
+
+#: ``ST_FontCollectionIndex``: what ``a:fontRef@idx`` says instead of a number.
+FONT_COLLECTIONS = frozenset({"major", "minor", "none"})
 
 
 def parse_shape_style(style: Element | None) -> SourceShapeStyle | None:

@@ -140,10 +140,17 @@ class SourceOutline:
 
 @dataclass
 class SourceStyleReference:
-    """``a:fillRef`` / ``a:lnRef`` / ``a:effectRef`` -- an index into the theme's fmtScheme."""
+    """``a:fillRef`` / ``a:lnRef`` / ``a:effectRef`` -- an index into the theme's fmtScheme.
+
+    ``a:fontRef`` is read into the same shape, but its ``idx`` names a font collection of
+    the theme's ``a:fontScheme`` rather than a numbered entry: that is ``collection``
+    (``"major"``, ``"minor"`` or ``"none"``), and ``idx`` is then 0.  PowerPoint draws the
+    shape's text in the collection's face (measured, pptx2svg's ``make_style_probe.py``).
+    """
 
     idx: int
     color: SourceColor | None = None
+    collection: str | None = None
 
 
 @dataclass
