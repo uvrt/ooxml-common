@@ -2300,6 +2300,11 @@ class ChartStyle:
     #: Whether the deck was written by PowerPoint 2007, whose missing chart elements
     #: PowerPoint reads with that version's defaults; see :func:`written_by_office_2007`.
     office_2007: bool = False
+    #: The axis, tick and gridline colour where no ``c:spPr`` says (``#RRGGBB``), or
+    #: ``None`` for :data:`DEFAULT_AXIS_COLOR` (:data:`OFFICE_2007_AXIS_COLOR` in a 2007
+    #: deck).  The caller's to set: Word draws them ``#898989`` in a chart that states a
+    #: ``c14:style`` (docx2svg's ``make_chart_text_probe.py``).
+    line_color: str | None = None
 
 
 @dataclass
@@ -9051,7 +9056,7 @@ class ChartBuilder:
         resolved = self._resolve_outline(outline) if outline is not None else None
         if resolved is not None and resolved.fill is not None:
             return resolved
-        color = OFFICE_2007_AXIS_COLOR if self.style.office_2007 else DEFAULT_AXIS_COLOR
+        color = self.style.line_color or (OFFICE_2007_AXIS_COLOR if self.style.office_2007 else DEFAULT_AXIS_COLOR)
         return m.Outline(
             width=DEFAULT_AXIS_LINE_EMU,
             fill=m.SolidFill(color=m.ResolvedColor(hex=color)),

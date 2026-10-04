@@ -95,14 +95,15 @@ def _title(rich, text, size, align):
         properties=m.ParagraphProperties(alignment=align))])
 
 
-def build(xml: str, rules=chart_rules.POWERPOINT, *, height=HEIGHT):
+def build(xml: str, rules=chart_rules.POWERPOINT, *, height=HEIGHT, line_color=None):
     source = parse_chart_space(ET.fromstring(xml))
     plots = drawable_plots(source)
     builder = ChartBuilder(
         source, plots[0], width_pt=WIDTH, height_pt=height,
         style=ChartStyle(font_family="Aptos", font_size=default_font_size(source),
                          color=m.ResolvedColor(hex="#000000"),
-                         accents=[m.ResolvedColor(hex="#4472C4"), m.ResolvedColor(hex="#ED7D31")]),
+                         accents=[m.ResolvedColor(hex="#4472C4"), m.ResolvedColor(hex="#ED7D31")],
+                         line_color=line_color),
         resolve_fill=_fill, resolve_outline=_outline, resolve_text=_title, plots=plots, rules=rules,
     )
     children, _data = builder.build()
@@ -419,6 +420,15 @@ def test_word_gives_a_short_plot_half_its_shortfall():
     # Down to nothing.
     top, _, bottom = _plot_top_left_bottom(build(short, chart_rules.WORD, height=30.0)[1])
     assert bottom - top == pytest.approx(0.01)
+
+
+def _line_colours(children) -> set:
+    return {c.outline.fill.color.hex for c in children if isinstance(c, m.ConnectorElement) and c.outline}
+
+
+def test_a_caller_s_default_line_colour_paints_the_axes_and_gridlines():
+    assert _line_colours(build(chart(), chart_rules.WORD, line_color="#898989")[1]) == {"#898989"}
+    assert _line_colours(build(chart(), chart_rules.WORD)[1]) == {"#000000"}
 
 
 def test_the_reader_says_whether_a_title_and_auto_title_deleted_are_stated():
