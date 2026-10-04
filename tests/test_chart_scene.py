@@ -194,6 +194,45 @@ def test_the_cached_drawing_is_keyed_from_the_data_part_through_the_owner():
     assert diagram_drawing_part(package, "word/document.xml", "word/diagrams/data1.xml") is None
 
 
+DATA_REL = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData"
+
+
+def _keyed_data_model(rel_id: str) -> str:
+    return (
+        f'<dgm:dataModel xmlns:dgm="http://schemas.openxmlformats.org/drawingml/2006/diagram" '
+        f'xmlns:dsp="{DSP}"><dgm:extLst><dgm:ext><dsp:dataModelExt relId="{rel_id}"/>'
+        "</dgm:ext></dgm:extLst></dgm:dataModel>"
+    )
+
+
+def test_the_only_drawing_left_is_not_handed_to_a_diagram_it_does_not_belong_to():
+    # Two diagrams on one part; the first's drawing and key were dropped (an editor's
+    # invalidated cache), so the part's one drawing is the second diagram's.
+    unkeyed = "<dgm:dataModel xmlns:dgm='http://schemas.openxmlformats.org/drawingml/2006/diagram'/>"
+    package = _Package(
+        {"word/diagrams/data1.xml": unkeyed, "word/diagrams/data2.xml": _keyed_data_model("rId12"),
+         "word/diagrams/drawing2.xml": "<x/>"},
+        {"word/document.xml": {"rId4": ("word/diagrams/data1.xml", DATA_REL),
+                               "rId8": ("word/diagrams/data2.xml", DATA_REL),
+                               "rId12": ("word/diagrams/drawing2.xml", DRAWING_REL)}},
+    )
+    assert diagram_drawing_part(package, "word/document.xml", "word/diagrams/data1.xml") is None
+    assert diagram_drawing_part(package, "word/document.xml", "word/diagrams/data2.xml") == (
+        "word/diagrams/drawing2.xml"
+    )
+    # Named from the other data model's own relationships instead: still the other's.
+    package.parts["word/diagrams/data2.xml"] = unkeyed
+    package.rels["word/diagrams/data2.xml"] = {"rId1": ("word/diagrams/drawing2.xml", DRAWING_REL)}
+    assert diagram_drawing_part(package, "word/document.xml", "word/diagrams/data1.xml") is None
+    # A drawing no other data model names is still the lone diagram's, as before.
+    package.rels["word/diagrams/data2.xml"] = {}
+    package.parts["word/diagrams/data2.xml"] = unkeyed
+    del package.rels["word/document.xml"]["rId8"]
+    assert diagram_drawing_part(package, "word/document.xml", "word/diagrams/data1.xml") == (
+        "word/diagrams/drawing2.xml"
+    )
+
+
 def test_a_cached_drawing_is_an_ordinary_shape_tree():
     drawing = ET.fromstring(
         f'<dsp:drawing xmlns:dsp="{DSP}" xmlns:a="{A}"><dsp:spTree>'

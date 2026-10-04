@@ -31,6 +31,13 @@ DIAGRAM_DRAWING_REL_TYPES = (
     "http://purl.oclc.org/ooxml/officeDocument/relationships/diagramDrawing",
 )
 
+#: Relationship type from the part a frame sits in to a diagram's data model
+#: (``dgm:relIds@r:dm``), in the same two spellings.
+DIAGRAM_DATA_REL_TYPES = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships/diagramData",
+    "http://purl.oclc.org/ooxml/officeDocument/relationships/diagramData",
+)
+
 #: Why a SmartArt frame can come out blank through no fault of the file.  The application
 #: caches a laid-out DrawingML copy of every diagram, and reading that cache is the whole
 #: of this SmartArt support: the layout algorithms in ``dgm:layoutDef`` are a diagram
@@ -72,7 +79,12 @@ def diagram_drawing_part(package, owner: str, data_part: str) -> str | None:
       imply and what an independent producer might reasonably write;
     * failing that, a diagram-drawing relationship on the owning part -- but only when
       there is exactly one, since a part with two SmartArt frames offers no way to tell
-      which drawing belongs to which frame without the ``relId`` above.
+      which drawing belongs to which frame without the ``relId`` above -- and only when
+      no other data model on the owning part names it, by either route above.  A part
+      with two diagrams, one of whose drawings an editor dropped with its ``relId`` (as
+      ooxml-edit does when an edit invalidates it), still holds the other diagram's
+      drawing alone: that one is the other diagram's, and handing it out would draw the
+      other diagram twice.
     """
     relationship_id = data_model_drawing_rel_id(package, data_part)
     if relationship_id is not None:
@@ -91,7 +103,27 @@ def diagram_drawing_part(package, owner: str, data_part: str) -> str | None:
         for target in package.related_parts_of_type(owner, rel_type)
         if package.has_part(target)
     ]
-    return candidates[0] if len(candidates) == 1 else None
+    if len(candidates) != 1 or candidates[0] in _drawings_of_other_data_models(package, owner, data_part):
+        return None
+    return candidates[0]
+
+
+def _drawings_of_other_data_models(package, owner: str, data_part: str) -> set[str]:
+    """The cached drawings that the owning part's other diagrams name, through their
+    ``dsp:dataModelExt@relId`` or their own relationships."""
+    claimed: set[str] = set()
+    for data_type in DIAGRAM_DATA_REL_TYPES:
+        for other in package.related_parts_of_type(owner, data_type):
+            if other == data_part or not package.has_part(other):
+                continue
+            relationship_id = data_model_drawing_rel_id(package, other)
+            if relationship_id is not None:
+                target = package.related_part(owner, relationship_id)
+                if target is not None:
+                    claimed.add(target)
+            for rel_type in DIAGRAM_DRAWING_REL_TYPES:
+                claimed.update(package.related_parts_of_type(other, rel_type))
+    return claimed
 
 
 def data_model_drawing_rel_id(package, data_part: str) -> str | None:
