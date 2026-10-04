@@ -283,6 +283,9 @@ class SourceChartAxis:
     tick_label_skip: int | None = None
     tick_mark_skip: int | None = None
     title: SourceChartText | None = None
+    #: Whether the axis states a ``c:title`` at all: one with no text has no
+    #: :attr:`title`, and Word draws one there all the same (its "Axis Title").
+    title_stated: bool = False
     text_properties: SourceTextBody | None = None
     outline: SourceOutline | None = None
 
@@ -422,6 +425,11 @@ class SourceChart:
     axes: list[SourceChartAxis] = field(default_factory=list)
     title: SourceChartText | None = None
     auto_title_deleted: bool = False
+    #: Whether ``c:title`` is there at all -- one with no text has no :attr:`title` -- and
+    #: whether ``c:autoTitleDeleted`` is: Word draws a title for either, the series' name
+    #: or its own default (:attr:`~ooxml_common.chart.rules.ChartRules.auto_title`).
+    title_stated: bool = False
+    auto_title_deleted_stated: bool = False
     legend: SourceChartLegend | None = None
     #: ``c:view3D``.  Present only when the file states the element.
     view_3d: SourceChartView3D | None = None
@@ -476,6 +484,8 @@ def parse_chart_space(chart_space: Element | None) -> SourceChart | None:
         # `c:autoTitleDeleted` is the only way to tell "no title" from "automatic title",
         # and an automatic title is what a single-series chart gets for free.
         auto_title_deleted=_flag(child(chart, "autoTitleDeleted"), default=False),
+        title_stated=title is not None,
+        auto_title_deleted_stated=child(chart, "autoTitleDeleted") is not None,
         legend=_legend(child(chart, "legend")),
         view_3d=_view_3d(child(chart, "view3D")),
         display_blanks_as=attr(child(chart, "dispBlanksAs"), "val"),
@@ -713,6 +723,7 @@ def _axis(node: Element) -> SourceChartAxis:
         tick_label_skip=int_attr(child(node, "tickLblSkip"), "val"),
         tick_mark_skip=int_attr(child(node, "tickMarkSkip"), "val"),
         title=_text(title) if title is not None else None,
+        title_stated=title is not None,
         text_properties=parse_text_body(child(node, "txPr")),
         outline=parse_outline(child(node, "spPr")),
     )
