@@ -22,6 +22,7 @@ from ooxml_common.chart.layout import (
     WORD_LEGEND_LEFT_PT,
     WORD_AXIS_TITLE_INSET_PT,
     WORD_LEGEND_TRAIL_PT,
+    WORD_SHORT_PLOT_EM,
     WORD_TITLE_PAD_PT,
     ChartBuilder,
     ChartStyle,
@@ -94,11 +95,11 @@ def _title(rich, text, size, align):
         properties=m.ParagraphProperties(alignment=align))])
 
 
-def build(xml: str, rules=chart_rules.POWERPOINT):
+def build(xml: str, rules=chart_rules.POWERPOINT, *, height=HEIGHT):
     source = parse_chart_space(ET.fromstring(xml))
     plots = drawable_plots(source)
     builder = ChartBuilder(
-        source, plots[0], width_pt=WIDTH, height_pt=HEIGHT,
+        source, plots[0], width_pt=WIDTH, height_pt=height,
         style=ChartStyle(font_family="Aptos", font_size=default_font_size(source),
                          color=m.ResolvedColor(hex="#000000"),
                          accents=[m.ResolvedColor(hex="#4472C4"), m.ResolvedColor(hex="#ED7D31")]),
@@ -140,7 +141,7 @@ def test_word_is_a_set_of_fields_and_powerpoint_is_still_the_default():
     defaults = chart_rules.ChartRules("x", drawing_rules.POWERPOINT)
     for name in ("chart_fill", "chart_line", "plot_fill", "plot_line", "title", "side_legend",
                  "legend_under_title", "top_right_legend", "legend_order", "bars_upward",
-                 "stated_line_width", "legend_key_outlines", "auto_title", "axis_titles"):
+                 "stated_line_width", "legend_key_outlines", "auto_title", "axis_titles", "short_plot"):
         assert getattr(chart_rules.POWERPOINT, name) == getattr(defaults, name), name
     for name in ("custom_path_strokes", "text_size_grid", "first_baseline"):
         assert getattr(drawing_rules.POWERPOINT, name) == getattr(drawing_rules.DrawingRules(
@@ -402,6 +403,22 @@ def test_word_lays_out_and_draws_axis_titles():
     builder, _ = build(_with_axis_titles(plain, "<c:title><c:overlay val='0'/></c:title>"), chart_rules.WORD)
     assert builder.axis_titles_not_drawn == ["default"]
     assert WORD_AXIS_TITLE_INSET_PT == 12.5
+
+
+def test_word_gives_a_short_plot_half_its_shortfall():
+    import dataclasses
+
+    short = chart(title=False, legend="b")
+    without = dataclasses.replace(chart_rules.WORD, short_plot=False)
+    floor = WORD_SHORT_PLOT_EM * 10.0
+    for height in (64.0, 70.0, 76.0, 200.0):
+        top, _, bottom = _plot_top_left_bottom(build(short, without, height=height)[1])
+        natural = bottom - top
+        top, _, bottom = _plot_top_left_bottom(build(short, chart_rules.WORD, height=height)[1])
+        assert bottom - top == pytest.approx(max(natural, (natural + floor) / 2), abs=1e-6), height
+    # Down to nothing.
+    top, _, bottom = _plot_top_left_bottom(build(short, chart_rules.WORD, height=30.0)[1])
+    assert bottom - top == pytest.approx(0.01)
 
 
 def test_the_reader_says_whether_a_title_and_auto_title_deleted_are_stated():

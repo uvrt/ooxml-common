@@ -103,6 +103,13 @@ class ChartRules:
       legend there), centred on the plot.  Measured on Aptos and Arial titles of 10 to
       18 pt, on columns, bars and lines, beside a legend at every side, to Word's device
       pixel.
+    * ``short_plot`` -- what a plot too short for its axis gets.  ``False``: the plot
+      takes what is left (pptx2svg's).  ``True``, Word's: where the plot of a vertical
+      chart would be shorter than :data:`~ooxml_common.chart.layout.WORD_SHORT_PLOT_EM`
+      of its value axis' text, the band under it gives up **half** the shortfall --
+      the gap above a bottom legend, or the frame's own inset -- and the plot keeps the
+      other half, down to nothing.  Measured on charts 30 to 82 pt high, with 8, 10 and
+      14 pt text, with a legend at the bottom and without one.
     """
 
     name: str
@@ -121,6 +128,7 @@ class ChartRules:
     legend_key_outlines: bool = False
     auto_title: bool = False
     axis_titles: bool = False
+    short_plot: bool = False
 
 
 #: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
@@ -144,4 +152,5 @@ WORD = ChartRules(
     legend_key_outlines=True,
     auto_title=True,
     axis_titles=True,
+    short_plot=True,
 )

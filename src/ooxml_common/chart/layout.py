@@ -360,6 +360,18 @@ WORD_TITLE_BASELINE_EM = 0.9412
 #: Aptos, 29.70 for 18 pt Arial, to the device pixel.
 WORD_AXIS_TITLE_INSET_PT = 12.5
 
+#: Word's shortest comfortable plot, in ems of its value axis' text
+#: (:attr:`~ooxml_common.chart.rules.ChartRules.short_plot`): below it the band under the
+#: plot gives up half the shortfall.  Measured on docx2svg's ``make_chart_text_probe.py``,
+#: charts 30 to 82 pt high: the plot grew by half its shortfall at every height (slopes
+#: 0.48 to 0.51), from 9.3 pt at 8 pt text, 10.8 at 10 pt (with a legend below and
+#: without) and 15.5 at 14 pt -- read on Word's 0.24 pt device pixel, so each to about
+#: half a point.
+WORD_SHORT_PLOT_EM = 1.1
+#: ... and "nothing" is this: a plot of no height draws its zero label and its top label
+#: on one line, as Word does, but keeps the arithmetic off a zero.
+WORD_SHORT_PLOT_FLOOR_PT = 0.01
+
 #: Default chart text size, in points.  ECMA-376's chart default and what PowerPoint drew
 #: for every axis label and legend entry with no ``c:txPr``.
 DEFAULT_CHART_FONT_PT = 10.0
@@ -5751,7 +5763,13 @@ class ChartBuilder:
         else:
             bottom = frame.bottom - legend_bottom - self._top_inset(value_font.box)
         bottom -= self._axis_title_band("b")
-        if bottom - top < 1.0:
+        if self.rules.short_plot and not horizontal and not self._is_three_d:
+            # Word's plot too short for its axis takes back half the shortfall from the
+            # band under it (:attr:`~.rules.ChartRules.short_plot`), down to nothing.
+            shortfall = WORD_SHORT_PLOT_EM * value_font.size - (bottom - top)
+            if shortfall > 0:
+                bottom = max(top + WORD_SHORT_PLOT_FLOOR_PT, bottom + shortfall / 2)
+        elif bottom - top < 1.0:
             bottom = top + 1.0
         region = _Rect(left, top, right, bottom)
         # A 3-D chart's plot rectangle is its scene's **front face**, which is this
