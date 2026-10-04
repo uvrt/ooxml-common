@@ -84,6 +84,32 @@ class ChartRules:
     * ``legend_key_outlines`` -- whether a legend key is outlined with its series' line
       where the series states one (Word: a 0.75 pt black ``a:ln`` and a 1.5 pt purple one
       came back round their keys), rather than only where it has no fill.
+    * ``auto_title`` -- which title a chart shows (docx2svg's
+      ``make_chart_text_probe.py``).  ``False``: a ``c:title`` with text, unless
+      ``c:autoTitleDeleted`` is ``1`` (pptx2svg's).  ``True``, Word's: a ``c:title`` with
+      text **whatever** ``c:autoTitleDeleted`` says; a ``c:title`` with no text the sole
+      series' **name** (a pie's too), or -- over several series, or where
+      ``c:autoTitleDeleted`` is ``1`` -- Word's own "Chart Title" in its interface's
+      language, which the caller supplies or leaves out
+      (:attr:`~ooxml_common.chart.layout.ChartBuilder.default_title`); and no ``c:title``
+      but ``c:autoTitleDeleted`` stated ``0`` the sole series' name, nothing over
+      several.  Without ``c:autoTitleDeleted`` and without a ``c:title``, nothing.
+    * ``axis_titles`` -- whether an axis' ``c:title`` is laid out and drawn.  ``False``
+      (pptx2svg's): neither.  ``True``, Word's: a title on an axis at the left is turned
+      to read upwards (whatever its ``a:bodyPr`` says, but for an explicit ``rot="0"``,
+      which is not modelled and is left undrawn), one at the bottom reads across; each
+      takes its line pitch **plus 9.0 pt** off the plot's side -- the chart title's band
+      -- and its line box stands **12.5 pt** in from the frame's edge (or the edge of a
+      legend there), centred on the plot.  Measured on Aptos and Arial titles of 10 to
+      18 pt, on columns, bars and lines, beside a legend at every side, to Word's device
+      pixel.
+    * ``short_plot`` -- what a plot too short for its axis gets.  ``False``: the plot
+      takes what is left (pptx2svg's).  ``True``, Word's: where the plot of a vertical
+      chart would be shorter than :data:`~ooxml_common.chart.layout.WORD_SHORT_PLOT_EM`
+      of its value axis' text, the band under it gives up **half** the shortfall --
+      the gap above a bottom legend, or the frame's own inset -- and the plot keeps the
+      other half, down to nothing.  Measured on charts 30 to 82 pt high, with 8, 10 and
+      14 pt text, with a legend at the bottom and without one.
     """
 
     name: str
@@ -100,6 +126,9 @@ class ChartRules:
     bars_upward: bool = False
     stated_line_width: bool = False
     legend_key_outlines: bool = False
+    auto_title: bool = False
+    axis_titles: bool = False
+    short_plot: bool = False
 
 
 #: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
@@ -121,4 +150,7 @@ WORD = ChartRules(
     bars_upward=True,
     stated_line_width=True,
     legend_key_outlines=True,
+    auto_title=True,
+    axis_titles=True,
+    short_plot=True,
 )

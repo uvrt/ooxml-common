@@ -135,6 +135,14 @@ documents (no settings part, compatibility modes 14 and 15, which draw every cha
 | Clustered horizontal bars | the first series at the top of its group | the first series at the **bottom** |
 | A line series stating a width and no colour | 1.5 pt | its **stated width** |
 | A legend key of a series with a line | not outlined | **outlined** |
+| A `c:title` with no text; one with text and `c:autoTitleDeleted` `1` | none; none | the sole series' **name** (over several, Word's own "Chart Title", its band kept and its words the caller's); **drawn** |
+| An axis' `c:title` | not drawn | **drawn**: at the left turned to read upwards, at the bottom across, each its **pitch + 9 pt** off the plot and its line box **12.5 pt** in from the frame (or a legend there) |
+| A plot shorter than 1.1 em of its value labels | what is left | the band under it gives up **half the shortfall** |
+
+The last three rows are docx2svg's `tools/make_chart_text_probe.py` (80 charts, the same
+three documents). A chart's default axis and gridline colour is the caller's too
+(`ChartStyle.line_color`): Word draws them `898989` in a chart stating Word 365's chart
+style (`c14:style`).
 
 At 10 pt the side legend's pads are PowerPoint's to 0.03 pt and an 18 pt Arial title's band
 its to 0.002 pt, the one size and face each was measured at in PowerPoint; where the two

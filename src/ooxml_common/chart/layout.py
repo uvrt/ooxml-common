@@ -350,6 +350,28 @@ WORD_TITLE_PAD_PT = 9.0
 WORD_TITLE_BASELINE_PT = 7.5
 WORD_TITLE_BASELINE_EM = 0.9412
 
+#: Where Word stands an axis title (:attr:`~ooxml_common.chart.rules.ChartRules.axis_titles`):
+#: its line box this far in from the frame's edge -- or from the edge of a legend on that
+#: side -- the line gap on the side away from the plot.  Measured on docx2svg's
+#: ``make_chart_text_probe.py``: turned Aptos titles of 10 and 12 pt and Arial ones of 14
+#: and 18 pt at the left, Aptos of 10 and Arial of 14 and 18 pt at the bottom, every
+#: baseline within Word's device pixel (0.24 pt).  The title takes its line pitch plus
+#: :data:`WORD_TITLE_PAD_PT` off the plot, as the chart's title does: 21.21 pt for 10 pt
+#: Aptos, 29.70 for 18 pt Arial, to the device pixel.
+WORD_AXIS_TITLE_INSET_PT = 12.5
+
+#: Word's shortest comfortable plot, in ems of its value axis' text
+#: (:attr:`~ooxml_common.chart.rules.ChartRules.short_plot`): below it the band under the
+#: plot gives up half the shortfall.  Measured on docx2svg's ``make_chart_text_probe.py``,
+#: charts 30 to 82 pt high: the plot grew by half its shortfall at every height (slopes
+#: 0.48 to 0.51), from 9.3 pt at 8 pt text, 10.8 at 10 pt (with a legend below and
+#: without) and 15.5 at 14 pt -- read on Word's 0.24 pt device pixel, so each to about
+#: half a point.
+WORD_SHORT_PLOT_EM = 1.1
+#: ... and "nothing" is this: a plot of no height draws its zero label and its top label
+#: on one line, as Word does, but keeps the arithmetic off a zero.
+WORD_SHORT_PLOT_FLOOR_PT = 0.01
+
 #: Default chart text size, in points.  ECMA-376's chart default and what PowerPoint drew
 #: for every axis label and legend entry with no ``c:txPr``.
 DEFAULT_CHART_FONT_PT = 10.0
@@ -2278,6 +2300,11 @@ class ChartStyle:
     #: Whether the deck was written by PowerPoint 2007, whose missing chart elements
     #: PowerPoint reads with that version's defaults; see :func:`written_by_office_2007`.
     office_2007: bool = False
+    #: The axis, tick and gridline colour where no ``c:spPr`` says (``#RRGGBB``), or
+    #: ``None`` for :data:`DEFAULT_AXIS_COLOR` (:data:`OFFICE_2007_AXIS_COLOR` in a 2007
+    #: deck).  The caller's to set: Word draws them ``#898989`` in a chart that states a
+    #: ``c14:style`` (docx2svg's ``make_chart_text_probe.py``).
+    line_color: str | None = None
 
 
 @dataclass
@@ -2899,6 +2926,18 @@ class ChartBuilder:
         self._resolve_typeface = resolve_typeface
         self.elements: list[m.SlideElement] = []
         self._title_cache: "tuple[m.TextBody, FontBox] | None | object" = _UNSET
+        #: Word's own "Chart Title", in its interface's language, for a chart that shows
+        #: it (:attr:`~ooxml_common.chart.rules.ChartRules.auto_title`); ``None`` draws
+        #: none there, and :attr:`default_title_wanted` says so.
+        self.default_title: str | None = None
+        self.default_title_wanted = False
+        self._title_hidden = False
+        #: Why axis titles this chart states are not drawn, each reason once: ``default``
+        #: (Word's own "Axis Title": a ``c:title`` with no text), ``chart`` (a chart of a
+        #: kind not measured) or ``placement`` (a side not measured, or turned otherwise)
+        #: (:attr:`~ooxml_common.chart.rules.ChartRules.axis_titles`).
+        self.axis_titles_not_drawn: list[str] = []
+        self._axis_title_cache: "dict[str, tuple[c.SourceChartAxis, m.TextBody, FontBox]] | None" = None
         #: Forced on for every group of a combo that holds one, because a chart with a
         #: line group in it widens *every* legend key to the line key's width.  See
         #: :meth:`_line_legend_keys`.
@@ -4036,6 +4075,7 @@ class ChartBuilder:
             group.scene = self.scene
         self._draw_background(plot_rect)
         self._draw_title()
+        self._draw_axis_titles(plot_rect)
         # The secondary axis' gridlines go under the primary's, and unlike the primary's
         # they keep the one at the crossing: measured on ``p-secgrid``, where the
         # secondary drew eleven lines and the primary ten, the secondary's first.
@@ -5511,6 +5551,7 @@ class ChartBuilder:
         legend = self._legend_position()
         if legend in ("b", "t", "tr") and not self._legend_overlays():
             height -= self._legend_band_height(self._legend_font())
+        height -= self._axis_title_band("b")
         return height - self._three_d_reservation(scale)
 
     def _axis_band_width(self) -> float:
@@ -5526,7 +5567,7 @@ class ChartBuilder:
         legend = self._legend_position()
         if legend in ("l", "r") and not self._legend_overlays():
             width -= self._legend_side_width(self._legend_font())
-        return width
+        return width - self._axis_title_band("l")
 
     def _value_axis_intervals(
         self,
@@ -5709,6 +5750,7 @@ class ChartBuilder:
                 # 11.0 pt inset, with the 21.07 pt label column on top.
                 left += self._legend_side_width(legend_font) - EDGE_INSET_PT
 
+        left += self._axis_title_band("l")
         if right - left < 1.0:
             right = left + 1.0
         # The bottom band comes last because a rotated category label's is a function of
@@ -5725,7 +5767,14 @@ class ChartBuilder:
             )
         else:
             bottom = frame.bottom - legend_bottom - self._top_inset(value_font.box)
-        if bottom - top < 1.0:
+        bottom -= self._axis_title_band("b")
+        if self.rules.short_plot and not horizontal and not self._is_three_d:
+            # Word's plot too short for its axis takes back half the shortfall from the
+            # band under it (:attr:`~.rules.ChartRules.short_plot`), down to nothing.
+            shortfall = WORD_SHORT_PLOT_EM * value_font.size - (bottom - top)
+            if shortfall > 0:
+                bottom = max(top + WORD_SHORT_PLOT_FLOOR_PT, bottom + shortfall / 2)
+        elif bottom - top < 1.0:
             bottom = top + 1.0
         region = _Rect(left, top, right, bottom)
         # A 3-D chart's plot rectangle is its scene's **front face**, which is this
@@ -6341,10 +6390,21 @@ class ChartBuilder:
 
     def _build_title(self) -> "tuple[m.TextBody, FontBox] | None":
         text = self._title_text()
-        if text is None or self.chart.title is None:
+        if text is None and self.default_title_wanted:
+            # Word's own title, whose words this chart does not have: its band is taken
+            # all the same -- it is the face's, not the words' -- and nothing is drawn in it.
+            self._title_hidden = True
+            text = ""
+        if text is None or (self.chart.title is None and not self.rules.auto_title):
             return None
         size = _title_size(self.chart.title)
-        body = self._resolve_text(self.chart.title.rich, text, size, align="ctr")
+        rich = self.chart.title.rich if self.chart.title is not None else None
+        return self._resolved_text(rich, text, size)
+
+    def _resolved_text(self, rich, text: str, size: float) -> "tuple[m.TextBody, FontBox]":
+        """A title's text, resolved through the caller and stamped with the size the
+        layout uses, and the box of its face."""
+        body = self._resolve_text(rich, text, size, align="ctr")
         family, resolved_size = _first_run_font(body)
         size = resolved_size or size
         # A run that named no size would otherwise take the *renderer's* default, which
@@ -6361,9 +6421,33 @@ class ChartBuilder:
         return None if title is None else title[1]
 
     def _title_text(self) -> str | None:
+        if self.rules.auto_title:
+            return self._shown_title_text()
         if self.chart.auto_title_deleted or self.chart.title is None:
             return None
         return self.chart.title.plain or None
+
+    def _shown_title_text(self) -> str | None:
+        """The title Word shows (:attr:`~ooxml_common.chart.rules.ChartRules.auto_title`)."""
+        chart = self.chart
+        if chart.title is not None and chart.title.plain:
+            return chart.title.plain
+        name = self._sole_series_name()
+        if chart.title_stated or chart.title is not None:
+            if not chart.auto_title_deleted and name is not None:
+                return name
+            self.default_title_wanted = self.default_title is None
+            return self.default_title
+        if chart.auto_title_deleted_stated and not chart.auto_title_deleted:
+            return name
+        return None
+
+    def _sole_series_name(self) -> str | None:
+        """The name of the chart's one series, or ``None`` with several (or none)."""
+        series = [item for plot in self.plots for item in plot.series]
+        if len(series) != 1:
+            return None
+        return series[0].name.plain if series[0].name is not None else None
 
     # -- drawing ------------------------------------------------------------------------
 
@@ -6407,9 +6491,107 @@ class ChartBuilder:
             return title.pitch + WORD_TITLE_PAD_PT
         return TITLE_BAND_LINES * title.line_height
 
+    def _axis_titles(self) -> "dict[str, tuple[c.SourceChartAxis, m.TextBody, FontBox]]":
+        """The axis titles drawn, by the side they stand on (``l``, ``b``): each one's
+        axis, resolved text and face box (:attr:`~.rules.ChartRules.axis_titles`).  Empty
+        unless the rules draw them; a chart that is not a plain cartesian one draws none,
+        and records the ones it states in :attr:`axis_titles_not_drawn`."""
+        if self._axis_title_cache is not None:
+            return self._axis_title_cache
+        found: dict = {}
+        self._axis_title_cache = found
+        if not self.rules.axis_titles:
+            return found
+        cartesian = not (
+            self._is_polar or self._is_of_pie or self._is_scatter or self._is_bubble or self._is_three_d
+            or self._is_stock or self._is_surface
+        )
+        horizontal = (self.plot.bar_direction or "col") == "bar"
+        value_axis = self._axis_for(1) or self._axis_of_kind("valAx")
+        category_axis = self._axis_for(0) or self._axis_of_kind("catAx")
+        for axis in self.chart.axes:
+            if not axis.title_stated or axis.delete:
+                continue
+            if axis.title is None or not axis.title.plain:
+                self._not_drawn("default")
+                continue
+            if not cartesian or axis not in (value_axis, category_axis):
+                self._not_drawn("chart")
+                continue
+            side = ("l" if axis is category_axis else "b") if horizontal else ("b" if axis is category_axis else "l")
+            body_rotation = (
+                axis.title.rich.properties.rotation
+                if axis.title.rich is not None and axis.title.rich.properties is not None
+                else None
+            )
+            if axis.position not in (None, side) or side in found or body_rotation not in (
+                None, -5400000.0 if side == "l" else 0.0
+            ):
+                self._not_drawn("placement")
+                continue
+            body, box = self._resolved_text(
+                axis.title.rich, axis.title.plain, _title_size(axis.title)
+            )
+            found[side] = (axis, body, box)
+        return found
+
+    def _not_drawn(self, reason: str) -> None:
+        # Once each: a combo's groups ask too, and share the list.
+        if reason not in self.axis_titles_not_drawn:
+            self.axis_titles_not_drawn.append(reason)
+
+    def _axis_title_band(self, side: str) -> float:
+        """What the axis title on ``side`` takes off the plot: its pitch and the title's pad."""
+        title = self._axis_titles().get(side)
+        return 0.0 if title is None else title[2].pitch + WORD_TITLE_PAD_PT
+
+    def _draw_axis_titles(self, rect: _Rect) -> None:
+        """Each axis title, :data:`WORD_AXIS_TITLE_INSET_PT` in from the frame's edge (or a
+        legend's there), centred on the plot ``rect``; the one at the left turned to read
+        upwards."""
+        titles = self._axis_titles()
+        if not titles:
+            return
+        legend = self._legend_position() if not self._legend_overlays() else None
+        if "b" in titles:
+            _, body, box = titles["b"]
+            edge = self.frame.bottom
+            if legend == "b":
+                edge -= self._legend_band_height(self._legend_font())
+            baseline = edge - WORD_AXIS_TITLE_INSET_PT - box.descent
+            width = self.frame.width
+            self._text(body, left=rect.left + rect.width / 2 - width / 2, width=width, baseline=baseline, box=box)
+        if "l" in titles:
+            _, body, box = titles["l"]
+            edge = self.frame.left
+            if legend == "l":
+                edge += self._legend_side_width(self._legend_font()) - EDGE_INSET_PT
+            baseline_x = edge + WORD_AXIS_TITLE_INSET_PT + box.gap + box.ascent
+            width = self.frame.height
+            height = box.line_height * 1.5
+            # Turned a quarter anticlockwise about its centre, the box's first baseline
+            # stands its distance from the box's top to the left of the centre.
+            centre_x = baseline_x - (self._first_baseline(box) - height / 2)
+            centre_y = rect.top + rect.height / 2
+            self.elements.append(
+                m.ShapeElement(
+                    transform=m.Transform(
+                        offset_x=(centre_x - width / 2) * EMU_PER_POINT,
+                        offset_y=(centre_y - height / 2) * EMU_PER_POINT,
+                        extent_width=width * EMU_PER_POINT,
+                        extent_height=height * EMU_PER_POINT,
+                        rotation=-90.0,
+                    ),
+                    geometry=m.PresetGeometry(preset="rect"),
+                    fill=None,
+                    outline=None,
+                    text_body=body,
+                )
+            )
+
     def _draw_title(self) -> None:
         title = self._title()
-        if title is None:
+        if title is None or self._title_hidden:
             return
         body, box = title
         if self.rules.title == "pitch":
@@ -8874,7 +9056,7 @@ class ChartBuilder:
         resolved = self._resolve_outline(outline) if outline is not None else None
         if resolved is not None and resolved.fill is not None:
             return resolved
-        color = OFFICE_2007_AXIS_COLOR if self.style.office_2007 else DEFAULT_AXIS_COLOR
+        color = self.style.line_color or (OFFICE_2007_AXIS_COLOR if self.style.office_2007 else DEFAULT_AXIS_COLOR)
         return m.Outline(
             width=DEFAULT_AXIS_LINE_EMU,
             fill=m.SolidFill(color=m.ResolvedColor(hex=color)),

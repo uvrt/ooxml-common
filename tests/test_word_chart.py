@@ -20,7 +20,9 @@ from ooxml_common.chart.layout import (
     TITLE_BAND_LINES,
     WORD_LEGEND_LEAD_PT,
     WORD_LEGEND_LEFT_PT,
+    WORD_AXIS_TITLE_INSET_PT,
     WORD_LEGEND_TRAIL_PT,
+    WORD_SHORT_PLOT_EM,
     WORD_TITLE_PAD_PT,
     ChartBuilder,
     ChartStyle,
@@ -93,14 +95,15 @@ def _title(rich, text, size, align):
         properties=m.ParagraphProperties(alignment=align))])
 
 
-def build(xml: str, rules=chart_rules.POWERPOINT):
+def build(xml: str, rules=chart_rules.POWERPOINT, *, height=HEIGHT, line_color=None):
     source = parse_chart_space(ET.fromstring(xml))
     plots = drawable_plots(source)
     builder = ChartBuilder(
-        source, plots[0], width_pt=WIDTH, height_pt=HEIGHT,
+        source, plots[0], width_pt=WIDTH, height_pt=height,
         style=ChartStyle(font_family="Aptos", font_size=default_font_size(source),
                          color=m.ResolvedColor(hex="#000000"),
-                         accents=[m.ResolvedColor(hex="#4472C4"), m.ResolvedColor(hex="#ED7D31")]),
+                         accents=[m.ResolvedColor(hex="#4472C4"), m.ResolvedColor(hex="#ED7D31")],
+                         line_color=line_color),
         resolve_fill=_fill, resolve_outline=_outline, resolve_text=_title, plots=plots, rules=rules,
     )
     children, _data = builder.build()
@@ -139,7 +142,7 @@ def test_word_is_a_set_of_fields_and_powerpoint_is_still_the_default():
     defaults = chart_rules.ChartRules("x", drawing_rules.POWERPOINT)
     for name in ("chart_fill", "chart_line", "plot_fill", "plot_line", "title", "side_legend",
                  "legend_under_title", "top_right_legend", "legend_order", "bars_upward",
-                 "stated_line_width", "legend_key_outlines"):
+                 "stated_line_width", "legend_key_outlines", "auto_title", "axis_titles", "short_plot"):
         assert getattr(chart_rules.POWERPOINT, name) == getattr(defaults, name), name
     for name in ("custom_path_strokes", "text_size_grid", "first_baseline"):
         assert getattr(drawing_rules.POWERPOINT, name) == getattr(drawing_rules.DrawingRules(
@@ -320,3 +323,118 @@ def test_word_s_first_baseline_is_the_spaced_box_less_the_descent():
     # The box is 25 pt and the descent 5 pt: at 90% spacing the box is 22.5 pt.
     assert baseline(drawing_rules.WORD) == pytest.approx((22.5 - 5) * px, abs=0.001)
     assert baseline(drawing_rules.POWERPOINT) == pytest.approx(20 * 0.9 * px, abs=0.001)
+
+
+# -- titles, axis titles, short plots (docx2svg's make_chart_text_probe.py) ---------------------
+
+
+def _plot_top_left_bottom(children):
+    """The plot area's white rectangle: ``(top, left, bottom)`` pt."""
+    plot = [box for box in boxes(children) if box[0] == "#FFFFFF" and box[2] > 0]
+    return plot[0][3], plot[0][2], plot[0][5]
+
+
+def _count(children, text: str) -> int:
+    return sum(1 for c in children if isinstance(c, m.ShapeElement) and c.text_body is not None
+               and c.text_body.paragraphs[0].runs[0].text == text)
+
+
+def _retitled(head: str, **kw) -> str:
+    """``chart()`` with ``head`` in place of its title and ``c:autoTitleDeleted``."""
+    xml = chart(**kw)
+    start = xml.index("<c:chart>") + len("<c:chart>")
+    return xml[:start] + head + xml[xml.index("<c:plotArea>"):]
+
+
+def _one_series(xml: str) -> str:
+    first = xml.index("<c:ser>")
+    second = xml.index("<c:ser>", first + 1)
+    return xml[:second] + xml[xml.index("</c:ser>", second) + len("</c:ser>"):]
+
+
+def test_the_chart_s_title_that_word_shows():
+    untitled = "<c:title><c:overlay val='0'/></c:title><c:autoTitleDeleted val='0'/>"
+    one = _one_series(_retitled(untitled))
+    builder, children = build(one, chart_rules.WORD)
+    assert _count(children, "Plan") == 2 and not builder.default_title_wanted  # the title and the legend's
+    builder, children = build(one)
+    assert _count(children, "Plan") == 1
+    # Over two series, Word's own words, which the caller supplies: the band all the same.
+    builder, children = build(_retitled(untitled), chart_rules.WORD)
+    assert builder.default_title_wanted and "" not in texts(children)
+    assert _plot_top_left_bottom(children)[0] == _plot_top_left_bottom(build(chart(), chart_rules.WORD)[1])[0]
+    # No c:title, autoTitleDeleted stated 0: the one series' name; not stated: nothing.
+    assert _count(build(_one_series(_retitled("<c:autoTitleDeleted val='0'/>")), chart_rules.WORD)[1], "Plan") == 2
+    assert _count(build(_one_series(_retitled("")), chart_rules.WORD)[1], "Plan") == 1
+    # A title with text is shown whatever c:autoTitleDeleted says; PowerPoint's rule keeps it off.
+    titled = ("<c:title><c:tx><c:rich><a:bodyPr/><a:p><a:r><a:t>Sales</a:t></a:r></a:p></c:rich></c:tx></c:title>"
+              "<c:autoTitleDeleted val='1'/>")
+    assert "Sales" in texts(build(_retitled(titled), chart_rules.WORD)[1])
+    assert "Sales" not in texts(build(_retitled(titled))[1])
+
+
+def _axis_title(text: str, rot: str = " rot='-5400000' vert='horz'") -> str:
+    return (f"<c:title><c:tx><c:rich><a:bodyPr{rot}/><a:p><a:r><a:t>{text}</a:t></a:r></a:p></c:rich></c:tx>"
+            "<c:overlay val='0'/></c:title>")
+
+
+def _with_axis_titles(xml: str, value: str = "", category: str = "") -> str:
+    xml = xml.replace("<c:axPos val='b'/>", "<c:axPos val='b'/>" + category, 1)
+    return xml.replace("<c:axPos val='l'/><c:majorGridlines/>", "<c:axPos val='l'/><c:majorGridlines/>" + value, 1)
+
+
+def test_word_lays_out_and_draws_axis_titles():
+    plain = chart(title=False)
+    xml = _with_axis_titles(plain, _axis_title("Revenue"), _axis_title("Region", ""))
+    top, left, bottom = _plot_top_left_bottom(build(plain, chart_rules.WORD)[1])
+    builder, children = build(xml, chart_rules.WORD)
+    box = font_box("Arial", 18.0)
+    t2, l2, b2 = _plot_top_left_bottom(children)
+    assert l2 - left == pytest.approx(box.pitch + WORD_TITLE_PAD_PT)
+    assert bottom - b2 == pytest.approx(box.pitch + WORD_TITLE_PAD_PT, abs=1e-6) and t2 == top
+    turned = [c for c in children if isinstance(c, m.ShapeElement) and c.text_body is not None
+              and c.text_body.paragraphs[0].runs[0].text == "Revenue"]
+    assert len(turned) == 1 and turned[0].transform.rotation == -90.0
+    assert "Region" in texts(children) and not builder.axis_titles_not_drawn
+    # PowerPoint's rule draws none, and nothing moves.
+    assert build(xml)[1] == build(plain)[1]
+    # Unturned at the left, or a title with no text: not drawn, and said.
+    builder, children = build(_with_axis_titles(plain, _axis_title("Revenue", " rot='0'")), chart_rules.WORD)
+    assert "Revenue" not in texts(children) and builder.axis_titles_not_drawn == ["placement"]
+    builder, _ = build(_with_axis_titles(plain, "<c:title><c:overlay val='0'/></c:title>"), chart_rules.WORD)
+    assert builder.axis_titles_not_drawn == ["default"]
+    assert WORD_AXIS_TITLE_INSET_PT == 12.5
+
+
+def test_word_gives_a_short_plot_half_its_shortfall():
+    import dataclasses
+
+    short = chart(title=False, legend="b")
+    without = dataclasses.replace(chart_rules.WORD, short_plot=False)
+    floor = WORD_SHORT_PLOT_EM * 10.0
+    for height in (64.0, 70.0, 76.0, 200.0):
+        top, _, bottom = _plot_top_left_bottom(build(short, without, height=height)[1])
+        natural = bottom - top
+        top, _, bottom = _plot_top_left_bottom(build(short, chart_rules.WORD, height=height)[1])
+        assert bottom - top == pytest.approx(max(natural, (natural + floor) / 2), abs=1e-6), height
+    # Down to nothing.
+    top, _, bottom = _plot_top_left_bottom(build(short, chart_rules.WORD, height=30.0)[1])
+    assert bottom - top == pytest.approx(0.01)
+
+
+def _line_colours(children) -> set:
+    return {c.outline.fill.color.hex for c in children if isinstance(c, m.ConnectorElement) and c.outline}
+
+
+def test_a_caller_s_default_line_colour_paints_the_axes_and_gridlines():
+    assert _line_colours(build(chart(), chart_rules.WORD, line_color="#898989")[1]) == {"#898989"}
+    assert _line_colours(build(chart(), chart_rules.WORD)[1]) == {"#000000"}
+
+
+def test_the_reader_says_whether_a_title_and_auto_title_deleted_are_stated():
+    source = parse_chart_space(ET.fromstring(_retitled("<c:title><c:overlay val='0'/></c:title>")))
+    assert source.title is None and source.title_stated and not source.auto_title_deleted_stated
+    source = parse_chart_space(ET.fromstring(chart(title=False)))
+    assert not source.title_stated and source.auto_title_deleted_stated and source.auto_title_deleted
+    axis = parse_chart_space(ET.fromstring(_with_axis_titles(chart(), "<c:title/>"))).axes[1]
+    assert axis.title is None and axis.title_stated
