@@ -47,6 +47,7 @@ from typing import Iterable
 
 from ..opc import REL_FONT
 from ..text.fontmap import family_key
+from ..text.kerning import KernPairs
 from ..text.metrics import FontMetrics
 from .eot import EotError, decode_eot, embedding_refusal
 from .sfnt import SfntError, read_sfnt, relabel
@@ -56,6 +57,7 @@ __all__ = [
     "EmbeddedFonts",
     "NO_EMBEDDED_FONTS",
     "extract_embedded_fonts",
+    "metrics_from_faces",
 ]
 
 #: ``(bold, italic)`` for each ``<p:embeddedFont>`` child, in schema order.
@@ -209,7 +211,7 @@ def extract_embedded_fonts(
             continue
 
         try:
-            table = _metrics_for(decoded)
+            table = metrics_from_faces(decoded)
         except SfntError as error:  # pragma: no cover - read_sfnt already succeeded
             problems.append(
                 ("font-embedded-unreadable", f"{family}: {error}; falling back to substitution")
@@ -291,13 +293,21 @@ def _read_font_part(package, part_path: str, rel_id: str) -> bytes | None:
 _CJK_PROBE = 0x7DE8  # CJK UNIFIED IDEOGRAPH-7DE8
 
 
-def _metrics_for(decoded: dict[tuple[bool, bool], bytes]) -> FontMetrics:
-    """Build one metrics table from the slots a family supplied.
+def metrics_from_faces(decoded: dict[tuple[bool, bool], bytes]) -> FontMetrics:
+    """Build one metrics table from the faces a family supplied, by ``(bold, italic)``
+    slot: a deck's embedded faces, or installed ones read in place
+    (:mod:`ooxml_common.fonts.office`).
 
     The upright table comes from the regular cut where there is one.  Failing that it
     comes from the italic, then the bold -- which matches the standing decision that
     italic is measured from the upright table anyway (divergence is at most 2.5% across
     the Office substitutes), and beats the 0.6 em per-character guess by a wide margin.
+
+    The faces' legacy ``kern`` tables become :attr:`~FontMetrics.legacy_kerning` -- what
+    PowerPoint and Word charge for a static face -- and an ``fvar`` table sets
+    :attr:`~FontMetrics.variable`.  ``GPOS`` is not parsed, so :attr:`~FontMetrics.kerning`
+    stays ``None`` and a measurer charging the feature does not kern these faces, as
+    before.
     """
     upright = _first(decoded, [(False, False), (False, True), (True, False), (True, True)])
     bold = _first(decoded, [(True, False), (True, True)])
@@ -318,6 +328,14 @@ def _metrics_for(decoded: dict[tuple[bool, bool], bytes]) -> FontMetrics:
             bold_default = round(bold_default * scale)
             bold_cjk = round(bold_cjk * scale)
 
+    pairs = _legacy_pairs(face)
+    bold_pairs: dict[str, int] = {}
+    if bold is not None and bold is not upright:
+        bold_pairs = _legacy_pairs(bold_face)
+        if bold_face.units_per_em != face.units_per_em:
+            scale = face.units_per_em / bold_face.units_per_em
+            bold_pairs = {pair: round(value * scale) for pair, value in bold_pairs.items()}
+
     return FontMetrics(
         units_per_em=face.units_per_em,
         ascender=face.ascender,
@@ -328,7 +346,42 @@ def _metrics_for(decoded: dict[tuple[bool, bool], bytes]) -> FontMetrics:
         bold_default_width=bold_default,
         bold_cjk_width=bold_cjk,
         bold_widths=bold_widths,
+        legacy_kerning=KernPairs(pairs, bold_pairs) if pairs or bold_pairs else None,
+        variable=b"fvar" in face.tables,
     )
+
+
+#: The old name, kept working: callers outside this package reached for it before
+#: :func:`metrics_from_faces` was public.
+_metrics_for = metrics_from_faces
+
+
+def _legacy_pairs(face) -> dict[str, int]:
+    """A face's legacy ``kern`` pairs by character: every pair of characters whose glyphs
+    the table kerns, the two concatenated -- :class:`~ooxml_common.text.kerning.KernPairs`'
+    keys."""
+    table = face.tables.get(b"kern")
+    cmap = face.tables.get(b"cmap")
+    if not table or not cmap:
+        return {}
+    from .office import read_legacy_kern
+    from .sfnt import _cmap
+
+    glyph_pairs = read_legacy_kern(table)
+    if not glyph_pairs:
+        return {}
+    by_glyph: dict[int, list[str]] = {}
+    for code_point, glyph in _cmap(cmap).items():
+        if code_point <= 0x10FFFF:
+            by_glyph.setdefault(glyph, []).append(chr(code_point))
+    out: dict[str, int] = {}
+    for (left, right), value in glyph_pairs.items():
+        if not value:
+            continue
+        for first in by_glyph.get(left, ()):
+            for second in by_glyph.get(right, ()):
+                out[first + second] = value
+    return out
 
 
 def _first(decoded, order):
