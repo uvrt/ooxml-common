@@ -52,6 +52,8 @@ def _bodies():
     yield "vertical", m.TextBody([_paragraph(LONG)], m.BodyProperties(vert="vert270"))
     yield "insets", m.TextBody([_paragraph(LONG)], m.BodyProperties(margin_left=360000, margin_top=0))
     yield "empty", m.TextBody([_paragraph("")])
+    yield "indented", m.TextBody([_paragraph(LONG, margin_left=914400, indent=-342900),
+                                  _paragraph(LONG, size=14, margin_left=457200)])
 
 
 BODIES = list(_bodies())
@@ -72,7 +74,8 @@ def _private(body: m.TextBody, frame: m.Transform, context: RenderContext, geome
                                        properties.ln_spc_reduction, scale, context) if has_text else 0.0
     if columns > 1 and properties.vert == "horz":
         text_px /= columns
-    lines = [len(wrap_paragraph(p, text_width, default * scale, scale, context.measurer))
+    lines = [len(wrap_paragraph(p, text_width - emu_to_px(p.properties.margin_left or 0), default * scale,
+                                scale, context.measurer))
              if wrap and any(r.text for r in p.runs) else (1 if any(r.text for r in p.runs) else 0)
              for p in body.paragraphs]
     ratio = tb._default_line_height_ratio(body.paragraphs, context)
@@ -133,6 +136,46 @@ def test_a_shape_is_measured_in_its_text_rectangle_and_group_scale():
     assert measure_shape_text(m.ShapeElement(transform=FRAME, geometry=m.PresetGeometry("rect"))) is None
 
 
+def test_the_drawn_body_is_anchored_by_the_lines_it_draws():
+    """A centred, bulleted body: the drawing wraps inside ``marL``, and is now anchored by
+    the height of the lines it draws -- each extra line moves its first baseline up by
+    half a line against the same text without the margin.  The estimate it is anchored by
+    used to wrap to the whole width, so the two baselines were equal."""
+    import re
+
+    def first_baseline(paragraph) -> tuple[float, int, float]:
+        body = m.TextBody([paragraph], m.BodyProperties(anchor="ctr"))
+        svg = tb.render_text_body(body, FRAME, RenderContext())
+        measured = measure_text_body(body, FRAME)
+        return float(re.search(r'<text x="0" y="([-\d.]+)"', svg).group(1)), len(measured.lines), \
+            measured.paragraphs[0].line_height
+
+    indented, lines, height = first_baseline(_paragraph(LONG, margin_left=914400, indent=-342900))
+    plain, plain_lines, _ = first_baseline(_paragraph(LONG))
+    assert lines > plain_lines
+    assert indented == pytest.approx(plain - (lines - plain_lines) * height / 2, abs=1e-3)
+
+
+def test_the_area_offsets_are_where_the_text_rectangle_sits():
+    """``area_left`` and ``area_top``: where the geometry's text rectangle starts in the
+    frame -- pptx-agent placed text with the private ``_text_area`` for this."""
+    shape = m.ShapeElement(transform=FRAME, geometry=m.PresetGeometry("ellipse"),
+                           text_body=m.TextBody([_paragraph("Short")]))
+    measured = measure_shape_text(shape, scale=(2.0, 1.0))
+    frame = m.Transform(extent_width=FRAME.extent_width * 2.0, extent_height=FRAME.extent_height)
+    _, left, top = tb._text_area(frame, text_geometry(shape), 0.0, RenderContext().rules)
+    assert measured.area_offset == (emu_to_px(left), emu_to_px(top)) and left > 0 and top > 0
+    plain = measure_text_body(m.TextBody([_paragraph("Short")]), FRAME)
+    assert plain.area_offset == (0.0, 0.0)
+    # A SmartArt shape's text box: its own offset in the shape, scaled by the group.
+    box = m.Transform(offset_x=FRAME.offset_x + 127000, offset_y=FRAME.offset_y + 254000,
+                      extent_width=FRAME.extent_width / 2, extent_height=FRAME.extent_height / 2)
+    smart = m.ShapeElement(transform=FRAME, geometry=m.PresetGeometry("ellipse"), text_transform=box,
+                           text_body=m.TextBody([_paragraph("Short")]))
+    measured = measure_shape_text(smart, scale=(2.0, 1.0))
+    assert measured.area_offset == pytest.approx((emu_to_px(127000) * 2, emu_to_px(254000)))
+
+
 def test_a_plain_string():
     one = measure_text("Revenue", "Arial", 18)
     assert len(one.lines) == 1 and one.lines[0].width > 0 and one.insets == (0, 0, 0, 0)
@@ -149,12 +192,16 @@ def test_a_plain_string():
     assert measure_text("Wide", "Arial", 36).lines[0].width > measure_text("Wide", "Arial", 18).lines[0].width
 
 
-def test_as_drawn_wraps_inside_the_left_margin_and_breaks_at_line_breaks():
+def test_both_wrap_inside_the_left_margin_and_as_drawn_breaks_at_line_breaks():
+    """The estimate wraps a paragraph inside its ``marL`` as the drawing does: it used to
+    wrap to the whole width, and only ``as_drawn`` took the margin off."""
     indented = m.TextBody([_paragraph(LONG, margin_left=914400)])
     estimate = measure_text_body(indented, FRAME)
     drawn = measure_text_body(indented, FRAME, as_drawn=True)
-    assert drawn.paragraphs[0].width == estimate.paragraphs[0].width - 96
-    assert len(drawn.lines) > len(estimate.lines)
+    whole = measure_text_body(m.TextBody([_paragraph(LONG)]), FRAME)
+    assert drawn.paragraphs[0].width == estimate.paragraphs[0].width == whole.paragraphs[0].width - 96
+    assert drawn == estimate
+    assert len(estimate.lines) > len(whole.lines)
     assert all(line.width <= drawn.paragraphs[0].width + 1e-6 for line in drawn.lines)
     unwrapped = m.TextBody([_paragraph("one  \ntwo\n\nfour")], m.BodyProperties(wrap="none"))
     assert [line.text for line in measure_text_body(unwrapped, FRAME).lines] == ["one  \ntwo\n\nfour"]

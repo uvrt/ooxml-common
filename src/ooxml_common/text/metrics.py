@@ -50,7 +50,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .kerning import KERNING as _KERN
-from .kerning import KernTable
+from .kerning import LEGACY_KERNING as _LEGACY_KERN
+from .kerning import KernPairs, KernTable, KerningSource
 
 
 @dataclass(frozen=True)
@@ -94,18 +95,40 @@ class FontMetrics:
     bold_default_width: int = 0
     bold_cjk_width: int = 0
     bold_widths: dict = field(default_factory=dict)
-    #: The face's OpenType ``kern`` pairs, or ``None`` for a face that does not kern.
+    #: The face's OpenType ``kern`` pairs (``GPOS``), or ``None`` for a face that does
+    #: not kern.
     #:
-    #: An advance width is what one glyph costs; this is what the *pair* costs, and
-    #: PowerPoint charges it while we used not to.  It lives in :mod:`pptx2svg.text.kerning`
+    #: An advance width is what one glyph costs; this is what the *pair* costs.  It is
+    #: what a measurer charges by default (:data:`~.kerning.FEATURE`); PowerPoint and Word
+    #: were measured charging :attr:`legacy_kerning` instead, for every static face.  It
+    #: lives in :mod:`pptx2svg.text.kerning`
     #: rather than in this file because it is twice the size of every width here put
     #: together -- see that module for the representation and what it cost to choose.
     #:
     #: ``None`` means *this face does not kern*, which for the eighteen monospaced and
     #: full-width faces is a fact about the design rather than a gap in the table.  It is
-    #: also what an embedded face gets: :mod:`pptx2svg.fonts.embedded` builds its table
-    #: from a cut-down sfnt reader that does not parse GPOS.
-    kerning: KernTable | None = None
+    #: also what an embedded or installed face gets: :mod:`pptx2svg.fonts.embedded` builds
+    #: its table from a cut-down sfnt reader that does not parse GPOS -- it reads the
+    #: legacy table into :attr:`legacy_kerning`.
+    kerning: KernTable | KernPairs | None = None
+    #: The legacy ``kern`` table's pairs of **the face this table stands for** -- Calibri's
+    #: for Carlito, as :attr:`line_gap` is -- or ``None`` where that face has none (every
+    #: clone, Lato, Raleway, Noto Sans JP).  What PowerPoint and Word charge for a static
+    #: face, where :attr:`kerning` is the OpenType feature; :class:`KerningSource` picks
+    #: (:mod:`ooxml_common.text.kerning` has the measurements).
+    legacy_kerning: KernTable | KernPairs | None = None
+    #: Whether that face is a variable one (it has an ``fvar`` table): PowerPoint kerns a
+    #: variable face from its ``GPOS`` feature, a static one from its legacy table.
+    variable: bool = False
+
+    def kern_table(self, source: KerningSource) -> KernTable | KernPairs | None:
+        """The pairs ``source`` charges for this face, or ``None`` for no kerning."""
+        which = source.table(self.variable)
+        if which == "feature":
+            return self.kerning
+        if which == "legacy":
+            return self.legacy_kerning
+        return None
 
     def bold_is_indistinguishable(self) -> bool:
         """Whether the bold table carries no information the upright one does not.
@@ -266,6 +289,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u25cb": 1126, "\u25cf": 1237, "\u25e6": 725, "\u2192": 1854,
         },
         kerning=_KERN.get("Carlito"),
+        legacy_kerning=_LEGACY_KERN.get("Carlito"),
     ),
     "Arimo": FontMetrics(
         # metric-compatible with Arial and Helvetica; shipped in pptx2svg-fonts
@@ -400,6 +424,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2192": 2048,
         },
         kerning=_KERN.get("Arimo"),
+        legacy_kerning=_LEGACY_KERN.get("Arimo"),
     ),
     "Tinos": FontMetrics(
         # metric-compatible with Times New Roman; shipped in pptx2svg-fonts
@@ -534,6 +559,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2192": 2048,
         },
         kerning=_KERN.get("Tinos"),
+        legacy_kerning=_LEGACY_KERN.get("Tinos"),
     ),
     "Cousine": FontMetrics(
         # metric-compatible with Courier New; shipped in pptx2svg-fonts
@@ -666,6 +692,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u25a0": 1229, "\u25aa": 1229, "\u25cb": 1229, "\u25cf": 1229, "\u25e6": 1229, "\u2192": 1229,
         },
         kerning=_KERN.get("Cousine"),
+        legacy_kerning=_LEGACY_KERN.get("Cousine"),
     ),
     "Caladea": FontMetrics(
         # the closest serif we ship to Cambria; shipped in pptx2svg-fonts
@@ -796,6 +823,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2044": 121, "\u20ac": 640, "\u2122": 684, "\u2212": 592, "\u2192": 783,
         },
         kerning=_KERN.get("Caladea"),
+        legacy_kerning=_LEGACY_KERN.get("Caladea"),
     ),
     "Noto Sans JP": FontMetrics(
         # stands in for Japanese faces; shipped in pptx2svg-fonts
@@ -918,6 +946,8 @@ METRICS: dict[str, FontMetrics] = {
             "\uff9b": 500, "\uff9c": 500, "\uff9d": 500, "\uff9e": 500, "\uff9f": 500,
         },
         kerning=_KERN.get("Noto Sans JP"),
+        legacy_kerning=_LEGACY_KERN.get("Noto Sans JP"),
+        variable=True,
     ),
     "Lato": FontMetrics(
         # itself; shipped in pptx2svg-fonts
@@ -1050,6 +1080,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u25aa": 836, "\u25cb": 1325, "\u25cf": 1200, "\u25e6": 836, "\u2192": 2000,
         },
         kerning=_KERN.get("Lato"),
+        legacy_kerning=_LEGACY_KERN.get("Lato"),
     ),
     "Raleway": FontMetrics(
         # itself; shipped in pptx2svg-fonts
@@ -1180,6 +1211,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2044": 200, "\u20ac": 798, "\u2122": 829, "\u2212": 527,
         },
         kerning=_KERN.get("Raleway"),
+        legacy_kerning=_LEGACY_KERN.get("Raleway"),
     ),
     "Cambria": FontMetrics(
         # MEASURED ONLY -- proprietary; Caladea is 4.5% narrower, so it is not it
@@ -1312,6 +1344,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u25cb": 1230, "\u2192": 1716,
         },
         kerning=_KERN.get("Cambria"),
+        legacy_kerning=_LEGACY_KERN.get("Cambria"),
     ),
     "Aptos": FontMetrics(
         # MEASURED ONLY -- proprietary, no clone exists, drawn with a substitute
@@ -1444,6 +1477,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u25aa": 999, "\u25cb": 1534, "\u25cf": 1534, "\u25e6": 999, "\u2192": 1229,
         },
         kerning=_KERN.get("Aptos"),
+        legacy_kerning=_LEGACY_KERN.get("Aptos"),
     ),
     "Aptos Display": FontMetrics(
         # MEASURED ONLY -- Office cloud font, no clone exists
@@ -1576,6 +1610,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u25aa": 999, "\u25cb": 1534, "\u25cf": 1534, "\u25e6": 999, "\u2192": 1229,
         },
         kerning=_KERN.get("Aptos Display"),
+        legacy_kerning=_LEGACY_KERN.get("Aptos Display"),
     ),
     "ＭＳ Ｐゴシック": FontMetrics(
         # MEASURED ONLY -- proportional: kana run 0.648-1.0 em, not full-width
@@ -1810,6 +1845,7 @@ METRICS: dict[str, FontMetrics] = {
             "\uff9a": 145, "\uff9b": 143, "\uff9c": 151, "\uff9d": 144, "\uff9e": 64, "\uff9f": 59,
         },
         kerning=_KERN.get("ＭＳ Ｐゴシック"),
+        legacy_kerning=_LEGACY_KERN.get("ＭＳ Ｐゴシック"),
     ),
     "ＭＳ ゴシック": FontMetrics(
         # MEASURED ONLY -- fixed pitch 128/256 of 256, the non-proportional cut
@@ -1834,6 +1870,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u25cb": 256, "\u25cf": 256, "\u2192": 256,
         },
         kerning=_KERN.get("ＭＳ ゴシック"),
+        legacy_kerning=_LEGACY_KERN.get("ＭＳ ゴシック"),
     ),
     "ＭＳ Ｐ明朝": FontMetrics(
         # MEASURED ONLY -- proportional serif; PowerPoint falls back to it too
@@ -2070,6 +2107,7 @@ METRICS: dict[str, FontMetrics] = {
             "\uff9c": 153, "\uff9d": 157, "\uff9e": 61, "\uff9f": 58,
         },
         kerning=_KERN.get("ＭＳ Ｐ明朝"),
+        legacy_kerning=_LEGACY_KERN.get("ＭＳ Ｐ明朝"),
     ),
     "ＭＳ 明朝": FontMetrics(
         # MEASURED ONLY -- fixed pitch 128/256 of 256, the serif's non-proportional cut
@@ -2094,6 +2132,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u25cb": 256, "\u25cf": 256, "\u2192": 256,
         },
         kerning=_KERN.get("ＭＳ 明朝"),
+        legacy_kerning=_LEGACY_KERN.get("ＭＳ 明朝"),
     ),
     "SimSun": FontMetrics(
         # MEASURED ONLY -- fixed pitch 128/256 of 256; rows are full-width Latin
@@ -2118,6 +2157,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u20ac": 256, "\u25a0": 256, "\u25cb": 256, "\u25cf": 256, "\u2192": 256,
         },
         kerning=_KERN.get("SimSun"),
+        legacy_kerning=_LEGACY_KERN.get("SimSun"),
     ),
     "NSimSun": FontMetrics(
         # MEASURED ONLY -- fixed pitch 128/256 of 256; the SimSun file's face 1
@@ -2142,6 +2182,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u20ac": 256, "\u25a0": 256, "\u25cb": 256, "\u25cf": 256, "\u2192": 256,
         },
         kerning=_KERN.get("NSimSun"),
+        legacy_kerning=_LEGACY_KERN.get("NSimSun"),
     ),
     "SimHei": FontMetrics(
         # MEASURED ONLY -- fixed pitch 128/256 of 256; rows are full-width Latin
@@ -2166,6 +2207,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u25a0": 256, "\u25cb": 256, "\u25cf": 256, "\u2192": 256,
         },
         kerning=_KERN.get("SimHei"),
+        legacy_kerning=_LEGACY_KERN.get("SimHei"),
     ),
     "KaiTi": FontMetrics(
         # MEASURED ONLY -- fixed pitch 128/256 of 256; rows are full-width Latin
@@ -2196,6 +2238,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2030": 256, "\u20ac": 256, "\u25a0": 256, "\u25cb": 256, "\u25cf": 256, "\u2192": 256,
         },
         kerning=_KERN.get("KaiTi"),
+        legacy_kerning=_LEGACY_KERN.get("KaiTi"),
     ),
     "FangSong": FontMetrics(
         # MEASURED ONLY -- fixed pitch 128/256 of 256; rows are full-width Latin
@@ -2226,6 +2269,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2030": 256, "\u20ac": 256, "\u25a0": 256, "\u25cb": 256, "\u25cf": 256, "\u2192": 256,
         },
         kerning=_KERN.get("FangSong"),
+        legacy_kerning=_LEGACY_KERN.get("FangSong"),
     ),
     "MingLiU": FontMetrics(
         # MEASURED ONLY -- fixed pitch 512/1024 of 1024; rows are full-width Latin
@@ -2252,6 +2296,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2192": 1024,
         },
         kerning=_KERN.get("MingLiU"),
+        legacy_kerning=_LEGACY_KERN.get("MingLiU"),
     ),
     "MingLiU_HKSCS": FontMetrics(
         # MEASURED ONLY -- fixed pitch 512/1024; the MingLiU file's face 2
@@ -2278,6 +2323,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u25cb": 1024, "\u25cf": 1024, "\u2192": 1024,
         },
         kerning=_KERN.get("MingLiU_HKSCS"),
+        legacy_kerning=_LEGACY_KERN.get("MingLiU_HKSCS"),
     ),
     "BatangChe": FontMetrics(
         # MEASURED ONLY -- fixed pitch 512/1024 of 1024; 65 full-width Latin rows
@@ -2316,6 +2362,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2122": 1024, "\u25a0": 1024, "\u25cb": 1024, "\u25cf": 1024, "\u2192": 1024,
         },
         kerning=_KERN.get("BatangChe"),
+        legacy_kerning=_LEGACY_KERN.get("BatangChe"),
     ),
     "GulimChe": FontMetrics(
         # MEASURED ONLY -- fixed pitch 512/1024 of 1024; 65 full-width Latin rows
@@ -2354,6 +2401,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2122": 1024, "\u25a0": 1024, "\u25cb": 1024, "\u25cf": 1024, "\u2192": 1024,
         },
         kerning=_KERN.get("GulimChe"),
+        legacy_kerning=_LEGACY_KERN.get("GulimChe"),
     ),
     "DotumChe": FontMetrics(
         # MEASURED ONLY -- fixed pitch 512/1024 of 1024; 65 full-width Latin rows
@@ -2392,6 +2440,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2122": 1024, "\u25a0": 1024, "\u25cb": 1024, "\u25cf": 1024, "\u2192": 1024,
         },
         kerning=_KERN.get("DotumChe"),
+        legacy_kerning=_LEGACY_KERN.get("DotumChe"),
     ),
     "GungsuhChe": FontMetrics(
         # MEASURED ONLY -- fixed pitch 512/1024 of 1024; 65 full-width Latin rows
@@ -2430,6 +2479,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u2122": 1024, "\u25a0": 1024, "\u25cb": 1024, "\u25cf": 1024, "\u2192": 1024,
         },
         kerning=_KERN.get("GungsuhChe"),
+        legacy_kerning=_LEGACY_KERN.get("GungsuhChe"),
     ),
     "Lucida Console": FontMetrics(
         # MEASURED ONLY -- monospace 1234/2048 = 0.6025 em; no CJK at all
@@ -2448,6 +2498,7 @@ METRICS: dict[str, FontMetrics] = {
             "\u20ac": 1235,
         },
         kerning=_KERN.get("Lucida Console"),
+        legacy_kerning=_LEGACY_KERN.get("Lucida Console"),
     ),
     "Lucida Sans Typewriter": FontMetrics(
         # MEASURED ONLY -- monospace 1234/2048, the same pitch
@@ -2462,6 +2513,7 @@ METRICS: dict[str, FontMetrics] = {
         bold_cjk_width=2048,
         bold_widths={},
         kerning=_KERN.get("Lucida Sans Typewriter"),
+        legacy_kerning=_LEGACY_KERN.get("Lucida Sans Typewriter"),
     ),
     "Consolas": FontMetrics(
         # MEASURED ONLY -- monospace 1126/2048 = 0.5498 em; no CJK at all
@@ -2476,6 +2528,7 @@ METRICS: dict[str, FontMetrics] = {
         bold_cjk_width=2048,
         bold_widths={},
         kerning=_KERN.get("Consolas"),
+        legacy_kerning=_LEGACY_KERN.get("Consolas"),
     ),
 }
 
