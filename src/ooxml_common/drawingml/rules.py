@@ -112,6 +112,13 @@ class DrawingRules:
       rule only says which table; the measurer charges it, so a context built without a
       measurer gets one with its rule's source (:class:`~.context.RenderContext`), and a
       caller that builds its own passes ``kerning=rules.kerning``.
+    * ``synthetic_bold`` -- how bold East Asian text in a face with no bold cut is drawn
+      (MS Gothic, MS Mincho: their ``.ttc`` files hold none).  ``None``: asked for as
+      ``font-weight="bold"``, which a rasteriser with no bold face to draw draws regular.
+      ``"stroke"``, measured on PowerPoint (pptx2svg's ``tools/make_font_resolution_probe.py``,
+      its ``bold-sizes`` deck): the regular outline filled and stroked in the text's
+      colour (text rendering mode 2) with a line ``0.12 pt + 2%`` of the size -- 0.28 pt
+      at 8 pt, 0.36 at 12, 0.48 at 18, 0.60 at 24, 0.68 at 28.
     """
 
     name: str
@@ -127,10 +134,12 @@ class DrawingRules:
     first_baseline: str = "box"
     autofit: str = "stored"
     kerning: KerningSource = _kerning.FEATURE
+    synthetic_bold: str | None = None
 
 
 #: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
-POWERPOINT = DrawingRules("powerpoint", color.POWERPOINT, kerning=_kerning.POWERPOINT)
+POWERPOINT = DrawingRules("powerpoint", color.POWERPOINT, kerning=_kerning.POWERPOINT,
+                          synthetic_bold="stroke")
 
 #: Word, as docx2svg measured it.
 WORD = DrawingRules("word", color.WORD, gradients="office", dashes="office", arrowheads="office",

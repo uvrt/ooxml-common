@@ -126,6 +126,21 @@ def test_the_header_index_names_faces_as_documents_and_resvg_do(tmp_path):
     assert office.faces_in(tmp_path / "empty.otf", "system") == []
 
 
+@needs_bundle
+def test_a_face_is_found_by_its_english_typographic_family_after_its_own(places):
+    """PowerPoint finds variable Noto Sans JP -- name ID 1 "Noto Sans JP Thin" -- as
+    "Noto Sans JP", its name ID 16, and a family whose name ID 1 matches wins over faces
+    reached by name ID 16 alone (the probe in :func:`office.find`'s notes)."""
+    _link(places["system"] / "NotoSansJP[wght].ttf", BUNDLE / "NotoSansJP[wght].ttf")
+    app = _app(office.POWERPOINT, places["bundle"])
+    (face,) = office.faces_in(places["system"] / "NotoSansJP[wght].ttf", "system")
+    assert face.families == frozenset({"noto sans jp thin"})
+    assert face.typographic == frozenset({"noto sans jp"})
+    assert len(face.panose) == 10
+    assert [f.path for f in office.find("Noto Sans JP", app)] == [face.path]
+    assert [f.path for f in office.find("Noto Sans JP Thin", app)] == [face.path]
+
+
 # -- Reading a face ---------------------------------------------------------------------
 
 
