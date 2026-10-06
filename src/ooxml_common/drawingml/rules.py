@@ -18,6 +18,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ..text import kerning as _kerning
+from ..text.kerning import KerningSource
 from . import color
 from .color import ColorRules
 
@@ -97,6 +99,19 @@ class DrawingRules:
       shape's stored extent.  ``"fit"``, unmeasured (pptx2svg's behaviour before the
       measurement, kept for Word): ``a:normAutofit`` text is shrunk until it fits,
       the reduction scales the line spacing, and a ``spAutoFit`` shape grows to its text.
+    * ``kerning`` -- which of a face's kern pairs a line is laid out with
+      (:class:`~ooxml_common.text.kerning.KerningSource`; the measurements are
+      :mod:`ooxml_common.text.kerning`'s).  The default is the OpenType ``kern`` feature,
+      which is what every measurer charged before either application was measured.
+      PowerPoint's, measured on pptx2svg's ``tools/make_kern_source_probe.py`` and
+      pptx-agent's ``tools/wrap_boundary_probe.py``: a static face's legacy ``kern``
+      table only -- Aptos's ``ss``, which only ``GPOS`` holds, is not charged, so "Pass"
+      at 18 pt breaks in a box the feature-kerned word fits -- and a variable face's
+      ``GPOS`` pairs.  Word's, measured on docx2svg's ``tools/make_wrap_kern_probe.py``:
+      the legacy table where a run kerns at all, and no pairs for a variable face.  A
+      rule only says which table; the measurer charges it, so a context built without a
+      measurer gets one with its rule's source (:class:`~.context.RenderContext`), and a
+      caller that builds its own passes ``kerning=rules.kerning``.
     """
 
     name: str
@@ -111,13 +126,14 @@ class DrawingRules:
     text_size_grid: int | None = None
     first_baseline: str = "box"
     autofit: str = "stored"
+    kerning: KerningSource = _kerning.FEATURE
 
 
 #: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
-POWERPOINT = DrawingRules("powerpoint", color.POWERPOINT)
+POWERPOINT = DrawingRules("powerpoint", color.POWERPOINT, kerning=_kerning.POWERPOINT)
 
 #: Word, as docx2svg measured it.
 WORD = DrawingRules("word", color.WORD, gradients="office", dashes="office", arrowheads="office",
                     default_join="round", pattern_phase="page", text_outline_inset=0.5,
                     custom_path_strokes="stated", text_size_grid=300, first_baseline="descent",
-                    autofit="fit")
+                    autofit="fit", kerning=_kerning.WORD)

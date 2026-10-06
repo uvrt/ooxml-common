@@ -5,10 +5,13 @@ deck lays out identically on every machine.  When a character has no entry -- an
 font we have no table for at all -- it falls back to a per-category width ratio, which is
 crude but keeps wrapping sane for exotic fonts.
 
-A string is the sum of its advances **and the face's ``kern`` pairs across the joins**,
-which PowerPoint charges and this used not to; see :mod:`pptx2svg.text.kerning`.  The one
-caller that must not is the chart engine, which lays its text out unkerned and draws it
-kerned -- measured, and recorded on :func:`pptx2svg.resolve.chart.text_width`.
+A string is the sum of its advances **and the face's ``kern`` pairs across the joins**;
+see :mod:`pptx2svg.text.kerning`.  *Which* pairs is the measurer's ``kerning``
+(:class:`~ooxml_common.text.kerning.KerningSource`): the OpenType feature by default, as
+it always was, and the legacy ``kern`` table where an application's rule says so --
+PowerPoint's and Word's do (:attr:`~ooxml_common.drawingml.rules.DrawingRules.kerning`).
+The one caller that must not kern is the chart engine, which lays its text out unkerned
+and draws it kerned -- measured, and recorded on :func:`pptx2svg.resolve.chart.text_width`.
 
 :class:`FontToolsTextMeasurer` is the opt-in alternative: point it at real font files and
 it reads their true advance widths with fontTools.  Use it when fidelity to a specific
@@ -21,6 +24,7 @@ from typing import Mapping, Protocol
 
 from ..units import PX_PER_PT
 from .fontmap import family_key, metrics_for
+from .kerning import FEATURE, KerningSource
 from .metrics import FontMetrics
 
 #: Width as a fraction of the font size, for characters with no metrics entry.
@@ -147,10 +151,20 @@ class DefaultTextMeasurer:
 
     Empty by default, so a caller who constructs one by hand gets exactly the old
     behaviour.
+
+    ``kerning`` says which of a face's pairs are charged
+    (:class:`~ooxml_common.text.kerning.KerningSource`): the OpenType feature by default;
+    an application's rule (``DrawingRules.kerning``) where it was measured otherwise.
     """
 
-    def __init__(self, extra_metrics: "Mapping[str, FontMetrics] | None" = None) -> None:
+    def __init__(
+        self,
+        extra_metrics: "Mapping[str, FontMetrics] | None" = None,
+        *,
+        kerning: KerningSource = FEATURE,
+    ) -> None:
         self._extra = dict(extra_metrics) if extra_metrics else {}
+        self.kerning = kerning
 
     def _metrics(self, font_family: str | None) -> FontMetrics | None:
         if self._extra and font_family:
@@ -189,7 +203,7 @@ class DefaultTextMeasurer:
             east_asian = is_cjk(code_point)
             metrics = ea_metrics if east_asian and ea_metrics else latin_metrics
             if metrics is not None and metrics is previous[1]:
-                total += _kern_px(previous[0], char, base_size_px, metrics, bold)
+                total += _kern_px(previous[0], char, base_size_px, metrics, bold, self.kerning)
             previous = (char, metrics)
             if metrics is None:
                 width = base_size_px * _heuristic_ratio(char, code_point)
@@ -235,7 +249,7 @@ class DefaultTextMeasurer:
         metrics = table(first)
         if metrics is None or metrics is not table(second):
             return 0.0
-        return _kern_px(first, second, font_size_pt * PX_PER_PT, metrics, bold)
+        return _kern_px(first, second, font_size_pt * PX_PER_PT, metrics, bold, self.kerning)
 
     def line_height_ratio(
         self, font_family: str | None = None, font_family_ea: str | None = None
@@ -273,18 +287,24 @@ def _first_baseline_ratio(descender_ratio: float) -> float:
 
 
 def _kern_px(
-    first: str, second: str, base_size_px: float, metrics: FontMetrics, bold: bool
+    first: str,
+    second: str,
+    base_size_px: float,
+    metrics: FontMetrics,
+    bold: bool,
+    source: KerningSource = FEATURE,
 ) -> float:
-    """What the ``kern`` feature takes off the join between two characters, in pixels.
+    """What kerning takes off the join between two characters, in pixels: the pairs
+    ``source`` names for the face (:meth:`~.metrics.FontMetrics.kern_table`).
 
-    Zero for a face with no kern table, which is how it stays free for the eighteen
-    monospaced and full-width faces and for every embedded one.
+    Zero for a face with no such table, which is how it stays free for the eighteen
+    monospaced and full-width faces, and for every embedded one under the feature.
 
     The bold question is settled the same way the advance widths settle it: the bold
     pairs are used exactly when the bold *widths* are, so a face whose bold cut we do not
     have is kerned with its upright pairs rather than not kerned at all.
     """
-    table = metrics.kerning
+    table = metrics.kern_table(source)
     if table is None:
         return 0.0
     units = table.adjustment(first, second, bold and bool(metrics.bold_widths))
@@ -326,9 +346,12 @@ class FontToolsTextMeasurer:
         self,
         font_paths: dict[str, str],
         fallback: TextMeasurer | None = None,
+        *,
+        kerning: KerningSource = FEATURE,
     ) -> None:
         self._font_paths = font_paths
-        self._fallback = fallback or DefaultTextMeasurer()
+        self.kerning = kerning
+        self._fallback = fallback or DefaultTextMeasurer(kerning=kerning)
         self._cache: dict[str, object] = {}
         self._kern_cache: dict[int, dict[str, int]] = {}
 
@@ -413,10 +436,12 @@ class FontToolsTextMeasurer:
     def _kern_px(self, font, first: str, second: str, base_size_px: float) -> float:
         """The real file's ``kern`` adjustment for one pair, in pixels.
 
-        Read straight out of GPOS, with the legacy ``kern`` table as the fallback for a
-        face that has one and no feature -- the same two sources
-        ``tools/extract_font_metrics.py`` bakes the static tables from, so this measurer
-        and the default one answer alike for a face that appears in both.
+        Under the feature (the default) read straight out of GPOS, with the legacy
+        ``kern`` table as the fallback for a face that has one and no feature -- the same
+        two sources ``tools/extract_font_metrics.py`` bakes the static tables from, so
+        this measurer and the default one answer alike for a face that appears in both.
+        Under ``"legacy"`` the legacy table alone; a face is variable when it has an
+        ``fvar`` table (:class:`~ooxml_common.text.kerning.KerningSource`).
 
         Cached per pair rather than expanded up front: a face carries thousands of pairs
         and a deck asks about a few hundred.
@@ -428,7 +453,7 @@ class FontToolsTextMeasurer:
         key = first + second
         units = pairs.get(key)
         if units is None:
-            units = _font_kern_units(font, first, second)
+            units = _font_kern_units(font, first, second, self.kerning)
             pairs[key] = units
         if not units:
             return 0.0
@@ -451,20 +476,26 @@ class FontToolsTextMeasurer:
         return _first_baseline_ratio(abs(hhea.descender) / units_per_em)
 
 
-def _font_kern_units(font, first: str, second: str) -> int:
-    """One pair's ``kern`` adjustment, in the file's own units.
+def _font_kern_units(font, first: str, second: str, source: KerningSource = FEATURE) -> int:
+    """One pair's ``kern`` adjustment, in the file's own units, from the table ``source``
+    names for the face.
 
-    Mirrors ``tools/extract_font_metrics.py``: within one lookup the first subtable that
-    *covers* the pair wins and the rest of that lookup is skipped, while separate lookups
-    each get a pass and their adjustments add.  A face with no GPOS ``kern`` feature but
-    a legacy ``kern`` table falls back to that.
+    The feature mirrors ``tools/extract_font_metrics.py``: within one lookup the first
+    subtable that *covers* the pair wins and the rest of that lookup is skipped, while
+    separate lookups each get a pass and their adjustments add.  A face with no GPOS
+    ``kern`` feature but a legacy ``kern`` table falls back to that.
     """
     try:
+        which = source.table("fvar" in font)
+        if which == "none":
+            return 0
         cmap = font.getBestCmap()
         left = cmap.get(ord(first))
         right = cmap.get(ord(second))
         if left is None or right is None:
             return 0
+        if which == "legacy":
+            return _legacy_units(font, left, right)
         total = 0
         covered = False
         for lookup in _gpos_kern_lookups(font):
@@ -476,13 +507,19 @@ def _font_kern_units(font, first: str, second: str) -> int:
                     break
         if covered:
             return total
-        if "kern" not in font:
-            return 0
-        for subtable in font["kern"].kernTables:
-            total += subtable.kernTable.get((left, right), 0)
-        return total
+        return _legacy_units(font, left, right)
     except Exception:  # a font whose tables will not parse simply does not kern
         return 0
+
+
+def _legacy_units(font, left: str, right: str) -> int:
+    """The legacy ``kern`` table's adjustment for two glyphs, summed over its subtables."""
+    if "kern" not in font:
+        return 0
+    total = 0
+    for subtable in font["kern"].kernTables:
+        total += getattr(subtable, "kernTable", {}).get((left, right), 0)
+    return total
 
 
 def _gpos_kern_lookups(font) -> list[list]:

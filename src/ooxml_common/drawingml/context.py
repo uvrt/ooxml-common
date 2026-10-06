@@ -27,7 +27,10 @@ from .svg import num  # noqa: F401  (re-exported)
 
 @dataclass
 class RenderContext:
-    measurer: TextMeasurer = field(default_factory=DefaultTextMeasurer)
+    #: The text measurer.  Left out, it is the generated tables' measurer charging the
+    #: kern pairs :attr:`rules` names (:attr:`~.rules.DrawingRules.kerning`); a caller's
+    #: own measurer is used as it is.
+    measurer: TextMeasurer = None  # type: ignore[assignment]
     font_mapping: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_FONT_MAPPING))
     #: Last-resort typeface for East Asian text, from the theme's ``Jpan`` script font.
     #:
@@ -80,6 +83,10 @@ class RenderContext:
     #: (:mod:`~ooxml_common.drawingml.rules`).  PowerPoint's is the default, and what
     #: pptx2svg has always drawn.
     rules: DrawingRules = POWERPOINT
+
+    def __post_init__(self) -> None:
+        if self.measurer is None:
+            self.measurer = DefaultTextMeasurer(kerning=self.rules.kerning)
 
     def new_id(self, prefix: str) -> str:
         self._next_id += 1
