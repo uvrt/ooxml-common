@@ -21,13 +21,14 @@ Lengths are CSS pixels (96 to the inch, :func:`~ooxml_common.units.emu_to_px` an
 
 **By default it measures what autofit measures.**  The height is
 :func:`~ooxml_common.drawingml.textbody._estimate_text_height`'s, number for number: the
-estimate ``spAutoFit`` grows a shape with and ``normAutofit``'s fitting shrinks text with.
-So it shares that estimate's simplifications: every paragraph wraps to the full text width
-(``marL`` is not taken off), and a paragraph that does not wrap is one line, breaks and all.
-With ``as_drawn=True`` neither holds: each paragraph wraps to the text width less its
-``marL``, as the drawing pass and PowerPoint wrap it, and a paragraph that does not wrap
-still breaks at each line break (``a:br``), as PowerPoint draws it.  Either way a
-multi-column body's height is its one-column height divided by the columns.  A stored ``fontScale`` scales each size exactly, not rounded to the point as
+estimate a body is anchored by, ``spAutoFit`` grows a shape with and ``normAutofit``'s
+fitting shrinks text with.  Each paragraph wraps to the text width less its ``marL``, as
+the drawing pass and PowerPoint wrap it (until ooxml-common 0.5 the estimate, and so this,
+wrapped every paragraph to the full width).  The estimate keeps one simplification: a
+paragraph that does not wrap is one line, breaks and all.  With ``as_drawn=True`` that
+does not hold either: a paragraph that does not wrap still breaks at each line break
+(``a:br``), as PowerPoint draws it.  Either way a multi-column body's height is its
+one-column height divided by the columns.  A stored ``fontScale`` scales each size exactly, not rounded to the point as
 :func:`~ooxml_common.drawingml.textbody._stored_autofit` rounds it for drawing, and
 ``lnSpcReduction`` takes a fraction off each line's height rather than percentage points
 off its spacing.
@@ -82,8 +83,7 @@ class MeasuredParagraph:
     (pt), its ``space_before`` and ``space_after`` (px; the first paragraph's space before
     is not counted in the height, as PowerPoint does not draw it), and the effective
     ``sizes`` (pt, scale applied, each once, smallest first) of the runs that hold text.
-    ``width`` is what its lines wrap to, px: the text width, less ``marL`` when measured
-    ``as_drawn``."""
+    ``width`` is what its lines wrap to, px: the text width less its ``marL``."""
 
     index: int
     text: str
@@ -113,6 +113,13 @@ class TextBodyMeasure:
     ``text_height`` is the height the lines and the spacing between paragraphs take, px
     (0 without text); ``needed`` adds the top and bottom insets (0 without text), and
     ``available`` is the text area's height -- the text fits when ``needed`` is no more.
+
+    ``area_left`` and ``area_top`` are where the text area's top-left corner sits in the
+    frame, px: the geometry's text rectangle's offset (a ``roundRect``'s clear of its
+    corners, an ``ellipse``'s inscribed rectangle) -- for :func:`measure_shape_text`, in
+    the shape's own frame, a SmartArt shape's text box (``dsp:txXfrm``) offset included.
+    The insets are inside the area, so the first line starts ``area_left + insets[0]``
+    from the frame's left.
     """
 
     paragraphs: tuple[MeasuredParagraph, ...]
@@ -126,6 +133,13 @@ class TextBodyMeasure:
     font_scale: float
     text_height: float
     needed: float
+    area_left: float = 0.0
+    area_top: float = 0.0
+
+    @property
+    def area_offset(self) -> tuple[float, float]:
+        """``(area_left, area_top)``, px."""
+        return self.area_left, self.area_top
 
     @property
     def available(self) -> float:
@@ -173,7 +187,7 @@ def measure_text_body(
     estimates it (the module's doc says how the two differ)."""
     context = context or RenderContext()
     properties = text_body.body_properties
-    area, _, _ = _text_area(frame, geometry, outline_width, context.rules)
+    area, area_left, area_top = _text_area(frame, geometry, outline_width, context.rules)
     dims = _resolve_dimensions(properties, emu_to_px(area.extent_width), emu_to_px(area.extent_height))
     columns = max(1, properties.num_col)
     text_width = (dims.width - dims.margin_left - dims.margin_right) / columns
@@ -195,7 +209,7 @@ def measure_text_body(
         has_text = any(run.text for run in paragraph.runs)
         natural = _paragraph_natural_height(paragraph, default_size, font_scale, context, default_ratio)
         line_height = _line_height_px(paragraph, natural, reduction)
-        width = text_width - emu_to_px(paragraph.properties.margin_left or 0) if as_drawn else text_width
+        width = text_width - emu_to_px(paragraph.properties.margin_left or 0)
         if wraps and has_text:
             wrapped = [line.segments for line in
                        wrap_paragraph(paragraph, width, scaled_default, font_scale, context.measurer)]
@@ -230,6 +244,8 @@ def measure_text_body(
         font_scale=font_scale,
         text_height=text_height,
         needed=text_height + insets if has_text else 0.0,
+        area_left=emu_to_px(area_left),
+        area_top=emu_to_px(area_top),
     )
 
 
@@ -247,15 +263,23 @@ def measure_shape_text(
     ``scale`` is the product of the enclosing groups' ``ext``/``chExt`` ratios, ``(x,
     y)``: the frame grows with the group and the type inside it does not
     (:attr:`~ooxml_common.drawingml.context.RenderContext.group_scale`).  ``font_scale``
-    and ``as_drawn`` are :func:`measure_text_body`'s."""
+    and ``as_drawn`` are :func:`measure_text_body`'s; the area's offsets are in the
+    shape's frame (:class:`TextBodyMeasure`)."""
     if shape.text_body is None:
         return None
     box = shape.text_transform or shape.transform
     box = replace(box, extent_width=box.extent_width * scale[0], extent_height=box.extent_height * scale[1])
     geometry = text_geometry(shape) if shape.text_transform is None else None
-    return measure_text_body(shape.text_body, box, context, geometry=geometry,
-                             outline_width=_outline_width(shape), font_scale=font_scale,
-                             as_drawn=as_drawn)
+    measured = measure_text_body(shape.text_body, box, context, geometry=geometry,
+                                 outline_width=_outline_width(shape), font_scale=font_scale,
+                                 as_drawn=as_drawn)
+    if shape.text_transform is None:
+        return measured
+    # A SmartArt shape's text box sits at its own offset in the shape's frame.
+    frame = shape.transform
+    return replace(measured,
+                   area_left=measured.area_left + emu_to_px((box.offset_x - frame.offset_x) * scale[0]),
+                   area_top=measured.area_top + emu_to_px((box.offset_y - frame.offset_y) * scale[1]))
 
 
 def measure_text(

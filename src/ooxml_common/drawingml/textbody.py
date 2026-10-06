@@ -1692,6 +1692,15 @@ def _estimate_text_height(
     font_scale: float,
     context: RenderContext,
 ) -> float:
+    """The height ``paragraphs`` take wrapped to ``text_width``, px: what a body is
+    anchored by, what its columns are filled to, and what ``spAutoFit`` and
+    ``normAutofit`` (under :attr:`.DrawingRules.autofit` ``"fit"``) fit.
+
+    Each paragraph wraps to ``text_width`` less its ``marL``, as :func:`_render_column`
+    draws it.  It used to wrap to the whole width, so a bulleted paragraph that the
+    drawing broke onto one line more than this counted was anchored -- centred, or set
+    at the bottom -- half a line, or a line, off where PowerPoint puts it.
+    """
     total = 0.0
     default_ratio = _default_line_height_ratio(paragraphs, context)
     previous_space_after = 0.0
@@ -1705,9 +1714,10 @@ def _estimate_text_height(
         line_height = _line_height_px(paragraph, natural_height, ln_spc_reduction)
 
         if should_wrap and has_text:
+            width = text_width - emu_to_px(paragraph.properties.margin_left or 0)
             line_count = len(
                 wrap_paragraph(
-                    paragraph, text_width, scaled_default, font_scale, context.measurer
+                    paragraph, width, scaled_default, font_scale, context.measurer
                 )
             )
         else:
