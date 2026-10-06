@@ -86,6 +86,17 @@ class DrawingRules:
       spacing in Aptos of 19 to 47 pt stands 0.817 em below its block's top, which is
       0.9 of Aptos's 1.2207 em box less its 0.2817 em descent, to Word's device pixel.  The
       measurer says what the box and the descent are (docx2svg's gives the face's own).
+    * ``autofit`` -- what a text body's autofit does when the file is drawn as it stands.
+      ``"stored"``, PowerPoint's, measured on pptx2svg's ``tools/make_autofit_probe.py``:
+      nothing is re-fitted on open.  ``a:normAutofit`` applies only what it stores -- a
+      ``fontScale`` takes every run to its scaled size rounded to a whole point, half up
+      (25 pt at 50 % draws 12.5 as 13, 18 pt at 70 % 12.6 as 13), and an
+      ``lnSpcReduction`` comes off a percentage line spacing in percentage points (150 %
+      less 20 draws 130 %, not 120) and leaves ``a:spcPts`` and paragraph spacing alone --
+      and with nothing stored the text overflows at full size; ``a:spAutoFit`` keeps the
+      shape's stored extent.  ``"fit"``, unmeasured (pptx2svg's behaviour before the
+      measurement, kept for Word): ``a:normAutofit`` text is shrunk until it fits,
+      the reduction scales the line spacing, and a ``spAutoFit`` shape grows to its text.
     """
 
     name: str
@@ -99,6 +110,7 @@ class DrawingRules:
     custom_path_strokes: str = "scaled"
     text_size_grid: int | None = None
     first_baseline: str = "box"
+    autofit: str = "stored"
 
 
 #: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
@@ -107,4 +119,5 @@ POWERPOINT = DrawingRules("powerpoint", color.POWERPOINT)
 #: Word, as docx2svg measured it.
 WORD = DrawingRules("word", color.WORD, gradients="office", dashes="office", arrowheads="office",
                     default_join="round", pattern_phase="page", text_outline_inset=0.5,
-                    custom_path_strokes="stated", text_size_grid=300, first_baseline="descent")
+                    custom_path_strokes="stated", text_size_grid=300, first_baseline="descent",
+                    autofit="fit")

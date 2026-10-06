@@ -9,7 +9,7 @@ depends on how the text wraps.
 The order of operations, therefore:
 
 1. swap width/height and rotate margins if the body is vertical;
-2. pick the default font size and, for ``normAutofit``, shrink until the text fits;
+2. pick the default font size and apply what ``normAutofit`` stores (:func:`_stored_autofit`);
 3. wrap each paragraph and emit its tspans, accumulating line advances;
 4. measure the total height and offset the ``<text>`` element's ``y`` for the anchor;
 5. add the first line's ascender so ``y`` lands on the baseline, not the line top.
@@ -203,6 +203,7 @@ def render_text_body(
     """Render a text body, flowing it into columns when ``a:bodyPr@numCol`` asks for them.
 
     ``geometry`` puts the text in the shape's text rectangle (:func:`_text_area`)."""
+    text_body = _stored_autofit(text_body, context.rules)
     body = text_body.body_properties
     frame, undo_group_scale = _unscaled_text_frame(transform, context)
     frame, left, top = _text_area(frame, geometry, outline_width, context.rules)
@@ -331,7 +332,7 @@ def _render_column(
     font_scale = body.font_scale
     ln_spc_reduction = body.ln_spc_reduction
 
-    if body.auto_fit == "normAutofit" and should_wrap:
+    if body.auto_fit == "normAutofit" and should_wrap and context.rules.autofit == "fit":
         available_height = dims.height - dims.margin_top - dims.margin_bottom
         font_scale = _shrink_to_fit_scale(
             paragraphs,
@@ -1727,6 +1728,72 @@ def _estimate_text_height(
     return total
 
 
+def _scaled_size(size: float, font_scale: float) -> float:
+    """A run's size under a stored ``fontScale``: rounded to a whole point, half up.
+
+    Measured on ``tools/make_autofit_probe.py`` (pptx2svg) by the advance of each line
+    in PowerPoint's PDF export: 25 pt at 50 % draws 13 pt, 21 pt at 50 % 11, 18 pt at
+    62.5 % 11, at 70 % 13 and at 92.5 % 17, 10 pt at 85 % 9, 10.5 pt at 50 % 5 -- and a
+    stated 10.5 pt at 100 % stays 10.5.  The line pitch follows the rounded size.
+    """
+    return max(1.0, float(int(size * font_scale + 0.5 + 1e-9)))
+
+
+def _stored_autofit(text_body: m.TextBody, rules: DrawingRules) -> m.TextBody:
+    """``normAutofit`` as PowerPoint draws a file it has not re-fitted: what it stores.
+
+    PowerPoint does not fit the text when it opens a file (:attr:`.DrawingRules.autofit`):
+    with no ``fontScale`` or ``lnSpcReduction`` stored, overflowing text is drawn at full
+    size.  What is stored is applied up front -- each stated run size scaled and rounded
+    (:func:`_scaled_size`; with none stated, the 18 pt default), and the reduction taken
+    off each paragraph's percentage line spacing in percentage points -- so the layout
+    sees a body with nothing left to scale.  ``a:spcPts`` and ``a:spcBef``/``a:spcAft``
+    are not reduced, measured: 30 pt exact spacing kept 30.00 pt under a 20 % reduction,
+    and 12 pt before, and 50 % before and after, kept their size.
+    """
+    body = text_body.body_properties
+    if rules.autofit != "stored" or body.auto_fit != "normAutofit":
+        return text_body
+    scale, reduction = body.font_scale, body.ln_spc_reduction
+    if scale == 1.0 and not reduction:
+        return text_body
+
+    stated = any(
+        run.properties.font_size for paragraph in text_body.paragraphs for run in paragraph.runs
+    )
+
+    def sized(properties: m.RunProperties | None) -> m.RunProperties | None:
+        if properties is None or scale == 1.0:
+            return properties
+        if properties.font_size:
+            return replace(properties, font_size=_scaled_size(properties.font_size, scale))
+        if not stated:
+            return replace(properties, font_size=_scaled_size(DEFAULT_FONT_SIZE_PT, scale))
+        return properties
+
+    def spaced(properties: m.ParagraphProperties) -> m.ParagraphProperties:
+        spacing = properties.line_spacing
+        if not reduction or isinstance(spacing, m.PointsSpacing):
+            return properties
+        percent = spacing.value if isinstance(spacing, m.PercentSpacing) else 100000
+        return replace(properties, line_spacing=m.PercentSpacing(percent - reduction * 100000))
+
+    paragraphs = [
+        replace(
+            paragraph,
+            runs=[replace(run, properties=sized(run.properties)) for run in paragraph.runs],
+            properties=spaced(paragraph.properties),
+            end_para_run_properties=sized(paragraph.end_para_run_properties),
+        )
+        for paragraph in text_body.paragraphs
+    ]
+    return replace(
+        text_body,
+        paragraphs=paragraphs,
+        body_properties=replace(body, font_scale=1.0, ln_spc_reduction=0.0),
+    )
+
+
 def _shrink_to_fit_scale(
     paragraphs: list[m.Paragraph],
     default_font_size: float,
@@ -1736,11 +1803,8 @@ def _shrink_to_fit_scale(
     available_height: float,
     context: RenderContext,
 ) -> float:
-    """``normAutofit``: shrink text until it fits, converging in a few passes.
-
-    The stored ``fontScale`` is PowerPoint's own answer, but it was computed against
-    PowerPoint's font metrics; re-deriving it keeps text inside the box when our
-    measurements differ.
+    """``normAutofit`` under :attr:`.DrawingRules.autofit` ``"fit"``: shrink text until
+    it fits, converging in a few passes.  PowerPoint does not (:func:`_stored_autofit`).
     """
     if available_height <= 0:
         return font_scale

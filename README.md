@@ -103,6 +103,7 @@ fidelity baselines hold, and its colour rows were measured the same way by pptx2
 | A custom path's outline (`custom_path_strokes`) | scaled with the path by its `scale()` | at its **stated width**: the coordinates are scaled instead |
 | A run's glyphs (`text_size_grid`) | at the stated size | at the size **rounded to the 300 dpi device pixel** (10 pt drawn 10.08) |
 | A text body's first baseline (`first_baseline`) | the measurer's ascent, scaled by the spacing | the **spaced line box less the face's descent**; the next line a descent on, then its box less its descent |
+| Autofit (`autofit`) | **what the file stores**, measured on pptx2svg's `tools/make_autofit_probe.py`: `normAutofit` text at its `fontScale`, each size rounded to a whole point half up, with `lnSpcReduction` off a percentage spacing in points of percent, and at full size, overflowing, when nothing is stored; a `spAutoFit` shape at its stored extent | not measured: `normAutofit` text shrunk until it fits, a `spAutoFit` shape grown to its text |
 
 Most of Word's column is probably Office's shared engine and so PowerPoint's too; that is
 not measured, and pptx2svg's output is not moved on a guess. The colour rows are the
