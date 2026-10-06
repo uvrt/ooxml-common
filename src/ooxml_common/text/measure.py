@@ -62,7 +62,17 @@ BOLD_FACTOR = 1.05
 #:
 #: It is small: 0.4% at 32 pt.  It is here because it is measured and free, not because
 #: it rescues a layout on its own.
+#:
+#: **And only from 16 pt** (:data:`EAST_ASIAN_SYNTHETIC_BOLD_FROM_PT`).  Measured again with
+#: pptx2svg's ``tools/make_font_resolution_probe.py`` (its ``bold-sizes`` deck: ten kana,
+#: bold MS Gothic and MS Mincho, 6 to 28 pt): every size up to 15.5 pt advances exactly
+#: its point size, bold or not, and every size from 16 pt advances 0.1242--0.1260 pt
+#: more.  Charged below 16 pt, the increment wrapped a 7.5 pt bold table cell of
+#: ``real-financial-report.pptx`` that PowerPoint keeps on one line -- its PDF advances
+#: that cell's MS Gothic at exactly 7.5 pt.
 EAST_ASIAN_SYNTHETIC_BOLD_PT = 0.125
+#: The smallest size PowerPoint's synthetic bold widens an East Asian advance at.
+EAST_ASIAN_SYNTHETIC_BOLD_FROM_PT = 16.0
 
 #: PowerPoint's line box for single spacing, as a multiple of the font size.
 #:
@@ -189,7 +199,8 @@ class DefaultTextMeasurer:
         # call rather than once per character: the tables are large and the answer is a
         # property of the face.
         synthetic_bold_px = (
-            EAST_ASIAN_SYNTHETIC_BOLD_PT * PX_PER_PT if bold else 0.0
+            EAST_ASIAN_SYNTHETIC_BOLD_PT * PX_PER_PT
+            if bold and font_size_pt >= EAST_ASIAN_SYNTHETIC_BOLD_FROM_PT else 0.0
         )
         total = 0.0
         #: The character before this one and the table it was measured from, for the

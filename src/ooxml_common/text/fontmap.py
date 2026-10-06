@@ -58,10 +58,15 @@ __all__ = [
     "family_key",
     "font_family_value",
     "generic_family",
+    "japanese_fallback",
+    "JAPANESE_GOTHIC",
+    "JAPANESE_MINCHO",
     "mapped_font",
+    "panose_is_sans",
     "metrics_fallback_font",
     "metrics_for",
     "substitution_for",
+    "theme_east_asian",
     "typographic_family",
 ]
 
@@ -591,6 +596,12 @@ def east_asian_family(*candidates: str | None) -> str | None:
     The last resort is the first real name, whatever it is: a cascade that resolved to
     nothing would leave the emitted ``font-family`` empty, and a named face we have no
     table for still tells the rasteriser something.
+
+    **This is the chart engine's cascade, not the text engine's.**  Text in a shape or a
+    table cell does not fall through to the script list at all: its East Asian face is
+    the one ``+mn-ea`` names for its language (:func:`theme_east_asian`), and where that
+    cannot draw Japanese PowerPoint picks MS Gothic or MS Mincho (:func:`japanese_fallback`).
+    The same deck's table cells are drawn in MS-Gothic.
     """
     named = [
         name for name in candidates if name and name.strip() and not name.startswith("+")
@@ -599,6 +610,90 @@ def east_asian_family(*candidates: str | None) -> str | None:
         if covers_east_asian(name):
             return name
     return named[0] if named else None
+
+
+#: The two faces PowerPoint for Mac draws a run's Japanese in when the run names no face
+#: it can draw Japanese with (:func:`japanese_fallback`).
+JAPANESE_GOTHIC = "MS Gothic"
+JAPANESE_MINCHO = "MS Mincho"
+
+
+def panose_is_sans(panose) -> bool:
+    """Whether a face's ``OS/2`` PANOSE says *sans serif*: Latin text (family kind 2), a
+    sans serif style (11--15) and not monospaced (proportion 9).  Windows' own reading of
+    PANOSE into a pitch-and-family makes the same three cuts (``FF_SWISS``)."""
+    panose = tuple(panose or ())
+    return len(panose) >= 4 and panose[0] == 2 and 11 <= panose[1] <= 15 and panose[3] != 9
+
+
+def japanese_fallback(panose) -> str:
+    """The face PowerPoint for Mac draws a run's Japanese in when the run names no face
+    that can: MS Gothic or MS Mincho, chosen by the PANOSE of the face it *does* name --
+    the run's East Asian face where it names one, else its Latin face -- and MS Gothic
+    where that face is not installed (``panose`` ``None``).
+
+    **Measured** (pptx2svg's ``tools/make_font_resolution_probe.py``; the observations are
+    ``tests/fixtures/font-resolution-probe.json`` there).  One line of kana and ideographs
+    per box, over ``sample.pptx``'s theme, whose ``<a:ea>`` is empty:
+
+    * the run's Latin face varied over 35 families and nothing else: MS Gothic for
+      Calibri, Calibri Light, Arial, Aptos, Aptos Display, Verdana, Tahoma, Segoe UI,
+      Century Gothic, Gill Sans MT, Franklin Gothic Book, Trebuchet MS, Futura, Avenir
+      Next, Lato and Impact; MS Mincho for Times New Roman, Georgia, Cambria, Garamond,
+      Palatino Linotype, Book Antiqua, Baskerville, Didot, Rockwell, American
+      Typewriter, Courier New, Consolas, Menlo, Comic Sans MS, Brush Script MT, Raleway
+      (PANOSE all zero), Helvetica Neue and Optima (serif style 0, "any").  PANOSE
+      separates the two lists exactly; ``OS/2.sFamilyClass`` does not (Aptos and Lato
+      2.015 are class 0 and draw Gothic, Consolas is class 8 and draws Mincho);
+    * a face that is not installed -- ``NoSuchLatinFace`` as the Latin face, or
+      ``NoSuchJapaneseFace`` as the East Asian one over Courier New -- MS Gothic;
+    * a Latin face named as the East Asian one decides instead of the Latin face:
+      Calibri over ``<a:ea typeface="Courier New"/>`` draws MS Mincho, Courier New over
+      Calibri MS Gothic.  So ``real-basic-theme.pptx``'s runs, which name Lato and Raleway
+      as their own ``<a:ea>``, draw MS Gothic and MS Mincho;
+    * bold, a table cell and a text box all follow the same rule;
+    * where the run names no East Asian face and its *Latin* face draws Japanese --
+      Noto Sans JP, ＭＳ Ｐゴシック, MS Mincho, 游ゴシック, Yu Mincho, Meiryo -- the
+      Latin face draws it, and this is not reached (a caller's test, as it needs to know
+      what is installed).
+    """
+    if panose is None:
+        return JAPANESE_GOTHIC
+    return JAPANESE_GOTHIC if panose_is_sans(panose) else JAPANESE_MINCHO
+
+
+def _primary(lang: str | None) -> str:
+    return (lang or "").lower().split("-")[0]
+
+
+def _is_japanese(lang: str | None, alt_lang: str | None = None) -> bool:
+    """A Japanese run: its ``lang``, or its ``altLang`` where ``lang`` names no East Asian
+    language (``en-US`` over ``altLang="ja-JP"`` is measured)."""
+    if _primary(lang) == "ja":
+        return True
+    return _primary(lang) not in ("zh", "ko") and _primary(alt_lang) == "ja"
+
+
+def theme_east_asian(slot: str | None, japanese: str | None, lang: str | None,
+                     alt_lang: str | None = None) -> str | None:
+    """What ``+mn-ea`` (or ``+mj-ea``) names, for a run in ``lang``: the collection's
+    ``<a:font script="Jpan"/>`` for a Japanese run where the theme writes one, else its
+    ``<a:ea>`` -- and nothing where that is empty, which is not a name.
+
+    **Measured** (the probe :func:`japanese_fallback` cites): over a theme with an empty
+    ``<a:ea>`` and ``Jpan`` 游ゴシック, a run with ``lang="en-US"`` draws its Japanese in MS
+    Gothic and one with ``lang="ja-JP"`` in YuGothic-Regular; over ``<a:ea>`` 游ゴシック
+    with ``Jpan`` ＭＳ Ｐゴシック, the first draws YuGothic-Regular and the second
+    MS-PGothic.  A run that names its own East Asian face draws it whatever its language.
+    ``lang="en-US" altLang="ja-JP"`` draws YuGothic-Regular too: ``altLang`` counts where
+    ``lang`` is not an East Asian language.
+    So the ``Jpan`` entry is not a fallback behind ``<a:ea>``: it *is* ``+mn-ea`` for
+    Japanese text, and is never consulted for anything else -- ``sample.pptx``'s
+    ``Jpan`` ＭＳ Ｐゴシック does not reach its runs, which carry no ``lang``.
+    """
+    if _is_japanese(lang, alt_lang) and japanese and japanese.strip():
+        return japanese
+    return slot if slot and slot.strip() else None
 
 
 def synthesises_italic(font_family: str | None) -> bool:

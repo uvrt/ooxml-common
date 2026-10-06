@@ -105,6 +105,12 @@ class SourceRunProperties:
     outline_color: SourceColor | None = None
     hyperlink_rel_id: str | None = None
     hyperlink_tooltip: str | None = None
+    #: ``a:rPr@lang`` verbatim (``"en-US"``, ``"ja-JP"``, ``"ja"``): which of a theme's
+    #: East Asian faces ``+mn-ea`` names -- a Japanese run's is the ``Jpan`` entry
+    #: (:func:`ooxml_common.text.fontmap.theme_east_asian`).
+    lang: str | None = None
+    #: ``a:rPr@altLang``: the run's East Asian language where ``lang`` is not one.
+    alt_lang: str | None = None
 
 
 @dataclass

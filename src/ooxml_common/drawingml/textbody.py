@@ -56,6 +56,21 @@ DEFAULT_FONT_SIZE_PT = 18.0
 #: it.  So this changes no line break.
 SYNTHETIC_OBLIQUE_SHEAR = 0.33984
 
+#: PowerPoint's synthetic bold line, ``0.12 pt + 2%`` of the size
+#: (:attr:`~.rules.DrawingRules.synthetic_bold`).
+SYNTHETIC_BOLD_STROKE_PT = 0.12
+SYNTHETIC_BOLD_STROKE_RATIO = 0.02
+
+
+def _has_no_bold_cut(family: str | None) -> bool:
+    """Whether ``family`` is measured from a file with no bold face -- its bold table is
+    its upright one (:meth:`~ooxml_common.text.metrics.FontMetrics.bold_is_indistinguishable`)."""
+    from ..text.fontmap import metrics_for
+
+    metrics = metrics_for(family)
+    return metrics is not None and bool(metrics.bold_widths) and metrics.bold_is_indistinguishable()
+
+
 _VERTICAL_TYPES = frozenset({"vert", "eaVert", "wordArtVert", "mongolianVert"})
 
 #: ``a:rPr@u`` -> the nearest ``text-decoration-style``.  OOXML distinguishes weights
@@ -1331,7 +1346,9 @@ def _segment_tspans(
 
     out: list[tuple[str | None, str, str, bool]] = []
     for fonts, part_text in chains:
-        styles = _style_attrs(properties, font_scale, fonts, context, default_font_size)
+        styles = _style_attrs(properties, font_scale, fonts, context, default_font_size,
+                              east_asian=fonts is not None and fonts[0] == properties.font_family_ea
+                              and properties.font_family_ea != properties.font_family)
         chain = fonts if fonts is not None else [
             properties.font_family, properties.font_family_ea, properties.font_family_cs
         ]
@@ -1376,6 +1393,8 @@ def _style_attrs(
     fonts: list[str | None] | None,
     context: RenderContext,
     default_font_size: float = DEFAULT_FONT_SIZE_PT,
+    *,
+    east_asian: bool = False,
 ) -> str:
     styles: list[str] = []
 
@@ -1412,7 +1431,14 @@ def _style_attrs(
     if family:
         styles.append(f'font-family="{escape_xml_attr(family)}"')
 
-    if properties.bold:
+    # Bold East Asian text in a face with no bold cut, as the application emboldens it
+    # (:attr:`~.rules.DrawingRules.synthetic_bold`): the measurer already charges it so
+    # (``EAST_ASIAN_SYNTHETIC_BOLD_PT``).
+    emboldened = (
+        properties.bold and east_asian and context.rules.synthetic_bold == "stroke"
+        and properties.outline is None and _has_no_bold_cut(properties.font_family_ea)
+    )
+    if properties.bold and not emboldened:
         styles.append('font-weight="bold"')
     if properties.italic:
         styles.append('font-style="italic"')
@@ -1421,6 +1447,12 @@ def _style_attrs(
         styles.append(f'fill="{properties.color.hex}"')
         if properties.color.alpha < 1:
             styles.append(f'fill-opacity="{num(properties.color.alpha)}"')
+    if emboldened:
+        width_pt = SYNTHETIC_BOLD_STROKE_PT + SYNTHETIC_BOLD_STROKE_RATIO * size * font_scale
+        styles.append(f'stroke="{properties.color.hex if properties.color is not None else "#000000"}"')
+        styles.append(f'stroke-width="{num(width_pt * PX_PER_PT)}"')
+        if properties.color is not None and properties.color.alpha < 1:
+            styles.append(f'stroke-opacity="{num(properties.color.alpha)}"')
 
     decorations = []
     if properties.underline:

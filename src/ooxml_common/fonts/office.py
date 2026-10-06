@@ -585,6 +585,16 @@ class HostFace:
     css: tuple
     #: Whether the face is a variable one (an ``fvar`` table).
     variable: bool = False
+    #: Name ID 16, in English, normalised, where it is not also one of :attr:`families`:
+    #: the typographic family a document may spell instead.  PowerPoint finds a face by
+    #: it -- variable Noto Sans JP's name ID 1 is "Noto Sans JP Thin" -- but only after
+    #: every face whose name ID 1 matches (:func:`find`), and never by a Japanese one
+    #: (:func:`find`).
+    typographic: frozenset = frozenset()
+    #: ``OS/2`` PANOSE, the ten bytes (empty where the face has none): what PowerPoint
+    #: reads to choose a Japanese face for a run that names none it can use
+    #: (:func:`ooxml_common.text.fontmap.japanese_fallback`).
+    panose: tuple = ()
 
 
 def _read_at(handle, offset: int, length: int) -> bytes:
@@ -617,9 +627,12 @@ def faces_in(path: Path, location: str) -> list[HostFace]:
                 if b"name" not in tables:
                     continue
                 names: dict[int, list[str]] = {}
-                for _platform, _encoding, _language, name_id, text in name_records(_read_at(handle, *tables[b"name"])):
+                english16: list[str] = []
+                for platform, _encoding, language, name_id, text in name_records(_read_at(handle, *tables[b"name"])):
                     if name_id in (1, 16) and text.strip() and text.strip() not in names.setdefault(name_id, []):
                         names[name_id].append(text.strip())
+                    if name_id == 16 and text.strip() and _english(platform, language):
+                        english16.append(text.strip())
                 os2 = _read_at(handle, *tables[b"OS/2"]) if b"OS/2" in tables else b""
                 head_table = _read_at(handle, *tables[b"head"]) if b"head" in tables else b""
                 weight, width, selection = 400, 5, 0
@@ -632,20 +645,29 @@ def faces_in(path: Path, location: str) -> list[HostFace]:
                     continue
                 rasteriser = names.get(16) or family
                 style = "italic" if selection & 0x01 else "oblique" if selection & 0x200 else "normal"
+                keys = frozenset(family_key(name) for name in family)
                 out.append(HostFace(
                     path=str(path),
                     number=number,
                     location=location,
-                    families=frozenset(family_key(name) for name in family),
+                    families=keys,
                     rasteriser_families=frozenset(name.lower() for name in rasteriser),
                     bold=bool(selection & 0x20 or mac_style & 1),
                     italic=bool(selection & 0x01 or mac_style & 2),
                     css=(weight, width if 1 <= width <= 9 else 5, style),
                     variable=b"fvar" in tables,
+                    typographic=frozenset(family_key(name) for name in english16) - keys,
+                    panose=tuple(os2[32:42]) if len(os2) >= 42 else (),
                 ))
     except (OSError, struct.error, ValueError):
         return out
     return out
+
+
+def _english(platform: int, language: int) -> bool:
+    """Whether a name record is an English one: Unicode's (no language), Macintosh
+    English, or a Windows English locale (primary language 0x09)."""
+    return platform == 0 or (platform == 1 and language == 0) or (platform == 3 and language & 0x3FF == 0x09)
 
 
 @functools.lru_cache(maxsize=None)
@@ -661,7 +683,7 @@ def index(dirs: tuple[tuple[str, Path], ...]) -> dict[str, dict[str, list[HostFa
             if path.suffix.lower() not in FONT_SUFFIXES:
                 continue
             for face in faces_in(path, location):
-                for family in face.families:
+                for family in face.families | face.typographic:
                     out.setdefault(family, {}).setdefault(location, []).append(face)
     return out
 
@@ -672,7 +694,27 @@ def find(family: str | None, application: Application = POWERPOINT, purpose: str
     of it in the first location that has the family (:attr:`Application.layout` or
     ``drawing``; a :attr:`~Application.prefer_bundle` family's bundle first), the first copy
     of each style winning.  ``dirs`` is :func:`search_dirs`' answer by default.  Empty
-    where nothing installed answers to the name."""
+    where nothing installed answers to the name.
+
+    **Which names find a face** is measured in PowerPoint for Mac (pptx2svg's
+    ``tools/make_font_resolution_probe.py``, its ``names`` deck): a run's ``<a:ea>``
+    naming an installed face, and the face PowerPoint's PDF draws it in.
+
+    * **Name ID 1, in every language.**  ``ヒラギノ角ゴシック W3`` and ``Hiragino Sans W3``
+      both draw HiraginoSans-W3 (macOS's folder); ``ＭＳ Ｐゴシック`` and ``MS PGothic``
+      MS-PGothic, ``游明朝 Demibold`` and ``Yu Mincho Demibold`` YuMincho-Demibold
+      (PowerPoint's bundle); ``黒体-繁`` STHeitiTC-Light.
+    * **Name ID 16 in English, not in Japanese.**  ``Hiragino Sans``, ``Hiragino Mincho
+      ProN``, ``Hiragino Maru Gothic ProN`` and ``Noto Sans JP`` (name ID 1 "Noto Sans JP
+      Thin") are found; ``ヒラギノ角ゴシック``, ``ヒラギノ明朝 ProN`` and ``ヒラギノ丸ゴ ProN``,
+      the same faces' Japanese name ID 16, are not -- PowerPoint draws MS Gothic for them,
+      as for a face that is not installed.
+
+    One measured exception is not explained by the name records: ``Hiragino Kaku Gothic
+    ProN`` (and its ``ヒラギノ角ゴ ProN W3``) is not found, although its records have the
+    same shape as Hiragino Sans's, while ``Hiragino Kaku Gothic ProN W3`` is.  This lookup
+    finds it, and the one family is left at that.
+    """
     if not family or family.startswith("+"):
         return ()
     from ..text.fontmap import family_key
@@ -687,8 +729,15 @@ def find(family: str | None, application: Application = POWERPOINT, purpose: str
     for location in order:
         faces = found.get(location)
         if faces:
+            # A face whose name ID 1 is the family wins over one found by its name ID 16
+            # alone: "Aptos" is Aptos, not Aptos Light, Aptos Black and the rest, whose
+            # typographic family it also is.  Among the latter, the weight nearest the
+            # style's (400, or 700 for bold) -- Noto Sans JP is one variable face.
+            own = [face for face in faces if key in face.families]
+            if not own:
+                faces = sorted(faces, key=lambda f: abs(f.css[0] - (700 if f.bold else 400)))
             chosen: dict[tuple[bool, bool], HostFace] = {}
-            for face in faces:
+            for face in own or faces:
                 chosen.setdefault((face.bold, face.italic), face)
             return tuple(chosen.values())
     return ()

@@ -284,6 +284,8 @@ def parse_run_properties(r_pr: Element | None) -> SourceRunProperties | None:
         outline_color=parse_color(child(outline, "solidFill")) if outline is not None else None,
         hyperlink_rel_id=ns_attr(hyperlink, "id") if has_hyperlink else None,
         hyperlink_tooltip=attr(hyperlink, "tooltip") if has_hyperlink else None,
+        lang=attr(r_pr, "lang") or None,
+        alt_lang=attr(r_pr, "altLang") or None,
     )
     return properties if _has_any(properties) else None
 
