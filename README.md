@@ -43,9 +43,10 @@ body readers, and the renderers that draw the result moved here too.
 | `ooxml_common.kinds` | The package kinds: which extension names which (`.docx`, `.dotm`, `.potx`, `.xltm`...), whether it is a template and may carry macros, its main part's content type, and `kind_mismatch` for a package whose content type its file name does not take |
 | `ooxml_common.xmlutil` | Namespace-agnostic helpers over `xml.etree` |
 | `ooxml_common.units` | EMU, point, pixel and angle conversions |
-| `ooxml_common.fonts` | The font bundle probe, embedded-font decoding (EOT, MicroType Express, SFNT) and the substitution report |
+| `ooxml_common.fonts` | The font bundle probe, embedded-font decoding (EOT, MicroType Express, SFNT) and the substitution report; `metrics_from_faces` builds an advance table, legacy kern pairs included, from a family's font files |
+| `ooxml_common.fonts.office` | Where Office for Mac finds a face, read in place: the applications' bundles, macOS's folders and Office's cloud-font cache (`cloud_font_dirs`), in each application's measured order (`POWERPOINT`, `WORD`); a header-only index with the names and CSS keys resvg files a face under (`find`, `css_match`), a standard-library face reader (`Face`), and advance tables built from installed faces (`metrics`, `layout_metrics`) |
 | `ooxml_common.text.metrics` | Generated advance-width tables for the faces measured |
-| `ooxml_common.text.kerning` | Kerning class matrices, measured from each face's GPOS |
+| `ooxml_common.text.kerning` | Kerning class matrices: each face's OpenType feature (`KERNING`, from GPOS) and the legacy `kern` table of the face it stands for (`LEGACY_KERNING`); `KerningSource`, which of the two an application charges |
 | `ooxml_common.text.fontmap` | Clone substitution with its grading (`exact`, `compatible`, `approximate`, `missing`) |
 | `ooxml_common.text.measure` | The `TextMeasurer` protocol and both implementations |
 | `ooxml_common.imagemeta` | A picture's natural size, which a tiled fill is measured in, and the ICC profile it carries |
@@ -72,7 +73,7 @@ body readers, and the renderers that draw the result moved here too.
 | `ooxml_common.drawingml.elements` | An element or a group as SVG, through a group's child space |
 | `ooxml_common.drawingml.shape` | A shape, connector, picture or table as SVG |
 | `ooxml_common.drawingml.textbody` | A text body laid out in its frame (`a:bodyPr`) and drawn as SVG text |
-| `ooxml_common.drawingml.textmeasure` | A text body measured without drawing it: `measure_text_body`, `measure_shape_text` and `measure_text` give each line's break positions, width and height and the height the text needs: exactly as autofit estimates it, or with `as_drawn=True` as it is drawn (each paragraph wrapped inside its `marL`, line breaks kept where it does not wrap) |
+| `ooxml_common.drawingml.textmeasure` | A text body measured without drawing it: `measure_text_body`, `measure_shape_text` and `measure_text` give each line's break positions, width and height, the height the text needs, and where the text area sits in the frame (`area_left`, `area_top`): each paragraph wrapped inside its `marL`, exactly as the body is anchored and autofit estimates it, or with `as_drawn=True` with line breaks kept where it does not wrap, as it is drawn |
 | `ooxml_common.drawingml.wrap` | Breaking a DrawingML paragraph into lines |
 | `ooxml_common.drawingml.diagram` | SmartArt: finding a diagram's cached drawing from its data part |
 | `ooxml_common.chart.read` | A chart part (`c:chartSpace`) read, with its cached values |
@@ -105,6 +106,7 @@ fidelity baselines hold, and its colour rows were measured the same way by pptx2
 | A custom path's outline (`custom_path_strokes`) | scaled with the path by its `scale()` | at its **stated width**: the coordinates are scaled instead |
 | A run's glyphs (`text_size_grid`) | at the stated size | at the size **rounded to the 300 dpi device pixel** (10 pt drawn 10.08) |
 | A text body's first baseline (`first_baseline`) | the measurer's ascent, scaled by the spacing | the **spaced line box less the face's descent**; the next line a descent on, then its box less its descent |
+| Kerning (`kerning`) | **a static face's legacy `kern` table**, never its GPOS pairs; a **variable** face's GPOS pairs (pptx2svg's `tools/make_kern_source_probe.py`, 29 lines in 15 faces) | **the legacy `kern` table** where a run kerns (`w:kern`), and nothing for a variable face (docx2svg's `tools/make_wrap_kern_probe.py`: 324 / 324 wrap verdicts) |
 | Autofit (`autofit`) | **what the file stores**, measured on pptx2svg's `tools/make_autofit_probe.py`: `normAutofit` text at its `fontScale`, each size rounded to a whole point half up, with `lnSpcReduction` off a percentage spacing in points of percent, and at full size, overflowing, when nothing is stored; a `spAutoFit` shape at its stored extent | not measured: `normAutofit` text shrunk until it fits, a `spAutoFit` shape grown to its text |
 
 Most of Word's column is probably Office's shared engine and so PowerPoint's too; that is
@@ -114,6 +116,12 @@ exception, measured on both: they compose alike, and `tint` and `shade` in linea
 it was: PowerPoint shades a chart's accent cycle in linear light, where HLS `lumMod` is up
 to 23 levels off (pptx2svg ROADMAP.md) -- that ramp is not a DrawingML transform, and
 pptx2svg's chart layout carries its own conversion for it.
+
+The kerning row is a rule about tables, not a change to them: `KERNING` is still each
+face's OpenType feature, a `DefaultTextMeasurer` built without a `kerning` charges it, and
+a `DrawingRules` that names none keeps it. A `RenderContext` built without a measurer gets
+one charging its rules' source; a caller building its own passes
+`kerning=rules.kerning`.
 
 Every renderer also takes `dpi`, the pixels per inch of the caller's user space: 96 for
 pptx2svg, 300 for docx2svg, which draws on Word's device grid.
@@ -204,6 +212,8 @@ The tests that need the files skip with a reason when it is absent.
 
 No Microsoft font file enters this repository in any form. The tables record
 measurements of those designs, which are facts; the files are not ours to redistribute.
+`ooxml_common.fonts.office` reads installed faces where they are, in memory, and only
+numbers and paths leave it.
 
 ## Tests
 
