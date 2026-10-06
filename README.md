@@ -72,7 +72,7 @@ body readers, and the renderers that draw the result moved here too.
 | `ooxml_common.drawingml.elements` | An element or a group as SVG, through a group's child space |
 | `ooxml_common.drawingml.shape` | A shape, connector, picture or table as SVG |
 | `ooxml_common.drawingml.textbody` | A text body laid out in its frame (`a:bodyPr`) and drawn as SVG text |
-| `ooxml_common.drawingml.textmeasure` | A text body measured without drawing it: `measure_text_body`, `measure_shape_text` and `measure_text` give each line's break positions, width and height and the height the text needs, exactly as autofit estimates it |
+| `ooxml_common.drawingml.textmeasure` | A text body measured without drawing it: `measure_text_body`, `measure_shape_text` and `measure_text` give each line's break positions, width and height and the height the text needs: exactly as autofit estimates it, or with `as_drawn=True` as it is drawn (each paragraph wrapped inside its `marL`, line breaks kept where it does not wrap) |
 | `ooxml_common.drawingml.wrap` | Breaking a DrawingML paragraph into lines |
 | `ooxml_common.drawingml.diagram` | SmartArt: finding a diagram's cached drawing from its data part |
 | `ooxml_common.chart.read` | A chart part (`c:chartSpace`) read, with its cached values |

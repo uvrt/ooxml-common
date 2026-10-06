@@ -147,3 +147,33 @@ def test_a_plain_string():
     assert [line.text for line in two.lines] == ["one", "two"] and len(two.paragraphs) == 2
     assert measure_text("", "Arial", 18).needed == 0.0
     assert measure_text("Wide", "Arial", 36).lines[0].width > measure_text("Wide", "Arial", 18).lines[0].width
+
+
+def test_as_drawn_wraps_inside_the_left_margin_and_breaks_at_line_breaks():
+    indented = m.TextBody([_paragraph(LONG, margin_left=914400)])
+    estimate = measure_text_body(indented, FRAME)
+    drawn = measure_text_body(indented, FRAME, as_drawn=True)
+    assert drawn.paragraphs[0].width == estimate.paragraphs[0].width - 96
+    assert len(drawn.lines) > len(estimate.lines)
+    assert all(line.width <= drawn.paragraphs[0].width + 1e-6 for line in drawn.lines)
+    unwrapped = m.TextBody([_paragraph("one  \ntwo\n\nfour")], m.BodyProperties(wrap="none"))
+    assert [line.text for line in measure_text_body(unwrapped, FRAME).lines] == ["one  \ntwo\n\nfour"]
+    lines = measure_text_body(unwrapped, FRAME, as_drawn=True).lines
+    assert [line.text for line in lines] == ["one", "two", "", "four"]
+    assert [line.start for line in lines] == [0, 6, 10, 11]
+    assert lines[0].width > measure_text("one", "Arial", 18).lines[0].width   # its spaces count
+    # Where neither applies the two agree.
+    plain = m.TextBody([_paragraph(LONG), _paragraph("Short")])
+    assert measure_text_body(plain, FRAME, as_drawn=True) == measure_text_body(plain, FRAME)
+
+
+def test_a_plain_string_breaks_at_vertical_tabs_and_takes_insets():
+    measured = measure_text("one\vtwo", "Arial", 18, width=300, insets=(10, 4, 10, 6))
+    assert [line.text for line in measured.lines] == ["one", "two"] and len(measured.paragraphs) == 1
+    assert measured.text_width == pytest.approx(280)
+    assert measured.needed == pytest.approx(measured.text_height + 10)
+
+
+def test_a_paragraph_that_starts_with_a_break_starts_with_an_empty_line():
+    lines = measure_text_body(m.TextBody([_paragraph("\nabc")]), FRAME).lines
+    assert [(line.text, line.start, line.end) for line in lines] == [("", 0, 0), ("abc", 1, 4)]
