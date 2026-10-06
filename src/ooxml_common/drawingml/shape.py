@@ -103,8 +103,14 @@ def _outline_width(shape: m.ShapeElement) -> float:
 def render_shape(shape: m.ShapeElement, context: RenderContext) -> str:
     transform = shape.transform
 
-    # spAutofit grows the shape box to fit its text before anything is positioned.
-    if shape.text_body is not None and shape.text_body.body_properties.auto_fit == "spAutofit":
+    # spAutofit grows the shape box to fit its text before anything is positioned -- where
+    # the application re-fits on drawing (Word, as it was).  PowerPoint keeps the stored
+    # extent (:attr:`~.rules.DrawingRules.autofit`).
+    if (
+        shape.text_body is not None
+        and shape.text_body.body_properties.auto_fit == "spAutofit"
+        and context.rules.autofit == "fit"
+    ):
         required = compute_sp_autofit_height(
             shape.text_body, transform, context,
             geometry=text_geometry(shape) if shape.text_transform is None else None,
