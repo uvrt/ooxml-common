@@ -8,6 +8,7 @@ application's bundle, macOS's folders and the cloud cache, linked into temporary
 
 from __future__ import annotations
 
+import shutil
 import struct
 from pathlib import Path
 
@@ -22,7 +23,12 @@ needs_bundle = pytest.mark.skipif(BUNDLE is None, reason="the pptx2svg-fonts bun
 
 
 def _link(link: Path, target: Path) -> None:
-    link.symlink_to(target)
+    """A new link to an OFL face in a temporary folder; a copy where the platform will
+    not make links (Windows without the privilege)."""
+    try:
+        link.symlink_to(target)
+    except OSError:
+        shutil.copyfile(target, link)
 
 
 @pytest.fixture
