@@ -41,6 +41,7 @@ def test_the_package_has_the_modules_it_claims():
     names = {module.name for module in pkgutil.walk_packages([str(PACKAGE_DIR)], "ooxml_common.")}
     assert {
         "ooxml_common.opc",
+        "ooxml_common.kinds",
         "ooxml_common.xmlutil",
         "ooxml_common.units",
         "ooxml_common.fonts",
@@ -73,6 +74,7 @@ def test_the_package_has_the_modules_it_claims():
         "ooxml_common.drawingml.context",
         "ooxml_common.drawingml.shape",
         "ooxml_common.drawingml.textbody",
+        "ooxml_common.drawingml.textmeasure",
         "ooxml_common.drawingml.elements",
         "ooxml_common.drawingml.wrap",
         "ooxml_common.drawingml.diagram",

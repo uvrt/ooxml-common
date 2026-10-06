@@ -40,6 +40,7 @@ body readers, and the renderers that draw the result moved here too.
 | Module | What it is |
 | --- | --- |
 | `ooxml_common.opc` | The OPC container: ZIP parts, content types, relationships |
+| `ooxml_common.kinds` | The package kinds: which extension names which (`.docx`, `.dotm`, `.potx`, `.xltm`...), whether it is a template and may carry macros, its main part's content type, and `kind_mismatch` for a package whose content type its file name does not take |
 | `ooxml_common.xmlutil` | Namespace-agnostic helpers over `xml.etree` |
 | `ooxml_common.units` | EMU, point, pixel and angle conversions |
 | `ooxml_common.fonts` | The font bundle probe, embedded-font decoding (EOT, MicroType Express, SFNT) and the substitution report |
@@ -71,6 +72,7 @@ body readers, and the renderers that draw the result moved here too.
 | `ooxml_common.drawingml.elements` | An element or a group as SVG, through a group's child space |
 | `ooxml_common.drawingml.shape` | A shape, connector, picture or table as SVG |
 | `ooxml_common.drawingml.textbody` | A text body laid out in its frame (`a:bodyPr`) and drawn as SVG text |
+| `ooxml_common.drawingml.textmeasure` | A text body measured without drawing it: `measure_text_body`, `measure_shape_text` and `measure_text` give each line's break positions, width and height and the height the text needs: exactly as autofit estimates it, or with `as_drawn=True` as it is drawn (each paragraph wrapped inside its `marL`, line breaks kept where it does not wrap) |
 | `ooxml_common.drawingml.wrap` | Breaking a DrawingML paragraph into lines |
 | `ooxml_common.drawingml.diagram` | SmartArt: finding a diagram's cached drawing from its data part |
 | `ooxml_common.chart.read` | A chart part (`c:chartSpace`) read, with its cached values |
