@@ -75,6 +75,15 @@ three documents). A chart's default axis and gridline colour is the caller's too
 (`ChartStyle.line_color`): Word draws them `898989` in a chart stating Word 365's chart
 style (`c14:style`).
 
+Chart **text** is drawn alike by both, measured on the PDFs of charts made as Office makes
+them and varied one `c:txPr` at a time (`tests/test_chart_labels.py` has the table): each
+label takes the innermost `c:txPr` fill -- a data point's, its series' or the group's
+`c:dLbls`, an axis', the legend's -- then the chart space's, then the caller's
+`ChartStyle.color` (`tx1`, which is what both drew where no `c:txPr` states one, chart
+style or not); a title whose own text states no colour takes the chart space's, not its
+axis'. A radar's category labels stand off their vertex by 4% of the radius in both, with
+the same placement on the anchor.
+
 At 10 pt the side legend's pads are PowerPoint's to 0.03 pt and an 18 pt Arial title's band
 its to 0.002 pt, the one size and face each was measured at in PowerPoint; where the two
 part, PowerPoint was not measured, and pptx2svg's output does not move.

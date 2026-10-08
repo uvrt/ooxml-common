@@ -729,15 +729,37 @@ DEFAULT_AREA_CROSS_BETWEEN = "midCat"
 RADAR_LABEL_RESERVE_LINES = 1.2578
 RADAR_LABEL_RESERVE_PT = 5.2501
 
-#: Gap between a polygon vertex and the category label pushed radially out from it.
-#: Fitted to the four measurements taken where the direction is horizontal and the label
-#: box is therefore unambiguous -- 2.775, 2.789, 2.84 and 2.980 pt at 10 pt -- residual
-#: under 0.15 pt.  It is **not** proportional to the size: the same gap came out 2.81 pt
-#: at 8 pt and 2.38 pt at 14 pt.  The two vertical directions are looser, 4.49 pt above
-#: the top vertex and 2.29 pt below the bottom one, and the split is consistent with
-#: PowerPoint's line box being about 1 pt taller than the one our metrics give -- a font
-#: discrepancy rather than a second layout rule, so one constant is used for all four.
+#: The room a category label is given beside its vertex when the radius is fitted to the
+#: region (:meth:`ChartBuilder._radar_geometry`).  Fitted to the four measurements taken
+#: where the direction is horizontal -- 2.775, 2.789, 2.84 and 2.980 pt at 10 pt, residual
+#: under 0.15 pt -- on probes whose radius was about 70 pt, where it is the
+#: :data:`RADAR_LABEL_GAP_FRACTION` of the radius that places the label.  Kept for the
+#: radius, which three horizontally bound probes reproduce with it to 0.7 pt.
 RADAR_LABEL_GAP_PT = 2.85
+
+#: **A category label stands off its vertex by 4% of the radius**, along the spoke:
+#: its anchor is the point at 1.04 radii from the centre.  Measured on the PDFs of
+#: radars of 3 to 8 categories at three sizes -- Word with Aptos 9 and 14 pt labels
+#: (radius 95.0 and 87.3 pt), PowerPoint with Arial 12 and 18 pt ones (148.2 and
+#: 139.6 pt): the horizontal gap from the vertex to the label's near edge is ``G |dx|``,
+#: and the vertical offset of a side label's centre ``G dy`` plus a constant, with ``G``
+#: 3.80, 3.49, 5.9 and 5.59 pt -- 0.0400, 0.0400, 0.0398 and 0.0400 of the radius.  The
+#: older 10 pt probes' 2.85 pt horizontal gap is the same 4% of their 70 pt radius, and
+#: their "2.81 pt at 8 pt, 2.38 pt at 14 pt" the same rule over radii shrunk by the
+#: larger labels' reserve; it is not the text's size that moves it.
+RADAR_LABEL_GAP_FRACTION = 0.04
+
+#: How the label's box sits on that anchor.  Across: its near edge on it, or its centre
+#: on a vertical spoke.  Down: a label on a **vertical** spoke has its edge on the anchor
+#: -- the top of the text below the bottom vertex, and the bottom of the text this much
+#: *above* the anchor over the top vertex -- and every other label is centred on the
+#: anchor as though its box were this much deeper below the descent, however steep its
+#: spoke (Word put the labels at 54 and 64 degrees below the horizontal centred on their
+#: anchors, not hanging from them).  1.39, 1.52, 0.9 and 1.25 pt over the top vertex for
+#: the four sizes above, 1.60, 1.52, 0.76 and 1.71 pt as twice a side label's offset; the
+#: mean is used.  Its cause is not identified (it is not a fraction of the size, nor the
+#: face's), so it is a constant of the fit, worst residual 0.45 pt.
+RADAR_LABEL_FOOT_PT = 1.35
 
 #: The most of the plot region's width one category label may take before it wraps onto
 #: another line.  Bracketed by two probes on the same 198.47 pt region: a 43.72 pt label
@@ -1813,9 +1835,18 @@ def _reaches_decade(value: float, exponent: int) -> bool:
 def format_number(value: float, format_code: str | None) -> str:
     """Render one number the way its ``c:formatCode`` asks.
 
-    A small subset of the Excel format language: enough for the codes that appear on real
-    axes (``General``, ``#,##0``, ``0.0%``, ``0.00``) and a graceful fall-through for the
-    rest.  A full implementation is a project of its own and belongs nowhere near here.
+    A subset of the Excel format language: the sections (positive; negative; zero), the
+    number itself -- grouping, required and optional decimals, thousands scaling by
+    trailing commas, percent, scientific -- and **everything round it**: quoted text,
+    escaped characters, a currency's ``[$€-413]``, ``_x`` padding as a space, and the
+    plain characters Excel shows as they are (``$``, ``-``, ``(``, a space, ``€``).  A
+    format with no digit placeholder at all -- a date, say -- falls through to
+    ``General``.  Separators are always ``.`` and ``,``: Office draws the operating
+    system's (a comma for the decimal on a Dutch Mac), which a document does not state.
+
+    Measured, PowerPoint and Word 16 for Mac: data labels in ``"€"#,##0.0"m"`` read
+    ``€12,4m``; in ``#,##0.00_);(#,##0.00)`` ``7,10`` and a trailing space; in
+    ``[$€-413] #,##0.0`` ``€ 5,2``; and a value axis in ``"€"0"m"`` ``€0m`` to ``€20m``.
     """
     if format_code is None or format_code in ("General", "@"):
         return _general(value)
@@ -1823,33 +1854,152 @@ def format_number(value: float, format_code: str | None) -> str:
     sections = _sections(format_code)
     # Excel's sections are positive; negative; zero; text.  A negative value uses the
     # second only when there *is* one -- with a single section it is formatted by that
-    # one and keeps its own minus sign.
-    negative_section = value < 0 and len(sections) > 1
-    section = sections[1] if negative_section else sections[0]
+    # one and keeps its own minus sign, in front of everything the section adds.
+    if value == 0 and len(sections) > 2:
+        section, sign, magnitude = sections[2], "", 0.0
+    elif value < 0 and len(sections) > 1:
+        section, sign, magnitude = sections[1], "", abs(value)
+    else:
+        section, sign, magnitude = sections[0], "-" if value < 0 else "", abs(value)
 
-    if "%" in section:
-        decimals = _decimals(section)
-        magnitude = abs(value) if negative_section else value
-        return _wrap_negative(f"{magnitude * 100:.{decimals}f}%", section, negative_section)
-
-    if not any(ch in section for ch in "#0"):
+    tokens = _format_tokens(section)
+    kinds = [kind for kind, _ in tokens]
+    if "digits" not in kinds and "general" not in kinds and ("date" in kinds or not tokens):
         return _general(value)
+    if "percent" in kinds:
+        magnitude *= 100
+    # The number goes where the first placeholder stands; a section of text alone (a zero
+    # section's ``"-"``) is that text.
+    pattern = next((text for kind, text in tokens if kind == "digits"), None)
+    out: list[str] = []
+    placed = False
+    for kind, text in tokens:
+        if kind in ("digits", "general"):
+            if not placed:
+                out.append(_general(magnitude) if pattern is None or kind == "general"
+                           else _format_digits(magnitude, pattern))
+                placed = True
+        else:
+            out.append(text)
+    return sign + "".join(out)
 
-    decimals = _decimals(section)
-    grouped = "," in _strip_literals(section)
-    # The negative section states its own sign -- "(#,##0)" or "-#,##0" -- so the value
-    # goes in unsigned and the section's own decoration is put back around it.
-    magnitude = abs(value) if negative_section else value
-    text = f"{magnitude:,.{decimals}f}" if grouped else f"{magnitude:.{decimals}f}"
-    return _wrap_negative(text, section, negative_section)
+
+#: Characters of a number's own pattern: digit placeholders, the decimal point, and the
+#: comma that groups thousands (between placeholders) or scales by them (after the last).
+_DIGIT_CHARS = "0#?.,"
 
 
-def _wrap_negative(text: str, section: str, negative_section: bool) -> str:
-    if not negative_section:
+def _format_tokens(section: str) -> list[tuple[str, str]]:
+    """``section`` as ``(kind, text)``: ``digits`` (the number's pattern, possibly with
+    ``E+00``), ``general``, ``percent`` and ``literal`` (shown as it is); ``date`` for a
+    date or time code, which this does not format."""
+    tokens: list[tuple[str, str]] = []
+    index = 0
+    length = len(section)
+    while index < length:
+        char = section[index]
+        if char == '"':
+            close = section.find('"', index + 1)
+            close = length if close < 0 else close
+            tokens.append(("literal", section[index + 1:close]))
+            index = close + 1
+        elif char == "\\":
+            tokens.append(("literal", section[index + 1:index + 2]))
+            index += 2
+        elif char == "_":
+            # Padding the width of the next character: a space is the nearest thing.
+            tokens.append(("literal", " "))
+            index += 2
+        elif char == "*":
+            # Repeat the next character to fill the cell: a label has no cell to fill.
+            index += 2
+        elif char == "[":
+            close = section.find("]", index)
+            close = length if close < 0 else close
+            inner = section[index + 1:close]
+            if inner.startswith("$"):
+                # ``[$€-413]``: the symbol, then the locale it was chosen in.
+                tokens.append(("literal", inner[1:].split("-", 1)[0]))
+            index = close + 1
+        elif section[index:index + 7].lower() == "general":
+            tokens.append(("general", section[index:index + 7]))
+            index += 7
+        elif char == "@":
+            tokens.append(("general", char))
+            index += 1
+        elif char == "%":
+            tokens.append(("percent", "%"))
+            index += 1
+        elif char in "0#?" or (char in ".," and _placeholder_near(section, index)):
+            run = index
+            while run < length and section[run] in _DIGIT_CHARS:
+                run += 1
+            # Scientific notation belongs to the number: E+00, e-0.
+            if run < length and section[run] in "Ee" and section[run + 1:run + 2] in ("+", "-"):
+                run += 2
+                while run < length and section[run] in "0#?":
+                    run += 1
+            tokens.append(("digits", section[index:run]))
+            index = run
+        elif char.lower() in "dmyhs" and char.isalpha():
+            tokens.append(("date", char))
+            index += 1
+        else:
+            tokens.append(("literal", char))
+            index += 1
+    return tokens
+
+
+def _placeholder_near(section: str, index: int) -> bool:
+    """Whether the ``.`` or ``,`` at ``index`` belongs to a number -- a digit placeholder
+    follows it -- rather than being text (``"Total, "`` unquoted)."""
+    return index + 1 < len(section) and section[index + 1] in "0#?"
+
+
+def _format_digits(magnitude: float, pattern: str) -> str:
+    """``magnitude`` (not negative) through one number pattern: ``#,##0.0#``, ``0,,``,
+    ``0.00E+00``."""
+    exponent_part = ""
+    match = re.search(r"[Ee][+-]", pattern)
+    if match:
+        exponent_part = pattern[match.start():]
+        pattern = pattern[:match.start()]
+    # Trailing commas -- after the last placeholder, or straight before the point --
+    # divide by a thousand each.
+    integer, _, decimals = pattern.partition(".")
+    scale = len(integer) - len(integer.rstrip(","))
+    integer = integer.rstrip(",")
+    scale += len(decimals) - len(decimals.rstrip(","))
+    decimals = decimals.rstrip(",")
+    magnitude /= 1000.0 ** scale
+    grouped = "," in integer
+    required = decimals.count("0")
+    places = sum(decimals.count(ch) for ch in "0#?")
+    if exponent_part:
+        exp = 0 if magnitude == 0 else math.floor(math.log10(magnitude))
+        mantissa = magnitude / 10.0 ** exp if magnitude else 0.0
+        if round(mantissa, places) >= 10:
+            mantissa, exp = mantissa / 10, exp + 1
+        digits = sum(exponent_part.count(ch) for ch in "0#?") or 1
+        sign = "-" if exp < 0 else ("+" if exponent_part[1] == "+" else "")
+        text = f"{mantissa:.{places}f}"
+        return f"{_trim_decimals(text, required, places)}{exponent_part[0]}{sign}{abs(exp):0{digits}d}"
+    text = f"{magnitude:,.{places}f}" if grouped else f"{magnitude:.{places}f}"
+    text = _trim_decimals(text, required, places)
+    if not integer.count("0") and text.startswith("0") and (len(text) == 1 or text[1] == "."):
+        # ``#.00`` writes no integer digit for a magnitude under one; ``#,##0`` does.
+        text = text[1:]
+    return text
+
+
+def _trim_decimals(text: str, required: int, places: int) -> str:
+    """Drop the optional (``#``, ``?``) decimals that are zeros, keeping ``required``."""
+    if places <= required or "." not in text:
         return text
-    if "(" in section and ")" in section:
-        return f"({text})"
-    return f"-{text}" if "-" in section else text
+    head, tail = text.split(".", 1)
+    keep = len(tail.rstrip("0"))
+    tail = tail[:max(required, keep)]
+    return f"{head}.{tail}"
 
 
 def _general(value: float) -> str:
@@ -1873,49 +2023,6 @@ def _sections(format_code: str) -> list[str]:
         current.append(char)
     sections.append("".join(current))
     return sections
-
-
-def _strip_literals(section: str) -> str:
-    """Drop ``[red]`` directives, ``"text"`` and escapes so only the numeric shape is left."""
-    out: list[str] = []
-    index = 0
-    while index < len(section):
-        char = section[index]
-        if char == "[":
-            index = section.find("]", index)
-            if index < 0:
-                break
-            index += 1
-            continue
-        if char == '"':
-            index = section.find('"', index + 1)
-            if index < 0:
-                break
-            index += 1
-            continue
-        if char == "\\":
-            index += 2
-            continue
-        if char in "_*":
-            index += 2
-            continue
-        out.append(char)
-        index += 1
-    return "".join(out)
-
-
-def _decimals(section: str) -> int:
-    stripped = _strip_literals(section)
-    if "." not in stripped:
-        return 0
-    tail = stripped.split(".", 1)[1]
-    count = 0
-    for char in tail:
-        if char in "0#":
-            count += 1
-        else:
-            break
-    return count
 
 
 # --------------------------------------------------------------------------------------
@@ -1944,6 +2051,10 @@ class ChartFont:
     family_ea: str | None = None
     #: That face's vertical metrics, for the reserves a CJK label's line box drives.
     box_ea: "FontBox | None" = None
+    #: The colour the text is drawn in where its ``c:txPr`` cascade states one -- see
+    #: :meth:`ChartBuilder._text_color` -- or ``None`` for the chart's default
+    #: (:attr:`ChartStyle.color`, the theme's ``tx1``).
+    color: "m.ResolvedColor | None" = None
 
     @property
     def size(self) -> float:
@@ -3903,21 +4014,25 @@ class ChartBuilder:
         labels: list[list[str]],
         font: ChartFont,
     ) -> None:
-        """One label per spoke, its box pushed radially clear of the vertex.
+        """One label per spoke, on an anchor 4% of the radius beyond its vertex
+        (:data:`RADAR_LABEL_GAP_FRACTION`), placed on it as
+        :data:`RADAR_LABEL_FOOT_PT` describes.
 
-        The four horizontal directions land within 0.15 pt; the two vertical ones are up
-        to 1.6 pt out, which the measurements attribute to PowerPoint's line box being
-        about a point taller than the one our font metrics give rather than to a second
-        rule -- see :data:`RADAR_LABEL_GAP_PT`.
+        Measured on the 87 labels of fifteen radars, in Word and PowerPoint: every
+        label's centre lands within 0.13 pt across and 0.22 pt down of Word's PDF, and
+        0.41 pt across and 0.65 pt down of PowerPoint's, where the rule this replaced -- a
+        fixed 2.85 pt gap, and a label on a sloping spoke hung from the anchor by its
+        corner -- was up to 3.1 pt across and 9.7 pt down out.
         """
         count = len(labels)
         box = font.box
+        distance = radius * (1.0 + RADAR_LABEL_GAP_FRACTION)
         for index, lines in enumerate(labels):
             if not any(lines):
                 continue
             dx, dy = self._radar_direction(index, count)
-            anchor_x = centre[0] + dx * (radius + RADAR_LABEL_GAP_PT)
-            anchor_y = centre[1] + dy * (radius + RADAR_LABEL_GAP_PT)
+            anchor_x = centre[0] + dx * distance
+            anchor_y = centre[1] + dy * distance
             width = max(font.width(line) for line in lines)
             block = box.line_height * len(lines)
             if dx > 1e-3:
@@ -3926,12 +4041,12 @@ class ChartBuilder:
                 left = anchor_x - width
             else:
                 left = anchor_x - width / 2
-            if dy > 1e-3:
+            if abs(dx) > 1e-3:
+                top = anchor_y - (block + RADAR_LABEL_FOOT_PT) / 2
+            elif dy > 0:
                 top = anchor_y
-            elif dy < -1e-3:
-                top = anchor_y - block
             else:
-                top = anchor_y - block / 2
+                top = anchor_y - block - RADAR_LABEL_FOOT_PT
             # The box is padded half an em either side so a wide glyph is not clipped,
             # and shifted back by the same amount so each *line* stays centred on the
             # block the anchoring above placed.
@@ -4976,6 +5091,17 @@ class ChartBuilder:
                     return value
             return None
 
+        def number_format() -> str | None:
+            # The innermost ``c:numFmt`` decides.  ``sourceLinked="1"`` means the cells'
+            # own format -- the series' ``c:formatCode``, which the caller falls back to
+            # on ``None`` -- whatever code it carries alongside (measured: a series whose
+            # labels state ``"€"#,##0.0"m"`` source-linked drew its cache's ``#,##0.0``
+            # in PowerPoint, and its cache's ``General`` in Word).
+            for source in present:
+                if source.number_format is not None:
+                    return None if source.number_format_source_linked else source.number_format
+            return None
+
         labels = _Labels(
             show_value=flag("show_value"),
             show_category=flag("show_category_name"),
@@ -4983,25 +5109,38 @@ class ChartBuilder:
             show_percent=flag("show_percent"),
             show_bubble_size=flag("show_bubble_size"),
             position=first("position"),
-            number_format=first("number_format"),
+            number_format=number_format(),
         )
         if labels.anything:
             bodies = [source.text_properties for source in present]
             labels.font = self._font(*bodies)
-            labels.color = self._text_color(*bodies) or self.style.color
+            labels.color = labels.font.color or self.style.color
         return labels
 
     def _text_color(self, *sources: "s.SourceTextBody | None") -> m.ResolvedColor | None:
-        """The innermost ``c:txPr``'s ``a:defRPr/a:solidFill``, resolved.
+        """The innermost ``c:txPr``'s ``a:defRPr/a:solidFill``, resolved through the host
+        document's theme and colour map; ``None`` where none states one.
 
-        Only data labels read this so far, because that is the only place it has been
-        measured: ``real-college-template``'s chart sets ``<a:schemeClr val="bg1"/>`` on
+        Sources are given innermost first -- a point's, its series' and the group's
+        ``c:dLbls``, an axis', the legend's -- and the chart space's own ``c:txPr`` is
+        always the last.  It reaches every piece of chart text :meth:`_font` resolves:
+        tick and category labels, legend entries and data labels.
+
+        Measured: ``real-college-template``'s chart sets ``<a:schemeClr val="bg1"/>`` on
         both series' ``c:dLbls`` and PowerPoint inks the numbers white inside the bars.
-        Ours came out in the chart-space default, which is dark text on a #C00000 fill.
+        And on charts made as Office makes them (``tx1`` at ``lumMod`` 65% / ``lumOff``
+        35% on the axes and the legend, 75% / 25% on data labels), varied one ``c:txPr``
+        at a time under a theme whose ``dk1`` is ``203864``, in PowerPoint and in Word
+        16 for Mac alike:
 
-        The same element governs axis, legend and title text and is *not* read for those;
-        nothing in the corpus states one there, so there is nothing to check a change
-        against.  :meth:`_font` is the place it would go.
+        * each element's own fill wins: ``accent2`` on the value axis drew the value
+          labels in the theme's ``accent2``;
+        * an element whose ``c:txPr`` states no fill, or that has no ``c:txPr``, takes
+          the chart space's: a red one there drew the category labels, the legend and the
+          data labels red, and ``tx1`` 65% there drew them all ``4572C3``;
+        * with **no** ``c:txPr`` anywhere -- with Office's chart style (``c14:style``
+          102) or without -- every label is plain ``tx1`` (``203864``), not black and not
+          65%: :attr:`ChartStyle.color`, which this leaves to the caller.
         """
         for source in (*sources, self.chart.text_properties):
             run = _default_run(source)
@@ -5403,17 +5542,24 @@ class ChartBuilder:
         what the value cache's own ``c:formatCode`` records -- so a source-linked axis
         falls through to the series.  An axis that says ``sourceLinked="0"`` has *chosen*
         its format, including when that choice is ``General``, and must not inherit.
+
+        **A source-linked axis takes the series' format over its own code**, measured:
+        a value axis stating ``#,##0.0`` source-linked over a first series cached in
+        ``"$"#,##0.00`` was labelled ``$0,00`` to ``$20,00`` by PowerPoint, and Word
+        did the same over an axis stating ``General``.  Where no series has a format
+        of its own, the axis' code stands, as before.
         """
         if axis is None:
             return None
-        if axis.number_format and axis.number_format != "General":
-            return axis.number_format
+        own = axis.number_format if axis.number_format != "General" else None
+        if own and axis.number_format_source_linked is not True:
+            return own
         if axis.number_format_source_linked is False:
             return None
         for source in self.plot.series:
             if source.format_code and source.format_code != "General":
                 return source.format_code
-        return None
+        return own
 
     # -- layout -------------------------------------------------------------------------
 
@@ -5449,6 +5595,7 @@ class ChartBuilder:
             box=font_box(family, size),
             family_ea=family_ea,
             box_ea=font_box(family_ea, size) if family_ea else None,
+            color=self._text_color(*sources),
         )
 
     @property
@@ -6410,10 +6557,18 @@ class ChartBuilder:
         # A run that named no size would otherwise take the *renderer's* default, which
         # is a second place the number lives.  Stamping it makes the size the layout used
         # and the size drawn the same number by construction.
+        # A title whose text states no colour of its own takes the chart space's
+        # ``c:txPr`` fill -- not its axis' (measured, see :meth:`_text_color`: with the
+        # chart space's red and the category axis' ``accent2``, PowerPoint and Word drew
+        # the chart title and both axis titles red).  With neither, the caller's colour
+        # stands.
+        color = None if _states_color(rich) else self._text_color()
         for paragraph in body.paragraphs:
             for run in paragraph.runs:
                 if run.properties.font_size is None:
                     run.properties.font_size = size
+                if color is not None:
+                    run.properties.color = color
         return body, font_box(family, size)
 
     def _title_box(self) -> FontBox | None:
@@ -9206,7 +9361,7 @@ class ChartBuilder:
                                 # nothing computed.  Naming it is what makes the emitted
                                 # `font-family` agree with `ChartFont.width`.
                                 font_family_ea=font.family_ea,
-                                color=color or self.style.color,
+                                color=color or font.color or self.style.color,
                             ),
                         )
                     ],
@@ -9715,6 +9870,29 @@ def _default_run(body: s.SourceTextBody | None) -> s.SourceRunProperties | None:
         if properties is not None and properties.default_run_properties is not None:
             return properties.default_run_properties
     return None
+
+
+def _states_color(body: s.SourceTextBody | None) -> bool:
+    """Whether a title's ``c:rich`` states a text colour anywhere: its list style, a
+    paragraph's ``a:defRPr`` or a run's ``a:rPr``."""
+    if body is None:
+        return False
+    layers: list = []
+    if body.list_style is not None:
+        layers += [body.list_style.default_paragraph, *body.list_style.levels]
+    layers += [paragraph.properties for paragraph in body.paragraphs]
+    if any(
+        layer is not None
+        and layer.default_run_properties is not None
+        and layer.default_run_properties.color is not None
+        for layer in layers
+    ):
+        return True
+    return any(
+        run.properties is not None and run.properties.color is not None
+        for paragraph in body.paragraphs
+        for run in paragraph.runs
+    )
 
 
 def _text_size(body: s.SourceTextBody | None) -> float | None:
