@@ -240,11 +240,15 @@ def test_word_s_clustered_bars_put_the_first_series_lowest():
 
 
 def test_word_puts_a_top_legend_under_the_title():
+    """And so does PowerPoint, by its own title band: measured on radar, column and line
+    charts (:attr:`~ooxml_common.chart.rules.ChartRules.legend_under_title`)."""
     def key_top(rules, title):
         return min(box[3] for box in boxes(build(chart(legend="t", title=title), rules)[1]) if box[0] == "#4472C4"
                    and box[4] - box[2] < 6)
 
-    assert key_top(chart_rules.POWERPOINT, True) == pytest.approx(key_top(chart_rules.POWERPOINT, False))
+    powerpoint = TITLE_BAND_LINES * font_box("Arial", 18.0).line_height
+    assert key_top(chart_rules.POWERPOINT, True) - key_top(chart_rules.POWERPOINT, False) == \
+        pytest.approx(powerpoint)
     band = font_box("Arial", 18.0).pitch + WORD_TITLE_PAD_PT
     assert key_top(chart_rules.WORD, True) - key_top(chart_rules.WORD, False) == pytest.approx(band)
 

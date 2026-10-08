@@ -2,6 +2,9 @@
 
 Versions are set in `pyproject.toml`; there are no release tags or PyPI releases yet.
 
+## Unreleased
+- A legend at the top stands under the chart's title in PowerPoint too, not over it (`ChartRules.legend_under_title` now defaults to true; Word already did): measured on radar, column and line charts in PowerPoint 16 for Mac, where the legend's first baseline moves down by the title's band.
+
 ## 0.7.0 -- 2026-10-08
 - Draw chart text in the colour its `c:txPr` cascade states -- tick and category labels, legend entries, data labels, and titles that state none of their own -- as PowerPoint and Word do, plain `tx1` where nothing states one.
 - Print a number format's text round the number (`"€"#,##0.0"m"` is `€12.4m`), its zero section, scaling, optional decimals and exponent; honour a data label's and an axis' `sourceLinked`.
