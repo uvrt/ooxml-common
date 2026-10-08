@@ -64,8 +64,12 @@ class ChartRules:
       (an area chart, a scatter) or to a horizontal bar chart's last value label, the
       plot shrinks and the legend does not move.  On the left, the key stands 8.25 pt
       and half the key in from the frame's edge.
-    * ``legend_under_title`` -- whether a legend at the top stands under the title (Word)
-      rather than at the frame's top over it.
+    * ``legend_under_title`` -- whether a legend at the top stands under the title rather
+      than at the frame's top, over it.  Both applications put it under: Word measured,
+      and PowerPoint on radar, column and line charts with and without a title, whose
+      legend's first baseline moves down by the title's band (122.88 pt with an 18.62 pt
+      title against 91.20 without, PowerPoint 16 for Mac) while the plot already gave
+      that band up.  ``False`` draws the legend over the title, as pptx2svg did.
     * ``top_right_legend`` -- ``"band"``: a ``legendPos="tr"`` legend is a top one
       (pptx2svg's; PowerPoint is not measured).  ``"column"``, Word's: a column of
       entries at the right, placed as a right legend is across and from where a top
@@ -120,7 +124,7 @@ class ChartRules:
     plot_line: bool = False
     title: str = "lines"
     side_legend: str = "em"
-    legend_under_title: bool = False
+    legend_under_title: bool = True
     top_right_legend: str = "band"
     legend_order: str = "series"
     bars_upward: bool = False
