@@ -356,6 +356,14 @@ def _row_heights(data: m.TableData, context: RenderContext) -> list[float]:
     Only cells that occupy a single row get a vote.  A cell spanning several rows has no
     one row to grow, and guessing how to share its height between them would do more
     harm than leaving it alone.
+
+    **An empty cell still holds a line.**  Its paragraph is laid out at its end-of-paragraph
+    size, so a row of empty cells is never shorter than one line and the cell's top and
+    bottom margins (:func:`_with_empty_lines`).  Measured on PowerPoint 16 for Mac
+    (pptx-agent's ``tools/table_rows_probe.py``): rows of empty 18 pt Aptos cells stored
+    14.4 and 18 pt tall are drawn 28.8 pt -- a 21.6 pt line and the 0.05 in margins --
+    where taking the stored height drew them 14.4 and 10.8 pt short and moved every row
+    below up by as much.
     """
     heights = [row.height for row in data.rows]
     for row_index, row in enumerate(data.rows):
@@ -366,13 +374,31 @@ def _row_heights(data: m.TableData, context: RenderContext) -> list[float]:
                 continue
             width = data.columns[column_index].width * max(1, cell.grid_span)
             required = compute_sp_autofit_height(
-                cell.text_body,
+                _with_empty_lines(cell.text_body),
                 m.Transform(extent_width=width, extent_height=heights[row_index]),
                 context,
             )
             if required is not None:
                 heights[row_index] = required
     return heights
+
+
+#: An empty paragraph's line, measured: no width, the paragraph's end-of-paragraph size.
+_EMPTY_LINE = "\u200b"
+
+
+def _with_empty_lines(body: m.TextBody) -> m.TextBody:
+    """``body`` as its row's height is measured: unchanged when it holds text, else with
+    each (empty) paragraph holding a zero-width run at its end-of-paragraph size, so the
+    line PowerPoint draws for it is laid out (:func:`_row_heights`)."""
+    if any(run.text for paragraph in body.paragraphs for run in paragraph.runs):
+        return body
+    return replace(body, paragraphs=[
+        replace(paragraph, runs=[m.TextRun(
+            _EMPTY_LINE, paragraph.end_para_run_properties or m.RunProperties()
+        )])
+        for paragraph in body.paragraphs
+    ])
 
 
 def _cell_borders(

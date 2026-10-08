@@ -3,6 +3,7 @@
 Versions are set in `pyproject.toml`; there are no release tags or PyPI releases yet.
 
 ## Unreleased
+- A table row of empty cells is one line tall, as PowerPoint draws it: an empty paragraph is laid out at its end-of-paragraph size when a row's height is measured, instead of the row keeping a shorter stored height (measured: 28.8 pt for 18 pt Aptos cells stored 14.4 and 18 pt).
 - A legend at the top stands under the chart's title in PowerPoint too, not over it (`ChartRules.legend_under_title` now defaults to true; Word already did): measured on radar, column and line charts in PowerPoint 16 for Mac, where the legend's first baseline moves down by the title's band.
 
 ## 0.7.0 -- 2026-10-08
