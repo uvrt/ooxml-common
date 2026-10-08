@@ -1,5 +1,7 @@
 # ooxml-common
 
+[![CI](https://github.com/uvrt/ooxml-common/actions/workflows/ci.yml/badge.svg)](https://github.com/uvrt/ooxml-common/actions/workflows/ci.yml)
+
 The format-neutral half of an Office Open XML renderer, shared by
 [pptx2svg](https://github.com/uvrt/pptx2svg) and
 [docx2svg](https://github.com/uvrt/docx2svg): the OPC container, units, embedded-font
@@ -9,182 +11,6 @@ the complete preset geometry table, and fills, outlines, markers and effects dra
 and charts, read, laid out and drawn.
 
 Standard library only at runtime. Python 3.10+.
-
-## Why it exists
-
-docx2svg needs to measure text with the same advance widths, kerning classes and font
-substitutions that pptx2svg measured against PowerPoint. The alternatives were to depend
-on a PowerPoint renderer in order to measure a Word document, or to copy the tables and
-let two copies of each measured constant drift apart. This package holds one copy that
-both use.
-
-It was extracted from pptx2svg **with its git history**, in three steps: first what
-already imported nothing from pptx2svg's slide model, then DrawingML's value types lifted
-out of that model with the renderers that take them, then the charts and the shape tree
-with the shape and text body renderers that draw them. Every constant here came with a
-record of the observations that fixed it and the hypotheses they refuted; `git log
---follow` on any moved file shows that record back to pptx2svg's first commit.
-
-docx2svg needs DrawingML drawn too -- a Word document's floating shapes are DrawingML --
-and the alternative was a second copy of pptx2svg's renderers, which docx2svg had
-started to write (its ROADMAP.md, "Floating drawings -- measured", F.10).
-
-And a Word document holds charts and SmartArt diagrams, which pptx2svg draws. A chart is
-data plus styling in both formats -- the same `c:chartSpace` part -- and is lowered to
-ordinary shapes, lines and text bodies; a SmartArt diagram carries the same cached
-`dsp:drawing` shape tree in both. So the chart reader and layout, the shape tree and text
-body readers, and the renderers that draw the result moved here too.
-
-## What is in it
-
-| Module | What it is |
-| --- | --- |
-| `ooxml_common.opc` | The OPC container: ZIP parts, content types, relationships |
-| `ooxml_common.kinds` | The package kinds: which extension names which (`.docx`, `.dotm`, `.potx`, `.xltm`...), whether it is a template and may carry macros, its main part's content type, and `kind_mismatch` for a package whose content type its file name does not take |
-| `ooxml_common.xmlutil` | Namespace-agnostic helpers over `xml.etree` |
-| `ooxml_common.units` | EMU, point, pixel and angle conversions |
-| `ooxml_common.fonts` | The font bundle probe, embedded-font decoding (EOT, MicroType Express, SFNT) and the substitution report; `metrics_from_faces` builds an advance table, legacy kern pairs included, from a family's font files |
-| `ooxml_common.fonts.office` | Where Office for Mac finds a face, read in place: the applications' bundles, macOS's folders and Office's cloud-font cache (`cloud_font_dirs`), in each application's measured order (`POWERPOINT`, `WORD`); a header-only index with the names and CSS keys resvg files a face under (`find`, `css_match`), a standard-library face reader (`Face`), and advance tables built from installed faces (`metrics`, `layout_metrics`) |
-| `ooxml_common.text.metrics` | Generated advance-width tables for the faces measured |
-| `ooxml_common.text.kerning` | Kerning class matrices: each face's OpenType feature (`KERNING`, from GPOS) and the legacy `kern` table of the face it stands for (`LEGACY_KERNING`); `KerningSource`, which of the two an application charges |
-| `ooxml_common.text.fontmap` | Clone substitution with its grading (`exact`, `compatible`, `approximate`, `missing`) |
-| `ooxml_common.text.measure` | The `TextMeasurer` protocol and both implementations |
-| `ooxml_common.imagemeta` | A picture's natural size, which a tiled fill is measured in, and the ICC profile it carries |
-| `ooxml_common.icc` | A matrix/TRC RGB profile read, and its colours converted to sRGB exactly, as PowerPoint converts a profiled picture |
-| `ooxml_common.drawingml.model` | DrawingML's value types: colour choices and resolved colours, fills, outlines, effects, transforms, geometry, picture tiling |
-| `ooxml_common.drawingml.source` | DrawingML as the XML states it: unresolved fills, outlines, shape styles, effects, transforms, geometry, the theme's format scheme |
-| `ooxml_common.drawingml.read` | The reader: `a:` XML (a slide's or a Word shape's) into those types, and a theme's colour and format schemes |
-| `ooxml_common.drawingml.color` | Colour resolution through a colour map and theme, with every transform, under per-application `ColorRules` |
-| `ooxml_common.drawingml.guides` | Shape-guide formula evaluation |
-| `ooxml_common.drawingml.preset_specs` | The preset geometries pptx2svg draws from ECMA-376 |
-| `ooxml_common.drawingml.presets` | The rest, and `PRESETS`: every name `ST_ShapeType` allows |
-| `ooxml_common.drawingml.preset_text_rects` | Every preset's text rectangle (`a:rect`), from the same source (`tools/derive_preset_text_rects.py`) |
-| `ooxml_common.drawingml.geometry` | A geometry as SVG: pptx2svg's one element per shape, or path data per `a:path`; the rectangle its text is laid out in (`text_rect`), and that drawn in by the outline as Word does and PowerPoint does not (`text_area`) |
-| `ooxml_common.drawingml.fill` | Solid, gradient, pattern and picture fills; outlines with dashes, caps and joins; arrowheads |
-| `ooxml_common.drawingml.effect` | Shadows, glow, soft edges and picture effects as SVG filters |
-| `ooxml_common.drawingml.pattern` | The 54 `a:pattFill` presets |
-| `ooxml_common.drawingml.rules` | Where Word and PowerPoint draw the same DrawingML differently, as a parameter of the renderers |
-| `ooxml_common.drawingml.svg` | What the renderers need of the consumer's SVG document (`SvgDefs`), and `num` |
-| `ooxml_common.drawingml.scene` | The drawable scene: resolved text bodies, shapes, connectors, pictures, groups, tables and charts |
-| `ooxml_common.drawingml.source_tree` | A shape tree and its text as the XML states them, before inheritance |
-| `ooxml_common.drawingml.read_tree` | The shape tree reader (`p:spTree`, a group, SmartArt's `dsp:spTree`) |
-| `ooxml_common.drawingml.read_text` | The text body reader (`a:txBody`, `c:rich`, `c:txPr`) |
-| `ooxml_common.drawingml.context` | `RenderContext`: the text measurer, font map, definitions, ids and `DrawingRules` of one render |
-| `ooxml_common.drawingml.elements` | An element or a group as SVG, through a group's child space |
-| `ooxml_common.drawingml.shape` | A shape, connector, picture or table as SVG |
-| `ooxml_common.drawingml.textbody` | A text body laid out in its frame (`a:bodyPr`) and drawn as SVG text |
-| `ooxml_common.drawingml.textmeasure` | A text body measured without drawing it: `measure_text_body`, `measure_shape_text` and `measure_text` give each line's break positions, width and height, the height the text needs, and where the text area sits in the frame (`area_left`, `area_top`): each paragraph wrapped inside its `marL`, exactly as the body is anchored and autofit estimates it, or with `as_drawn=True` with line breaks kept where it does not wrap, as it is drawn |
-| `ooxml_common.drawingml.wrap` | Breaking a DrawingML paragraph into lines |
-| `ooxml_common.drawingml.diagram` | SmartArt: finding a diagram's cached drawing from its data part |
-| `ooxml_common.chart.read` | A chart part (`c:chartSpace`) read, with its cached values |
-| `ooxml_common.chart.layout` | A chart laid out and lowered to scene elements, every constant measured on PowerPoint |
-| `ooxml_common.chart.rules` | Where Word and PowerPoint lay a chart out differently, as a parameter |
-
-## Where Word and PowerPoint differ
-
-Where the two applications measurably draw the same DrawingML differently, the shared code
-takes the application as a parameter rather than choosing one rule for both:
-`ooxml_common.drawingml.rules.DrawingRules` (`POWERPOINT`, the default, and `WORD`), which
-carries `ooxml_common.drawingml.color.ColorRules`, and which `fill.render_fill_attrs`,
-`fill.render_outline_attrs` and `fill.render_arrowheads` take. Word's column was measured
-by docx2svg's `tools/make_dml_probe.py`, read off Word's PDF (docx2svg ROADMAP.md,
-"DrawingML drawn by the shared renderers"); PowerPoint's is what pptx2svg draws, which its
-fidelity baselines hold, and its colour rows were measured the same way by pptx2svg's
-`tools/make_color_probe.py` (pptx2svg ROADMAP.md, "Colour transforms, measured").
-
-| | PowerPoint (`POWERPOINT`) | Word (`WORD`), measured |
-| --- | --- | --- |
-| A transformed channel's level | kept as linear light in **1/100000** (an `a:scrgbClr` percentage) between steps, rounded at the end (black at `lumOff 50000` is `7F7F7F`) | unrounded between steps, the nearest, **a half down** (black at `lumMod 50000 lumOff 50000` is `7F7F7F`) |
-| Composing transforms | in document order, a run of HLS steps on sRGB channels; saturation unbounded **above and below**, a grey given one red with its blue extrapolated; `gray` by **Rec. 709**; `gamma`, `invGamma`, `alphaMod`, `alphaOff` applied. 3,102 / 3,108 swatches (pptx2svg's `tools/make_color_probe.py`) | **in document order, unrounded**, saturation unbounded above, `gray` by Rec. 601, `inv` in linear light; `a:scrgbClr` read as linear light. 54 / 54 swatches |
-| A linear gradient's span | the box's width, in box units | through the centre, **corner to corner** projected on the direction; `scaled` stretches the unit square's; `rotWithShape="0"` holds the angle to the page |
-| A two-stop 0-100% gradient | blended in sRGB | eased (cosine) **in linear light**; a stop's alpha not drawn |
-| Path gradients | radial, to the farthest corner | `circle` from the `fillToRect` point to the corners' circle round the centre; `rect` / `shape` rectangular rings |
-| Dashes | preset times width, the cap on each dash | round cap: each dash a width shorter, each gap a width longer; square cap: squared only at the line's ends; `sysDashDot`, `sysDashDotDot` |
-| Arrowheads | SVG markers, 5 / 8 / 12 px | 2 / 3 / 5 times the width (2 pt at least), the line cut back under a triangle or stealth |
-| An outline's join when none is stated | miter (SVG's) | **round** |
-| A pattern's 8 pt cell | registered to the shape | registered to the **page**, square to it on a rotated shape |
-| A custom path's outline (`custom_path_strokes`) | scaled with the path by its `scale()` | at its **stated width**: the coordinates are scaled instead |
-| A run's glyphs (`text_size_grid`) | at the stated size | at the size **rounded to the 300 dpi device pixel** (10 pt drawn 10.08) |
-| A text body's first baseline (`first_baseline`) | the measurer's ascent, scaled by the spacing | the **spaced line box less the face's descent**; the next line a descent on, then its box less its descent |
-| Kerning (`kerning`) | **a static face's legacy `kern` table**, never its GPOS pairs; a **variable** face's GPOS pairs (pptx2svg's `tools/make_kern_source_probe.py`, 29 lines in 15 faces) | **the legacy `kern` table** where a run kerns (`w:kern`), and nothing for a variable face (docx2svg's `tools/make_wrap_kern_probe.py`: 324 / 324 wrap verdicts) |
-| Autofit (`autofit`) | **what the file stores**, measured on pptx2svg's `tools/make_autofit_probe.py`: `normAutofit` text at its `fontScale`, each size rounded to a whole point half up, with `lnSpcReduction` off a percentage spacing in points of percent, and at full size, overflowing, when nothing is stored; a `spAutoFit` shape at its stored extent | not measured: `normAutofit` text shrunk until it fits, a `spAutoFit` shape grown to its text |
-
-Most of Word's column is probably Office's shared engine and so PowerPoint's too; that is
-not measured, and pptx2svg's output is not moved on a guess. The colour rows are the
-exception, measured on both: they compose alike, and `tint` and `shade` in linear light and
-`lumMod` / `lumOff` / `satMod` in HLS are the same in both. And one known defect moved as
-it was: PowerPoint shades a chart's accent cycle in linear light, where HLS `lumMod` is up
-to 23 levels off (pptx2svg ROADMAP.md) -- that ramp is not a DrawingML transform, and
-pptx2svg's chart layout carries its own conversion for it.
-
-The kerning row is a rule about tables, not a change to them: `KERNING` is still each
-face's OpenType feature, a `DefaultTextMeasurer` built without a `kerning` charges it, and
-a `DrawingRules` that names none keeps it. A `RenderContext` built without a measurer gets
-one charging its rules' source; a caller building its own passes
-`kerning=rules.kerning`.
-
-Every renderer also takes `dpi`, the pixels per inch of the caller's user space: 96 for
-pptx2svg, 300 for docx2svg, which draws on Word's device grid.
-
-The shape, text body and group renderers read the rules from their `RenderContext`
-(`rules`, `POWERPOINT` by default), and a chart's layout takes
-`ooxml_common.chart.rules.ChartRules` (`POWERPOINT`, the default), which carries the
-`DrawingRules` its scene is drawn with. Every constant of the layout was measured on
-PowerPoint (pptx2svg ROADMAP.md, Phase 3); where Word is measured to lay a chart out
-differently, the difference becomes a field there.  `WORD` carries what docx2svg's
-`tools/make_chart_probe.py` measured on 58 charts of its own, read off Word's PDF in three
-documents (no settings part, compatibility modes 14 and 15, which draw every chart alike):
-
-| | PowerPoint (`POWERPOINT`) | Word (`WORD`), measured |
-| --- | --- | --- |
-| A chart space stating no fill, no line | transparent | **white**, outlined `898989` at **0.5 pt**, each default on its own |
-| A plot area stating no fill; its own line | nothing; not drawn | **white** (a radar's: the square round its web; a pie's: none); drawn |
-| A title's band and baseline | 1.4769 line boxes; 1.5046 ascents down | its **pitch + 9 pt**; **7.5 pt + 0.9412 em** down, whatever the face |
-| A side legend's pads | 1.6 em to the plot, 1.01 em to the edge; placed off the plot | **13.25 pt and half the key**, and **10.13 pt**; placed against the **frame** (a left one 8.25 pt and half the key in) |
-| A top legend with a title; `legendPos="tr"` | over the title; a top band | **under** the title; a **column** at the right from the top |
-| Legend order | series order | **reversed** for clustered bars, and for stacked columns at the side |
-| Clustered horizontal bars | the first series at the top of its group | the first series at the **bottom** |
-| A line series stating a width and no colour | 1.5 pt | its **stated width** |
-| A legend key of a series with a line | not outlined | **outlined** |
-| A `c:title` with no text; one with text and `c:autoTitleDeleted` `1` | none; none | the sole series' **name** (over several, Word's own "Chart Title", its band kept and its words the caller's); **drawn** |
-| An axis' `c:title` | not drawn | **drawn**: at the left turned to read upwards, at the bottom across, each its **pitch + 9 pt** off the plot and its line box **12.5 pt** in from the frame (or a legend there) |
-| A plot shorter than 1.1 em of its value labels | what is left | the band under it gives up **half the shortfall** |
-
-The last three rows are docx2svg's `tools/make_chart_text_probe.py` (80 charts, the same
-three documents). A chart's default axis and gridline colour is the caller's too
-(`ChartStyle.line_color`): Word draws them `898989` in a chart stating Word 365's chart
-style (`c14:style`).
-
-At 10 pt the side legend's pads are PowerPoint's to 0.03 pt and an 18 pt Arial title's band
-its to 0.002 pt, the one size and face each was measured at in PowerPoint; where the two
-part, PowerPoint was not measured, and pptx2svg's output does not move.
-
-What a chart cannot know is the consumer's, and comes in as parameters: the theme's faces,
-text colour and accent cycle (`chart.layout.ChartStyle`), and how a fill, an outline, a
-title's rich text and a theme typeface (`+mn-lt`) resolve -- `ChartBuilder`'s
-`resolve_fill`, `resolve_outline`, `resolve_text` and `resolve_typeface`, each the
-consumer's own inheritance. Text is measured through the `TextMeasurer` protocol, as
-everywhere here.
-
-## What is deliberately not in it
-
-- **Line breaking for a Word paragraph.** `drawingml.wrap` breaks DrawingML paragraphs
-  -- a text body's, which a chart and a SmartArt shape carry in Word too. A Word body's
-  paragraphs are a different model and docx2svg breaks them against Word's own output.
-- **Anything that takes a document model.** The resolver that turns what the reader read
-  into drawable values through a slide's inheritance -- placeholders, masters, list
-  styles -- is pptx2svg's, and a Word document's is docx2svg's; so is drawing a whole
-  slide or page. (The readers and the renderers of what they resolve to are here: what
-  they read and draw is the same in both formats.)
-- **The fidelity harnesses.** pptx2svg scores rasterised slides by SSIM; docx2svg
-  measures glyph boxes in a vector PDF. They share the idea of an oracle and none of the
-  code.
-- **The metric generators.** `tools/extract_font_metrics.py` and
-  `tools/derive_preset_geometry.py` stay in pptx2svg for now and write into this package:
-  the first reads Office's faces through pptx2svg's fidelity-harness font profile, and
-  the second's manifest is pptx2svg's renderer policy. The second also writes
-  `drawingml/presets.py` -- every preset its manifest leaves out -- so that `PRESETS` is
-  the whole table.
 
 ## Install
 
@@ -196,24 +22,45 @@ pip install -e '.[measure]'       # + fontTools, to measure real font files
 pip install -e '.[dev]'           # + pytest
 ```
 
-## Font files
+Or straight from GitHub: `pip install "ooxml-common @ git+https://github.com/uvrt/ooxml-common@main"`.
 
-The `[fonts]` extra is the **`pptx2svg-fonts`** distribution: the OFL-licensed font
-files the metric tables were measured from. It keeps its name and its home in the
-pptx2svg repository (`packages/pptx2svg-fonts`) because renaming a distribution is
-disruptive and `ooxml_common.fonts` finds it by import name alone, so where it lives
-changes nothing here. It is not on PyPI either; install it from a pptx2svg checkout:
+## Example
 
-```sh
-pip install -e ../pptx2svg/packages/pptx2svg-fonts
+```python
+from ooxml_common.opc import OpcPackage
+from ooxml_common.kinds import kind_for
+from ooxml_common.units import emu_to_pt
+from ooxml_common.text.measure import DefaultTextMeasurer
+
+package = OpcPackage.open("deck.pptx")           # parts, content types, relationships
+print(kind_for("report.dotm"))                   # "dotm"
+print(emu_to_pt(914400))                         # 72.0
+measurer = DefaultTextMeasurer()                 # measured advance widths and kerning
+print(measurer.measure_text_width("Hello, world", 18, font_family="Calibri"))  # CSS px
 ```
 
-The tests that need the files skip with a reason when it is absent.
+## What is in it, and what is not
 
-No Microsoft font file enters this repository in any form. The tables record
-measurements of those designs, which are facts; the files are not ours to redistribute.
-`ooxml_common.fonts.office` reads installed faces where they are, in memory, and only
-numbers and paths leave it.
+- **In:** OPC and package kinds, units, embedded-font decoding and Office's font lookup,
+  measured advance-width and kerning tables, clone substitution, DrawingML (reader, colour
+  resolution, every preset geometry, fills, outlines, effects, patterns), the shape tree
+  and text body readers and renderers, SmartArt's cached drawing, and charts read, laid
+  out and drawn. The full module table: [docs/modules.md](docs/modules.md).
+- **Where Word and PowerPoint differ**, measurably, the renderers take the application as
+  a parameter (`DrawingRules`, `ColorRules`, `ChartRules`) rather than choosing one rule
+  for both: [docs/word-and-powerpoint.md](docs/word-and-powerpoint.md).
+- **Not in it:** line breaking for a Word paragraph, anything that takes a document model
+  (inheritance through placeholders, masters, styles; drawing a whole slide or page), the
+  fidelity harnesses, and the metric generators, which stay in pptx2svg for now. Details
+  in [docs/modules.md](docs/modules.md#what-is-deliberately-not-in-it).
+
+## Font files
+
+The `[fonts]` extra is the **`pptx2svg-fonts`** distribution, the OFL-licensed font files
+the metric tables were measured from; it lives in the pptx2svg repository
+(`packages/pptx2svg-fonts`). The tests that need the files skip with a reason when it is
+absent. No Microsoft font file enters this repository in any form. More:
+[docs/fonts.md](docs/fonts.md).
 
 ## Tests
 
@@ -223,7 +70,22 @@ python -m pytest -q
 
 `tests/test_independence.py` holds the two promises that make the package shareable:
 nothing here imports a consumer, and nothing here needs more than the standard library
-at runtime.
+at runtime. See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Status
+
+Version 0.6.0, used by pptx2svg and docx2svg from `main`. Changes per version:
+[CHANGELOG.md](CHANGELOG.md). Why the package exists and how it was extracted from
+pptx2svg with its history: [docs/history.md](docs/history.md).
+
+## Family
+
+- [pptx2svg](https://github.com/uvrt/pptx2svg) -- renders PowerPoint (`.pptx`) slides to SVG and PNG.
+- [docx2svg](https://github.com/uvrt/docx2svg) -- renders Word (`.docx`) documents to SVG, page by page.
+- [ooxml-common](https://github.com/uvrt/ooxml-common) (this repo) -- the format-neutral reading, DrawingML, fonts and text metrics both renderers share.
+- [ooxml-edit](https://github.com/uvrt/ooxml-edit) -- lossless, undoable editing of OOXML packages, shared by both agent layers.
+- [pptx-agent](https://github.com/uvrt/pptx-agent) -- an AI-editable PowerPoint layer: inspect, edit, re-render.
+- [docx-agent](https://github.com/uvrt/docx-agent) -- an AI-editable Word layer: inspect, edit (optionally as tracked changes), re-render.
 
 ## Licence
 
