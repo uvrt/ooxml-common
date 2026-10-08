@@ -2,6 +2,11 @@
 
 Versions are set in `pyproject.toml`; there are no release tags or PyPI releases yet.
 
+## 0.7.0 -- 2026-10-08
+- Draw chart text in the colour its `c:txPr` cascade states -- tick and category labels, legend entries, data labels, and titles that state none of their own -- as PowerPoint and Word do, plain `tx1` where nothing states one.
+- Print a number format's text round the number (`"€"#,##0.0"m"` is `€12.4m`), its zero section, scaling, optional decimals and exponent; honour a data label's and an axis' `sourceLinked`.
+- Stand a radar's category labels off their vertex by 4% of the radius, centred on the anchor on a sloping spoke.
+
 ## 0.6.0 -- 2026-10-06
 - Resolve a run's Japanese face as PowerPoint does.
 - Find installed faces by their English typographic family.

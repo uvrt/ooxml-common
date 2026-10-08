@@ -74,7 +74,7 @@ at runtime. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Status
 
-Version 0.6.0, used by pptx2svg and docx2svg from `main`. Changes per version:
+Version 0.7.0, used by pptx2svg and docx2svg from `main`. Changes per version:
 [CHANGELOG.md](CHANGELOG.md). Why the package exists and how it was extracted from
 pptx2svg with its history: [docs/history.md](docs/history.md).
 
