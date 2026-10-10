@@ -109,7 +109,8 @@ def _scatter(labels: str, bubble: bool = False, shown: str = flags(Val=True)) ->
         + (f"<c:bubbleSize>{_num((3, 2, 3, 1))}</c:bubbleSize>" if bubble else "")
         + "</c:ser>"
     )
-    return (f'<c:{kind}>{"" if bubble else "<c:scatterStyle val=\"lineMarker\"/>"}{series}'
+    style = "" if bubble else '<c:scatterStyle val="lineMarker"/>'
+    return (f"<c:{kind}>{style}{series}"
             f'<c:axId val="1"/><c:axId val="2"/></c:{kind}>{_axes()}')
 
 
