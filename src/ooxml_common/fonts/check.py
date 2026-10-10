@@ -39,6 +39,7 @@ from dataclasses import dataclass
 
 from ..text.fontmap import family_key, substitution_for
 from ..text.metrics import METRICS
+from ..text.symbol_fonts import symbol_face
 from . import INSTALL_HINT, available_families, bundle_mode
 
 # Reading the faces *out of a document* is the consumer's half and lives with the
@@ -141,6 +142,18 @@ def _status(
         )
 
     substitution = substitution_for(requested)
+
+    if substitution is None and symbol_face(requested) is not None:
+        return FaceStatus(
+            requested=requested,
+            substitute=None,
+            metrics=None,
+            verdict="missing",
+            reason=(
+                "no substitute known; drawn from this host's copy where there is one, else "
+                "as the Unicode characters its symbols stand for (symbol-font-mapped)"
+            ),
+        )
 
     if substitution is None:
         return FaceStatus(
