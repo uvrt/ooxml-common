@@ -32,7 +32,8 @@ cache's place is moot today; it comes last for both.
 What is here:
 
 * the locations, :func:`system_font_dirs` (elsewhere than macOS, the usual places) and
-  :func:`cloud_font_dirs`;
+  :func:`cloud_font_dirs`, and an application's own folders (:func:`user_font_dirs`:
+  given explicitly, or in ``OOXML_FONT_DIRS``), searched before all of them;
 * a reader of the font tables a lookup and a layout need, standard library only
   (:class:`Face`: names, style, the ``cmap``, advances, the legacy ``kern`` table);
 * a header-only index of every installed face (:class:`HostFace`, :func:`find`), with the
@@ -59,10 +60,12 @@ from dataclasses import dataclass
 from pathlib import Path
 
 __all__ = [
+    "FONT_DIRS_ENV",
     "MACOS_FONT_DIRS",
     "OFFICE_CLOUD_FONTS",
     "POWERPOINT",
     "POWERPOINT_FONTS",
+    "USER",
     "WORD",
     "WORD_FONTS",
     "Application",
@@ -74,6 +77,7 @@ __all__ = [
     "css_match",
     "face_bytes",
     "faces_in",
+    "env_font_dirs",
     "find",
     "font_dirs",
     "has_own_table",
@@ -83,7 +87,11 @@ __all__ = [
     "metrics_of",
     "search_dirs",
     "system_font_dirs",
+    "user_families",
+    "user_font_dirs",
+    "user_search_dirs",
     "weight_order",
+    "with_subfolders",
 ]
 
 #: PowerPoint's own fonts, inside the application bundle.
@@ -106,6 +114,15 @@ MACOS_FONT_DIRS = (
 )
 
 FONT_SUFFIXES = (".ttf", ".otf", ".ttc")
+
+#: The environment variable naming an application's own font folders, ``os.pathsep``
+#: separated (``:`` on macOS and Linux, ``;`` on Windows): read by pptx2svg and docx2svg
+#: wherever no ``font_dirs`` is given (:func:`user_font_dirs`).
+FONT_DIRS_ENV = "OOXML_FONT_DIRS"
+
+#: The location an application's own folders are filed under (:func:`user_search_dirs`):
+#: searched before every other, whatever the application's order.
+USER = "user"
 
 
 @dataclass(frozen=True)
@@ -175,6 +192,56 @@ def cloud_font_dirs(root: Path | None = None) -> tuple[Path, ...]:
         return ()
 
 
+def env_font_dirs(environ=None) -> tuple[Path, ...]:
+    """The folders :data:`FONT_DIRS_ENV` names, in its order (``~`` expanded, empty
+    entries skipped); none where it is unset.  ``environ`` is :data:`os.environ` by
+    default."""
+    value = (os.environ if environ is None else environ).get(FONT_DIRS_ENV, "")
+    return tuple(Path(part.strip()).expanduser() for part in value.split(os.pathsep) if part.strip())
+
+
+def user_font_dirs(font_dirs=None, *, environ=None) -> tuple[Path, ...]:
+    """An application's own font folders: ``font_dirs`` when it is given -- a sequence of
+    paths, or one path; an empty sequence is "none", and the environment is not read --
+    and otherwise :func:`env_font_dirs`.
+
+    **Precedence**: the explicit argument, then :data:`FONT_DIRS_ENV`; whichever applies
+    is *added* to the operating system's folders and searched before them, never in
+    place of them.  The folders are returned as given; :func:`with_subfolders` lists
+    what a one-level index must read."""
+    if font_dirs is None:
+        return env_font_dirs(environ)
+    if isinstance(font_dirs, (str, os.PathLike)):
+        font_dirs = [font_dirs]
+    return tuple(Path(os.fspath(path)).expanduser() for path in font_dirs)
+
+
+def with_subfolders(dirs) -> tuple[Path, ...]:
+    """Every folder in ``dirs`` that exists, each followed by the folders under it,
+    sorted -- what a rasteriser reads when it is handed a folder (resvg's font database
+    walks it), for an index that reads one level at a time.  Each folder once."""
+    out: list[Path] = []
+    for directory in dirs:
+        directory = Path(directory)
+        if not directory.is_dir():
+            continue
+        found = [directory]
+        try:
+            found.extend(sorted(path for path in directory.rglob("*") if path.is_dir()))
+        except OSError:
+            pass
+        out.extend(path for path in found if path not in out)
+    return tuple(out)
+
+
+def user_search_dirs(font_dirs=None) -> tuple[tuple[str, Path], ...]:
+    """``(location, folder)`` for the application's own folders (:func:`user_font_dirs`)
+    and the folders under them, filed under :data:`USER` -- the head of every
+    :func:`search_dirs`, and what a lookup of the application's faces alone passes to
+    :func:`find` as ``dirs``."""
+    return tuple((USER, path) for path in with_subfolders(user_font_dirs(font_dirs)))
+
+
 def font_dirs(application: Application = WORD, purpose: str = "layout") -> tuple[Path, ...]:
     """Every folder ``application`` searches for ``purpose``, in its order, macOS's four
     whether or not they exist -- the flat list a per-style lookup walks
@@ -183,14 +250,18 @@ def font_dirs(application: Application = WORD, purpose: str = "layout") -> tuple
     return tuple(path for location in application.order(purpose) for path in places[location])
 
 
-def search_dirs(application: Application = POWERPOINT, purpose: str = "layout") -> tuple[tuple[str, Path], ...]:
-    """``(location, folder)`` for every folder that exists, in ``application``'s order."""
+def search_dirs(application: Application = POWERPOINT, purpose: str = "layout", *,
+                font_dirs=None) -> tuple[tuple[str, Path], ...]:
+    """``(location, folder)`` for every folder that exists, in ``application``'s order,
+    after the application's own (:func:`user_search_dirs` of ``font_dirs``: given, or
+    :data:`FONT_DIRS_ENV`)."""
     places = {
         application.name: ((application.bundle,) if application.bundle.is_dir() else ()),
         "system": system_font_dirs(),
         "cloud": cloud_font_dirs(),
     }
-    return tuple((location, path) for location in application.order(purpose) for path in places[location])
+    return user_search_dirs(font_dirs) + tuple(
+        (location, path) for location in application.order(purpose) for path in places[location])
 
 
 # --------------------------------------------------------------------------------------
@@ -688,13 +759,22 @@ def index(dirs: tuple[tuple[str, Path], ...]) -> dict[str, dict[str, list[HostFa
     return out
 
 
+def user_families(font_dirs=None) -> frozenset:
+    """Family keys (:func:`~ooxml_common.text.fontmap.family_key`) of every face in the
+    application's own folders (:func:`user_search_dirs`), by name ID 1 or English name ID
+    16: what a renderer draws from them, and a font report counts as supplied."""
+    dirs = user_search_dirs(font_dirs)
+    return frozenset(index(dirs)) if dirs else frozenset()
+
+
 def find(family: str | None, application: Application = POWERPOINT, purpose: str = "layout", *,
          dirs: tuple[tuple[str, Path], ...] | None = None) -> tuple[HostFace, ...]:
     """The faces of ``family`` ``application`` would use here for ``purpose``: every style
     of it in the first location that has the family (:attr:`Application.layout` or
     ``drawing``; a :attr:`~Application.prefer_bundle` family's bundle first), the first copy
-    of each style winning.  ``dirs`` is :func:`search_dirs`' answer by default.  Empty
-    where nothing installed answers to the name.
+    of each style winning.  The application's own folders (:data:`USER`) come before
+    every location.  ``dirs`` is :func:`search_dirs`' answer by default.  Empty where
+    nothing installed answers to the name.
 
     **Which names find a face** is measured in PowerPoint for Mac (pptx2svg's
     ``tools/make_font_resolution_probe.py``, its ``names`` deck): a run's ``<a:ea>``
@@ -726,7 +806,7 @@ def find(family: str | None, application: Application = POWERPOINT, purpose: str
     order = application.order(purpose)
     if key in application.prefer_bundle:
         order = (application.name,) + tuple(location for location in order if location != application.name)
-    for location in order:
+    for location in (USER, *order):
         faces = found.get(location)
         if faces:
             # A face whose name ID 1 is the family wins over one found by its name ID 16
@@ -783,11 +863,13 @@ def metrics_of(faces: tuple[HostFace, ...]):
     return metrics_from_faces({(face.bold, face.italic): face_bytes(face) for face in faces})
 
 
-def metrics(family: str | None, application: Application = POWERPOINT):
+def metrics(family: str | None, application: Application = POWERPOINT, *,
+            dirs: tuple[tuple[str, Path], ...] | None = None):
     """A :class:`~ooxml_common.text.metrics.FontMetrics` built from the installed faces of
-    ``family`` ``application`` lays it out with (:func:`find`), or ``None`` where there are
-    none or they cannot be read."""
-    faces = find(family, application)
+    ``family`` ``application`` lays it out with (:func:`find`, over ``dirs`` when given:
+    :func:`user_search_dirs` for the application's own faces alone), or ``None`` where
+    there are none or they cannot be read."""
+    faces = find(family, application, dirs=dirs)
     if not faces:
         return None
     try:
