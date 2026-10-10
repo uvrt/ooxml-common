@@ -2953,16 +2953,37 @@ class _Labels:
     number_format: str | None = None
     font: "ChartFont | None" = None
     color: m.ResolvedColor | None = None
+    #: A point's own text (``c:dLbl/c:tx``), printed instead of the composed label.
+    text: "c.SourceChartText | None" = None
+    #: ``c15:showDataLabelsRange``: print the point's "Value From Cells" text too.
+    show_range: bool = False
 
     @property
     def anything(self) -> bool:
+        # A point's own text is printed whatever its `c:show*` flags say: measured, a rich
+        # label with every one of them off drew (`tools/make_point_label_probe.py`).
         return (
             self.show_value
             or self.show_category
             or self.show_series
             or self.show_percent
             or self.show_bubble_size
+            or self.show_range
+            or self.text is not None
         )
+
+
+class _LabelText(str):
+    """A data label's text that carries its runs: a ``c:dLbl``'s rich text, each line a
+    list of ``(text, run properties)``, drawn run by run with its own formatting."""
+
+    lines: "list[list[tuple[str, s.SourceRunProperties | None]]]"
+
+    def __new__(cls, lines):
+        text = "\n".join("".join(part for part, _ in line) for line in lines)
+        made = super().__new__(cls, text)
+        made.lines = lines
+        return made
 
 
 @dataclass
@@ -2995,6 +3016,8 @@ class _Series:
     labels: _Labels | None = None
     #: ``c:dLbl`` overrides, keyed by point index.
     point_labels: dict[int, _Labels] = field(default_factory=dict)
+    #: ``c15:datalabelsRange``: each point's "Value From Cells" text, by index.
+    label_range: list[str | None] = field(default_factory=list)
 
 
 class ChartBuilder:
@@ -3558,6 +3581,11 @@ class ChartBuilder:
             labels = item.point_labels.get(index, item.labels)
             if labels is None or not labels.anything or labels.font is None:
                 return
+            own = self._own_label(labels, item, categories, index, values[index],
+                                  percent=f"{shares[index]}%")
+            if own is not None:
+                self._centred_label([], labels.font, x, y, rich=own)
+                return
             parts: list[str] = []
             if labels.show_series and item.name:
                 parts.append(item.name)
@@ -3571,6 +3599,7 @@ class ChartBuilder:
                     parts.append(
                         format_number(value, labels.number_format or item.format_code)
                     )
+            parts = self._with_range(labels, item, index, parts)
             if parts:
                 self._centred_label(parts, labels.font, x, y)
 
@@ -4085,6 +4114,7 @@ class ChartBuilder:
                 labels = item.point_labels.get(index, item.labels)
                 if labels is None or not labels.anything or labels.font is None:
                     continue
+                own = self._own_label(labels, item, categories, index, value)
                 parts: list[str] = []
                 if labels.show_series and item.name:
                     parts.append(item.name)
@@ -4094,11 +4124,12 @@ class ChartBuilder:
                     parts.append(
                         format_number(value, labels.number_format or item.format_code)
                     )
-                if not parts:
+                parts = self._with_range(labels, item, index, parts)
+                if not parts and own is None:
                     continue
                 distance = self._radar_radius(radius, value, scale) + item.marker_size
                 x, y = self._radar_point(centre, index, count, distance)
-                self._centred_label(parts, labels.font, x, y)
+                self._centred_label(parts, labels.font, x, y, rich=own)
 
     def _build_cartesian(self) -> tuple[list[m.SlideElement], m.ChartData]:
         """Every group this chart draws, over one plot rectangle and up to two value axes.
@@ -5052,6 +5083,7 @@ class ChartBuilder:
                     # 6 pt marker, not ECMA-376's 7.
                     item.marker_size = RADAR_MARKER_SIZE_PT
             item.labels = self._read_labels(source.data_labels, self.plot.data_labels)
+            item.label_range = list(source.label_range or [])
             if source.data_labels is not None:
                 for point_index, override in source.data_labels.overrides.items():
                     item.point_labels[point_index] = self._read_labels(
@@ -5110,6 +5142,9 @@ class ChartBuilder:
             show_bubble_size=flag("show_bubble_size"),
             position=first("position"),
             number_format=number_format(),
+            # Only a point's `c:dLbl` carries text of its own, and it is the innermost.
+            text=present[0].text if present and present[0].text is not None else None,
+            show_range=flag("show_range"),
         )
         if labels.anything:
             bodies = [source.text_properties for source in present]
@@ -6336,6 +6371,8 @@ class ChartBuilder:
                 labels = item.point_labels.get(point, item.labels)
                 if labels is None or not labels.anything or labels.font is None:
                     continue
+                own = self._own_label(labels, item, categories, point, value,
+                                      percent=f"{shares[point]}%")
                 parts: list[str] = []
                 if labels.show_series and item.name:
                     parts.append(item.name)
@@ -6347,7 +6384,8 @@ class ChartBuilder:
                     parts.append(
                         format_number(value, labels.number_format or item.format_code)
                     )
-                if not parts:
+                parts = self._with_range(labels, item, point, parts)
+                if not parts and own is None:
                     continue
                 fraction = PIE_LABEL_RADIUS.get(labels.position or "bestFit", 0.710)
                 outer = inner_base + (ring + 1) * band
@@ -6356,19 +6394,28 @@ class ChartBuilder:
                 radians = math.radians(mid)
                 x = centre_x + offset[0] + distance * math.sin(radians)
                 y = centre_y + offset[1] - distance * math.cos(radians)
-                self._centred_label(parts, labels.font, x, y)
+                self._centred_label(parts, labels.font, x, y, rich=own)
 
     def _centred_label(
-        self, lines: list[str], font: ChartFont, x: float, y: float
+        self, lines: list[str], font: ChartFont, x: float, y: float,
+        rich: "_LabelText | None" = None,
     ) -> None:
-        """A multi-line label whose block is centred on ``(x, y)``."""
-        box = font.box
-        width = max((font.width(line) for line in lines), default=0.0) + box.size
+        """A multi-line label whose block is centred on ``(x, y)``; ``rich``, a point's own
+        text (:meth:`_own_label`), is drawn in place of ``lines``."""
+        if rich is not None:
+            lines = rich.split("\n")
+        runs = rich.lines if rich is not None else None
+        box = self._rich_box(runs, font) if runs else font.box
+        widths = [self._rich_width(line, font) for line in runs] if runs else [
+            font.width(line) for line in lines
+        ]
+        width = max(widths, default=0.0) + box.size
         block = box.line_height * len(lines)
         first = y - block / 2 + box.ascent
         for index, line in enumerate(lines):
             self._text(
-                self._label_body(line, font, align="ctr"),
+                self._rich_body(runs[index], font, align="ctr", color=None) if runs
+                else self._label_body(line, font, align="ctr"),
                 left=x - width / 2,
                 width=width,
                 baseline=first + index * box.line_height,
@@ -8540,7 +8587,16 @@ class ChartBuilder:
         Measured on the multi-part probe: PowerPoint stacks series name, category name and
         value on **separate lines**, in that order, rather than joining them with the
         ``c:separator`` a single-line label would use.
+
+        A point's own text (:meth:`_own_label`) is printed instead of all of it.
         """
+        own = self._own_label(
+            labels, item, categories, point, value,
+            percent=self._percent_text(value, point, percent_totals) if percent_totals else None,
+            bubble_size=bubble_size,
+        )
+        if own is not None:
+            return own
         parts: list[str] = []
         if labels.show_series and item.name:
             parts.append(item.name)
@@ -8555,7 +8611,78 @@ class ChartBuilder:
             )
         if labels.show_bubble_size and bubble_size is not None:
             parts.append(format_number(bubble_size, labels.number_format))
-        return "\n".join(parts)
+        return "\n".join(self._with_range(labels, item, point, parts))
+
+    @staticmethod
+    def _percent_text(value: float, point: int, percent_totals: list[float]) -> str:
+        total = percent_totals[point] if point < len(percent_totals) else 0.0
+        return format_number(value / total if total else 0.0, "0%")
+
+    @staticmethod
+    def _with_range(labels: _Labels, item: _Series, point: int, parts: list[str]) -> list[str]:
+        """``parts`` with the point's "Value From Cells" text (``c15:showDataLabelsRange``)
+        put first.  Measured (``tools/make_point_label_probe.py``, ``range``): PowerPoint
+        prints the range, the category and the value on one line, ``alpha; North; 3``."""
+        if not labels.show_range:
+            return parts
+        text = item.label_range[point] if point < len(item.label_range) else None
+        joined = ([text] if text else []) + parts
+        return ["; ".join(joined)] if joined else []
+
+    def _own_label(
+        self,
+        labels: _Labels,
+        item: _Series,
+        categories: list[str],
+        point: int,
+        value: float | None,
+        *,
+        percent: str | None = None,
+        bubble_size: float | None = None,
+    ) -> "_LabelText | None":
+        """A point's own text (``c:dLbl/c:tx``), or ``None`` where it has none.
+
+        Rich text keeps its runs, each drawn in its own formatting -- a typed label's bold
+        red word drew bold and red.  Its fields are the point's: ``CELLRANGE`` the series'
+        ``c15:datalabelsRange`` text, ``VALUE`` and ``YVALUE`` the value in the label's
+        number format, ``SERIESNAME``, ``CATEGORYNAME`` and ``XVALUE``, ``PERCENTAGE`` and
+        ``BUBBLESIZE``, each measured printing the point's own (``fields``); any other keeps
+        its cached text.  A ``c:strRef`` label is its cached string.
+        """
+        own = labels.text
+        if own is None:
+            return None
+        if own.rich is None:
+            return _LabelText([[(own.cached or "", None)]])
+        fields = {
+            "CELLRANGE": item.label_range[point] if point < len(item.label_range) else None,
+            "VALUE": None if value is None else format_number(
+                value, labels.number_format or item.format_code),
+            "SERIESNAME": item.name,
+            "CATEGORYNAME": categories[point] if point < len(categories) else None,
+            "PERCENTAGE": percent,
+            "BUBBLESIZE": None if bubble_size is None else format_number(
+                bubble_size, labels.number_format),
+        }
+        fields["YVALUE"] = fields["VALUE"]
+        fields["XVALUE"] = fields["CATEGORYNAME"]
+        lines: list[list[tuple[str, s.SourceRunProperties | None]]] = []
+        for paragraph in own.rich.paragraphs:
+            default = paragraph.properties.default_run_properties if paragraph.properties else None
+            line: list[tuple[str, s.SourceRunProperties | None]] = []
+            for run in paragraph.runs:
+                text = run.text
+                if run.field_type:
+                    shown = fields.get(run.field_type.upper())
+                    text = shown if shown is not None else text
+                properties = _merged_run(run.properties, default)
+                if text == "\n":
+                    lines.append(line)
+                    line = []
+                    continue
+                line.append((text, properties))
+            lines.append(line)
+        return _LabelText(lines)
 
     def _label_anchor(
         self,
@@ -8673,9 +8800,13 @@ class ChartBuilder:
         x, y, placement = geometry
         font = labels.font
         assert font is not None
-        box = font.box
+        rich = text.lines if isinstance(text, _LabelText) else None
+        box = self._rich_box(rich, font) if rich else font.box
         lines = text.split("\n")
-        width = max((font.width(line) for line in lines), default=0.0) + box.size
+        widths = [self._rich_width(line, font) for line in rich] if rich else [
+            font.width(line) for line in lines
+        ]
+        width = max(widths, default=0.0) + box.size
         block = box.line_height * len(lines)
 
         if placement == "centre":
@@ -8725,12 +8856,66 @@ class ChartBuilder:
             first -= box.line_height * (len(lines) - 1)
         for index, line in enumerate(lines):
             self._text(
-                self._label_body(line, font, align=align, color=labels.color),
+                self._rich_body(rich[index], font, align=align, color=labels.color)
+                if rich else self._label_body(line, font, align=align, color=labels.color),
                 left=left,
                 width=width,
                 baseline=first + index * box.line_height,
                 box=box,
             )
+
+    def _rich_run(
+        self, properties: "s.SourceRunProperties | None", font: ChartFont,
+        color: m.ResolvedColor | None,
+    ) -> tuple[str | None, float, m.RunProperties]:
+        """``(family, size, drawn properties)`` of one run of a label's own rich text, over
+        the label's ``c:txPr`` font: its size, face, colour, bold, italic and underline."""
+        size = font.size
+        family = font.family
+        drawn_color = color or font.color or self.style.color
+        bold = italic = underline = False
+        if properties is not None:
+            size = properties.font_size or size
+            if properties.typeface:
+                family = self._resolve_typeface(properties.typeface) or family
+            if properties.color is not None:
+                fill = self._resolve_fill(s.SourceSolidFill(color=properties.color))
+                if isinstance(fill, m.SolidFill):
+                    drawn_color = fill.color
+            bold, italic = bool(properties.bold), bool(properties.italic)
+            underline = bool(properties.underline) and properties.underline != "none"
+        return family, size, m.RunProperties(
+            font_size=size, font_family=family, font_family_ea=font.family_ea,
+            color=drawn_color, bold=bold, italic=italic, underline=underline,
+        )
+
+    def _rich_width(self, line, font: ChartFont) -> float:
+        total = 0.0
+        for text, properties in line:
+            family, size, _ = self._rich_run(properties, font, None)
+            total += text_width(text, family, size, font.family_ea)
+        return total
+
+    def _rich_box(self, lines, font: ChartFont) -> "FontBox":
+        """The line box of a rich label: its largest run's face and size, never less than
+        the label's own."""
+        best = font.box
+        for line in lines:
+            for _text, properties in line:
+                family, size, _ = self._rich_run(properties, font, None)
+                if size > best.size:
+                    best = font_box(family, size)
+        return best
+
+    def _rich_body(self, line, font: ChartFont, *, align: str, color) -> m.TextBody:
+        runs = [
+            m.TextRun(text=text, properties=self._rich_run(properties, font, color)[2])
+            for text, properties in line
+        ] or [m.TextRun(text="", properties=self._rich_run(None, font, color)[2])]
+        return m.TextBody(
+            paragraphs=[m.Paragraph(runs=runs, properties=m.ParagraphProperties(alignment=align))],  # type: ignore[arg-type]
+            body_properties=CHART_TEXT_BODY,
+        )
 
     def _bar_box(
         self,
@@ -9855,6 +10040,19 @@ def _percent_totals(series: list[_Series]) -> list[float]:
                 total += abs(value)
         totals.append(total)
     return totals
+
+
+def _merged_run(
+    run: s.SourceRunProperties | None, default: s.SourceRunProperties | None
+) -> s.SourceRunProperties | None:
+    """A rich label run's properties over its paragraph's ``a:defRPr``."""
+    if run is None or default is None:
+        return run or default
+    merged = replace(default)
+    for name, value in vars(run).items():
+        if value is not None:
+            setattr(merged, name, value)
+    return merged
 
 
 def _default_run(body: s.SourceTextBody | None) -> s.SourceRunProperties | None:
