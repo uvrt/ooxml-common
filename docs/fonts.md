@@ -40,3 +40,18 @@ which `find()` searches before every other) and `user_families()`; `search_dirs(
 `find()` include the folders by default. `check_families(supplied=...)` grades a face
 from them `exact`. As with every installed face, the files are read where they are; none
 is copied.
+
+**Cached per process.** A folder and the folders under it are walked once; each later
+lookup checks the modification time of every folder the walk found -- one stat per
+folder, none per file, no listing -- and walks again only when one changed. Adding or
+removing a font at any depth changes that folder's time (not its parent's, which is why
+every folder is checked, not only the one named); a new subfolder changes its parent's.
+A changed folder also drops the face index, font bytes and advance tables read from it, so
+the next measurement sees the folder as it is. What a folder's time cannot show -- a font
+file rewritten in place under the same name, a change within one tick of a file system
+with coarse times (FAT's two seconds) -- `refresh_font_dirs()` picks up: it forgets every
+walk, listing and index, the operating system's folders included (on macOS these are
+indexed once per process). The cache is keyed by each folder as given, so callers with
+different folders -- two agent sessions -- never see each other's faces. Office's
+cloud-font cache is listed once and kept while its folder's time stands; the operating
+system's folders elsewhere than macOS are walked and checked as an application's are.

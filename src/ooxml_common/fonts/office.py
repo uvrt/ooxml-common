@@ -56,6 +56,7 @@ import functools
 import os
 import struct
 import sys
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -85,6 +86,7 @@ __all__ = [
     "layout_metrics",
     "metrics",
     "metrics_of",
+    "refresh_font_dirs",
     "search_dirs",
     "system_font_dirs",
     "user_families",
@@ -174,22 +176,31 @@ def system_font_dirs() -> tuple[Path, ...]:
                  home / ".local/share/fonts", home / ".fonts"]
     out: list[Path] = []
     for root in roots:
-        if root.is_dir():
-            out.append(root)
-            try:
-                out.extend(sorted(path for path in root.rglob("*") if path.is_dir()))
-            except OSError:
-                pass
+        out.extend(_folders_under(root))
     return tuple(out)
 
 
 def cloud_font_dirs(root: Path | None = None) -> tuple[Path, ...]:
     """The family folders of Office's cloud-font cache (:data:`OFFICE_CLOUD_FONTS`, or
-    ``root``), sorted; none where it is absent or unreadable."""
+    ``root``), sorted; none where it is absent or unreadable.  Listed once and kept while
+    the cache folder's modification time stands (a family Office downloads is a new
+    folder in it); :func:`refresh_font_dirs` forgets it."""
+    root = Path(root or OFFICE_CLOUD_FONTS)
     try:
-        return tuple(sorted(path for path in (root or OFFICE_CLOUD_FONTS).iterdir() if path.is_dir()))
+        stamp = os.stat(root).st_mtime_ns
     except OSError:
         return ()
+    with _CACHE_LOCK:
+        cached = _CLOUD_CACHE.get(root)
+    if cached is not None and cached[0] == stamp:
+        return cached[1]
+    try:
+        found = tuple(sorted(path for path in root.iterdir() if path.is_dir()))
+    except OSError:
+        return ()
+    with _CACHE_LOCK:
+        _CLOUD_CACHE[root] = (stamp, found)
+    return found
 
 
 def env_font_dirs(environ=None) -> tuple[Path, ...]:
@@ -216,21 +227,134 @@ def user_font_dirs(font_dirs=None, *, environ=None) -> tuple[Path, ...]:
     return tuple(Path(os.fspath(path)).expanduser() for path in font_dirs)
 
 
+# --------------------------------------------------------------------------------------
+# The folder walks, cached per process
+# --------------------------------------------------------------------------------------
+#
+# Every text measurement asks for the application's folders and the folders under them,
+# and a walk reads every entry of every folder (a stat each, where the entry type is not
+# in the listing): on a slow mount -- a network share, WSL's 9p -- that was most of an
+# agent's run.  So a root's walk is kept, with the modification time of every folder it
+# found, and reused while those times stand: one stat per folder, none per file.  A file
+# added to or removed from any folder, however deep, changes that folder's time (not its
+# parent's -- which is why every folder is checked, not just the root); a new subfolder
+# changes its parent's.  Then the root is walked again, and the face index, the font
+# bytes and the advance tables read from it (:func:`index`, :func:`read_file`,
+# :func:`metrics_of`) are forgotten, so the next measurement sees the folder as it is now.
+#
+# What a folder's time does not show -- a font file rewritten in place under the same
+# name, or a change within the same tick on a file system whose times are coarse (FAT's
+# two seconds) -- :func:`refresh_font_dirs` picks up: it forgets every walk and index.
+# The cache is keyed by each folder as given, so two sessions with different folders
+# never see each other's faces.
+
+_CACHE_LOCK = threading.Lock()
+#: root -> (((folder, st_mtime_ns), ...) for the root and every folder under it, the folders)
+_WALK_CACHE: dict[Path, tuple[tuple[tuple[Path, int], ...], tuple[Path, ...]]] = {}
+#: cloud cache root -> (st_mtime_ns, its family folders)
+_CLOUD_CACHE: dict[Path, tuple[int, tuple[Path, ...]]] = {}
+
+
+def _walk(root: Path) -> tuple[Path, ...]:
+    """``root`` and every folder under it, sorted after the root -- as ``root.rglob("*")``
+    filtered by ``is_dir()`` lists them (a link to a folder is listed, not descended) --
+    from one listing per folder, the entry types the listing gives."""
+    found: list[Path] = []
+    pending = [root]
+    while pending:
+        folder = pending.pop()
+        try:
+            with os.scandir(folder) as entries:
+                for entry in entries:
+                    try:
+                        if not entry.is_dir():
+                            continue
+                        path = Path(entry.path)
+                        found.append(path)
+                        if not entry.is_symlink():
+                            pending.append(path)
+                    except OSError:
+                        continue
+        except OSError:
+            continue
+    return (root, *sorted(found))
+
+
+def _stamps(folders) -> tuple[tuple[Path, int], ...] | None:
+    """``(folder, st_mtime_ns)`` for each of ``folders``; ``None`` if one cannot be read."""
+    try:
+        return tuple((folder, os.stat(folder).st_mtime_ns) for folder in folders)
+    except OSError:
+        return None
+
+
+def _still(stamps) -> bool:
+    try:
+        return all(os.stat(folder).st_mtime_ns == stamp for folder, stamp in stamps)
+    except OSError:
+        return False
+
+
+def _folders_under(root) -> tuple[Path, ...]:
+    """``root`` and every folder under it (:func:`_walk`), from the cache while no folder
+    of it has changed; none where ``root`` is not a folder."""
+    root = Path(root)
+    with _CACHE_LOCK:
+        cached = _WALK_CACHE.get(root)
+    if cached is not None and _still(cached[0]):
+        return cached[1]
+    if not root.is_dir():
+        with _CACHE_LOCK:
+            _WALK_CACHE.pop(root, None)
+        return ()
+    folders = _walk(root)
+    stamps = _stamps(folders)
+    with _CACHE_LOCK:
+        if stamps is not None:
+            _WALK_CACHE[root] = (stamps, folders)
+        else:
+            _WALK_CACHE.pop(root, None)
+    if cached is not None:
+        _forget_faces()      # a folder changed: what was read from it may have too
+    return folders
+
+
+def _forget_faces() -> None:
+    index.cache_clear()
+    read_file.cache_clear()
+    metrics_of.cache_clear()
+
+
+def refresh_font_dirs() -> None:
+    """Forget every cached folder walk, cloud-cache listing, face index, font file and
+    advance table, so the next lookup reads the folders afresh.
+
+    Not needed for a font added to or removed from an application's folder or one under
+    it: a folder whose modification time changed is walked and indexed again by itself
+    (one stat per folder per lookup).  It is for what a folder's time does not show -- a
+    file rewritten in place under the same name, a change on a file system with coarse
+    times, a system folder on macOS (indexed once per process, as before)."""
+    with _CACHE_LOCK:
+        _WALK_CACHE.clear()
+        _CLOUD_CACHE.clear()
+    _forget_faces()
+
+
 def with_subfolders(dirs) -> tuple[Path, ...]:
     """Every folder in ``dirs`` that exists, each followed by the folders under it,
     sorted -- what a rasteriser reads when it is handed a folder (resvg's font database
-    walks it), for an index that reads one level at a time.  Each folder once."""
+    walks it), for an index that reads one level at a time.  Each folder once.
+
+    Cached per process for each folder of ``dirs``, and checked with one stat per folder
+    (not per file) on every call: a font added anywhere under a folder is seen by the next
+    call (the cache notes above :func:`refresh_font_dirs`)."""
     out: list[Path] = []
+    seen: set[Path] = set()
     for directory in dirs:
-        directory = Path(directory)
-        if not directory.is_dir():
-            continue
-        found = [directory]
-        try:
-            found.extend(sorted(path for path in directory.rglob("*") if path.is_dir()))
-        except OSError:
-            pass
-        out.extend(path for path in found if path not in out)
+        for path in _folders_under(directory):
+            if path not in seen:
+                seen.add(path)
+                out.append(path)
     return tuple(out)
 
 
