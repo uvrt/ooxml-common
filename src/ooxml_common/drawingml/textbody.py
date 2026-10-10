@@ -23,6 +23,7 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 
 from ..text.fontmap import font_family_value, substitution_for, synthesises_italic
+from ..text.symbol_fonts import FALLBACK_FAMILIES, symbol_face, translate
 from ..text.measure import is_cjk
 from ..units import PX_PER_PT, emu_to_px, px_to_emu
 from . import scene as m
@@ -487,7 +488,8 @@ def _render_column(
                     tspans.append(
                         f'<tspan x="{num(bullet_x)}" dy="{dy}" text-anchor="start" '
                         f'{_bullet_style_attrs(properties, line_font_size, first_segment, context)}>'
-                        f"{escape_xml_text(bullet_text)}</tspan>"
+                        f"{escape_xml_text(_bullet_drawn(properties, first_segment, bullet_text, context))}"
+                        "</tspan>"
                     )
                     # The bullet already advanced the line, so the text only sets x.
                     line_dy = ""
@@ -554,7 +556,8 @@ def _render_column(
                 tspans.append(
                     f'<tspan x="{num(bullet_x)}" dy="{dy}" text-anchor="start" '
                     f"{_bullet_style_attrs(properties, size, segment, context)}>"
-                    f"{escape_xml_text(bullet_text)}</tspan>"
+                    f"{escape_xml_text(_bullet_drawn(properties, segment, bullet_text, context))}"
+                    "</tspan>"
                 )
 
             if bullet_blip is not None:
@@ -819,7 +822,8 @@ def _render_line(
         # Anchoring chunks absolutely means resolving the line's own anchor ourselves,
         # the same way :func:`_line_highlights` has to.
         total = sum(
-            _tspan_width(text, entry[0].properties, default_font_size, font_scale, context)
+            _tspan_width(_measured(entry[0], text, context), entry[0].properties,
+                         default_font_size, font_scale, context)
             for entry in planned
             if entry is not None
             for _family, _styles, text, _oblique in entry[1]
@@ -882,7 +886,8 @@ def _render_line(
         rendered: list[str] = []
         for family, styles, text, oblique in tspans:
             width = _tspan_width(
-                text, piece.properties, default_font_size, font_scale, context
+                _measured(piece, text, context), piece.properties, default_font_size,
+                font_scale, context,
             )
             if oblique and chunk_anchor == "start":
                 # Detached into its own <text> sibling, because the shear has to live on
@@ -967,6 +972,15 @@ def _plain_latin(code_point: int) -> bool:
         or 0x2000 <= code_point <= 0x206F  # General Punctuation
         or 0x20A0 <= code_point <= 0x20CF  # Currency Symbols
     )
+
+
+def _measured(segment: LineSegment, text: str, context: RenderContext) -> str:
+    """The text a tspan's width is measured from: its own, except for a symbol face drawn
+    as Unicode, whose one tspan is laid out at the face's advances for the codes it was
+    written in (:func:`_segment_tspans`)."""
+    if _mapped_symbol_face(segment.properties.font_family, context):
+        return segment.text
+    return text
 
 
 def _tspan_width(
@@ -1223,6 +1237,29 @@ def _to_alpha(number: int) -> str:
     return result
 
 
+def _bullet_face(properties: m.ParagraphProperties, first_segment: LineSegment) -> str | None:
+    """The face a character bullet is drawn in: its ``buFont``, else the first run's."""
+    return properties.bullet_font or first_segment.properties.font_family
+
+
+def _mapped_symbol_face(family: str | None, context: RenderContext) -> str | None:
+    """The symbol face ``family`` names when the drawing has no copy of it
+    (:attr:`RenderContext.mapped_symbol_faces`), else ``None``."""
+    if not context.mapped_symbol_faces:
+        return None
+    face = symbol_face(family)
+    return face if face in context.mapped_symbol_faces else None
+
+
+def _bullet_drawn(
+    properties: m.ParagraphProperties, first_segment: LineSegment, text: str,
+    context: RenderContext,
+) -> str:
+    """The bullet's text as drawn: a symbol face's code as the character it stands for."""
+    face = _mapped_symbol_face(_bullet_face(properties, first_segment), context)
+    return translate(face, text)[0] if face else text
+
+
 def _bullet_size_pt(properties: m.ParagraphProperties, text_font_size_pt: float) -> float:
     """The bullet's own point size.
 
@@ -1257,6 +1294,8 @@ def _bullet_style_attrs(
         first_segment.properties.font_family,
         first_segment.properties.font_family_ea,
     ]
+    if _mapped_symbol_face(_bullet_face(properties, first_segment), context):
+        chain = list(FALLBACK_FAMILIES)
     family = font_family_value(chain, context.font_mapping)
     if family:
         styles.append(f'font-family="{escape_xml_attr(family)}"')
@@ -1343,6 +1382,12 @@ def _segment_tspans(
                 else [properties.font_family, properties.font_family_ea]
             ) + [properties.font_family_cs]
             chains.append((fonts, part_text))
+
+    face = _mapped_symbol_face(properties.font_family, context)
+    if face:
+        # A symbol face the drawing has no copy of: the characters it stands for, in
+        # faces that have them (the layout measured the face's own advances).
+        chains = [(list(FALLBACK_FAMILIES), translate(face, segment.text)[0])]
 
     out: list[tuple[str | None, str, str, bool]] = []
     for fonts, part_text in chains:

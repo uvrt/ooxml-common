@@ -138,7 +138,8 @@ def parse_runs_in_order(p: Element) -> list[SourceTextRun]:
     """Walk ``a:r`` / ``a:br`` / ``a:fld`` in document order.
 
     A ``a:br`` becomes a run holding a newline so the wrapper can treat forced breaks and
-    text uniformly; a ``a:fld`` (slide number, date) renders whatever cached text it has.
+    text uniformly; a ``a:fld`` (slide number, date) carries its cached text and its
+    ``type``, for the renderer to evaluate.
     """
     runs: list[SourceTextRun] = []
     for node in p:
@@ -155,6 +156,7 @@ def parse_runs_in_order(p: Element) -> list[SourceTextRun]:
                 SourceTextRun(
                     text=decode_char_refs(_run_text(node)),
                     properties=parse_run_properties(child(node, "rPr")),
+                    field_type=attr(node, "type"),
                 )
             )
         elif name == "br":

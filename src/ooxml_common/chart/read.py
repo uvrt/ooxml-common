@@ -176,6 +176,13 @@ class SourceChartDataLabels:
     outline: SourceOutline | None = None
     #: ``c:dLbl`` children, keyed by ``c:idx``.
     overrides: dict[int, "SourceChartDataLabels"] = field(default_factory=dict)
+    #: A ``c:dLbl``'s own text, ``c:tx``: rich DrawingML (a label typed over, or Office's
+    #: "Value From Cells" as a ``CELLRANGE`` field) or a cell's cached string.  Drawn in
+    #: place of the composed label.
+    text: SourceChartText | None = None
+    #: ``c15:showDataLabelsRange`` (an ``c:extLst`` extension): print the point's value
+    #: from the series' label range (:attr:`SourceChartSeries.label_range`).
+    show_range: bool | None = None
 
 
 @dataclass
@@ -242,6 +249,9 @@ class SourceChartSeries:
     explosion: float | None = None
     data_points: list[SourceChartDataPoint] = field(default_factory=list)
     data_labels: SourceChartDataLabels | None = None
+    #: ``c15:datalabelsRange``'s cache (an ``c:extLst`` extension): the text of each point's
+    #: "Value From Cells" label, by point index; ``None`` where the series has none.
+    label_range: list[str | None] | None = None
 
 
 @dataclass
@@ -630,7 +640,32 @@ def _series(ser: Element, fallback_index: int) -> SourceChartSeries:
         explosion=num_attr(child(ser, "explosion"), "val"),
         data_points=[point for point in map(_data_point, children(ser, "dPt")) if point],
         data_labels=_data_labels(child(ser, "dLbls")),
+        label_range=_label_range(_extension(ser, "datalabelsRange")),
     )
+
+
+def _extension(node: Element | None, name: str) -> Element | None:
+    """The first ``c:extLst/c:ext`` child of ``node`` named ``name`` (any namespace)."""
+    for ext in children(child(node, "extLst"), "ext"):
+        found = child(ext, name)
+        if found is not None:
+            return found
+    return None
+
+
+def _label_range(node: Element | None) -> list[str | None] | None:
+    """``c15:datalabelsRange``'s ``c15:dlblRangeCache``: one string per point index."""
+    cache = child(node, "dlblRangeCache")
+    if cache is None:
+        return None
+    points = children(cache, "pt")
+    out: list[str | None] = [None] * min(_point_count(cache, points), MAX_CACHE_POINTS)
+    for point in points:
+        index = int_attr(point, "idx")
+        value = child(point, "v")
+        if index is not None and 0 <= index < len(out) and value is not None:
+            out[index] = "".join(value.itertext())
+    return out
 
 
 def _data_point(d_pt: Element) -> SourceChartDataPoint | None:
@@ -679,6 +714,8 @@ def _data_labels(d_lbls: Element | None) -> SourceChartDataLabels | None:
         text_properties=parse_text_body(child(d_lbls, "txPr")),
         fill=parse_fill(sp_pr),
         outline=parse_outline(sp_pr),
+        text=_text(child(d_lbls, "tx")),
+        show_range=_optional_flag(_extension(d_lbls, "showDataLabelsRange")),
     )
     for d_lbl in children(d_lbls, "dLbl"):
         index = int_attr(child(d_lbl, "idx"), "val")

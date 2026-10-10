@@ -117,6 +117,10 @@ class SourceRunProperties:
 class SourceTextRun:
     text: str
     properties: SourceRunProperties | None = None
+    #: ``a:fld@type`` for a field (``"slidenum"``, ``"datetime1"``, a chart label's
+    #: ``"VALUE"`` or ``"CELLRANGE"``), whose ``text`` is then only the cached value a
+    #: renderer may re-evaluate; ``None`` for a plain run or a break.
+    field_type: str | None = None
 
 
 @dataclass

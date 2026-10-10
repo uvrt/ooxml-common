@@ -83,6 +83,13 @@ class RenderContext:
     #: (:mod:`~ooxml_common.drawingml.rules`).  PowerPoint's is the default, and what
     #: pptx2svg has always drawn.
     rules: DrawingRules = POWERPOINT
+    #: Symbol faces (:func:`ooxml_common.text.symbol_fonts.symbol_face` keys:
+    #: ``"wingdings"``, ``"symbol"``...) the drawing has no copy of: text and bullets in
+    #: them are drawn as the Unicode characters they stand for, in
+    #: :data:`~ooxml_common.text.symbol_fonts.FALLBACK_FAMILIES`, rather than as the
+    #: letters that encode them.  Measurement is not affected.  Empty by default: a face
+    #: is drawn as itself.
+    mapped_symbol_faces: frozenset = frozenset()
 
     def __post_init__(self) -> None:
         if self.measurer is None:
