@@ -2,6 +2,10 @@
 
 Versions are set in `pyproject.toml`; there are no release tags or PyPI releases yet.
 
+## Unreleased
+- Python 3.14 and 3.15: CI runs the suite on both, on Linux, macOS and Windows, and the
+  classifiers declare them. `requires-python` stays `>=3.10`. No code change was needed.
+
 ## 0.8.0 -- 2026-10-10
 - An application's own font folders, for both renderers: `ooxml_common.fonts.office.user_font_dirs()` -- an explicit `font_dirs`, else `OOXML_FONT_DIRS` (`os.pathsep`-separated), else none -- searched before every other location (`USER`, `user_search_dirs`, `with_subfolders`, `user_families`; `search_dirs(font_dirs=...)`, `metrics(dirs=...)`), and `check_families(supplied=...)` grading their faces `exact`.
 - A table row of empty cells is one line tall, as PowerPoint draws it: an empty paragraph is laid out at its end-of-paragraph size when a row's height is measured, instead of the row keeping a shorter stored height (measured: 28.8 pt for 18 pt Aptos cells stored 14.4 and 18 pt).
