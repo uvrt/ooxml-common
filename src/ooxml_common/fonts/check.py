@@ -109,7 +109,8 @@ class FontReport:
 
 
 def _status(
-    requested: str, available: frozenset[str], embedded: frozenset[str] = frozenset()
+    requested: str, available: frozenset[str], embedded: frozenset[str] = frozenset(),
+    supplied: frozenset[str] = frozenset(),
 ) -> FaceStatus:
     if family_key(requested) in embedded:
         # The deck carried this face itself, and the layout was measured from the very
@@ -125,6 +126,18 @@ def _status(
             metrics=requested,
             verdict="exact",
             reason="drawn with the face the deck embedded",
+        )
+
+    if family_key(requested) in supplied:
+        # The application handed the renderer this face (``font_dirs``, or
+        # ``OOXML_FONT_DIRS``): it is drawn from that file and, unless the tables measure
+        # it as itself, measured from it too -- as faithful as an embedded face.
+        return FaceStatus(
+            requested=requested,
+            substitute=requested,
+            metrics=requested,
+            verdict="exact",
+            reason="drawn with the face the application supplied (font_dirs)",
         )
 
     substitution = substitution_for(requested)
@@ -192,11 +205,14 @@ def check_families(
     *,
     system_fonts: bool = False,
     embedded: frozenset[str] = frozenset(),
+    supplied: frozenset[str] = frozenset(),
 ) -> FontReport:
     """Report on an explicit list of face names.
 
     ``embedded`` holds normalised keys of families the deck supplies itself, from
-    :attr:`pptx2svg.fonts.embedded.EmbeddedFonts.families`.
+    :attr:`pptx2svg.fonts.embedded.EmbeddedFonts.families`; ``supplied`` those of the
+    faces the application supplies in its own folders (``font_dirs``).  Both grade
+    ``exact``.
     """
     available = available_families()
     mode = bundle_mode()
@@ -209,7 +225,7 @@ def check_families(
         if not name or name.startswith("+") or name in seen:
             continue
         seen.add(name)
-        statuses.append(_status(name, available, embedded))
+        statuses.append(_status(name, available, embedded, supplied))
     statuses.sort(key=lambda face: (VERDICTS.index(face.verdict), face.requested))
     return FontReport(tuple(statuses), available, system_fonts, mode)
 

@@ -39,6 +39,7 @@ def places(monkeypatch, tmp_path):
         root.mkdir()
     monkeypatch.setattr(office, "OFFICE_CLOUD_FONTS", roots["cloud"])
     monkeypatch.setattr(office, "system_font_dirs", lambda: (roots["system"],))
+    monkeypatch.delenv(office.FONT_DIRS_ENV, raising=False)
     return roots
 
 
