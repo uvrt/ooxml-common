@@ -3,6 +3,7 @@
 Versions are set in `pyproject.toml`; there are no release tags or PyPI releases yet.
 
 ## Unreleased
+- A text field's type is read: `SourceTextRun.field_type` is `a:fld@type` (`"slidenum"`, `"datetime1"`, a chart label's `"CELLRANGE"`), so a renderer can evaluate the field for the slide it draws instead of drawing its cached text. `None` for a plain run.
 - Python 3.14 and 3.15: CI runs the suite on both, on Linux, macOS and Windows, and the
   classifiers declare them. `requires-python` stays `>=3.10`. No code change was needed.
 
