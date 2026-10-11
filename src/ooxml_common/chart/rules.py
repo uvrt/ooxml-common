@@ -75,13 +75,19 @@ class ChartRules:
       entries at the right, placed as a right legend is across and from where a top
       legend's first row stands down; the plot gives up the side band, the rows' pitch at
       its top and the 6 pt pad at its bottom.
-    * ``legend_order`` -- ``"series"``: entries in series order.  ``"stack"``, Word's:
-      **reversed** for clustered horizontal bars, at the side and below alike, and for
-      stacked and 100% columns beside a legend at the side -- the orders the series stand
-      in, bottom to top -- while stacked columns over a legend below, stacked bars and
-      everything else keep series order.
+    * ``legend_order`` -- ``"series"``: entries in series order.  ``"stack"``, both
+      applications': **reversed** for clustered horizontal bars, at the side and below
+      alike, and for stacked and 100% columns beside a legend at the side -- the orders
+      the series stand in, bottom to top -- while stacked columns over a legend below,
+      stacked bars and everything else keep series order.  Measured in Word, and in
+      PowerPoint 16 on clustered and stacked bars and columns with the legend at the
+      right and below (``C B A`` for a clustered bar chart and stacked columns at the
+      side, ``A B C`` for stacked bars below and clustered columns).  A category axis in
+      reverse order (``maxMin``) turns a clustered bar chart's back to series order.
     * ``bars_upward`` -- whether a clustered horizontal bar chart puts its first series
-      at the **bottom** of each category's group (Word), rather than at the top.
+      at the **bottom** of each category's group, rather than at the top: both
+      applications do (Word measured, and PowerPoint 16 on two- and three-series bar
+      charts), and both turn the group round with a reversed category axis.
     * ``stated_line_width`` -- whether a line series whose ``a:ln`` states a width and no
       colour is drawn at that width (Word: ``<a:ln w="28575"/>`` came back 2.25 pt in the
       series' accent) rather than at the default 1.5 pt.
@@ -98,15 +104,17 @@ class ChartRules:
       (:attr:`~ooxml_common.chart.layout.ChartBuilder.default_title`); and no ``c:title``
       but ``c:autoTitleDeleted`` stated ``0`` the sole series' name, nothing over
       several.  Without ``c:autoTitleDeleted`` and without a ``c:title``, nothing.
-    * ``axis_titles`` -- whether an axis' ``c:title`` is laid out and drawn.  ``False``
-      (pptx2svg's): neither.  ``True``, Word's: a title on an axis at the left is turned
+    * ``axis_titles`` -- whether an axis' ``c:title`` is laid out and drawn.  ``False``:
+      neither.  ``True``, both applications': a title on an axis at the left is turned
       to read upwards (whatever its ``a:bodyPr`` says, but for an explicit ``rot="0"``,
       which is not modelled and is left undrawn), one at the bottom reads across; each
       takes its line pitch **plus 9.0 pt** off the plot's side -- the chart title's band
       -- and its line box stands **12.5 pt** in from the frame's edge (or the edge of a
       legend there), centred on the plot.  Measured on Aptos and Arial titles of 10 to
       18 pt, on columns, bars and lines, beside a legend at every side, to Word's device
-      pixel.
+      pixel; PowerPoint 16 draws them in the same places, to its half-point raster, on
+      columns, bars, lines, scatter and bubble charts with 10 to 20 pt titles (a
+      scatter's x axis standing for the category axis, its y axis for the value axis).
     * ``short_plot`` -- what a plot too short for its axis gets.  ``False``: the plot
       takes what is left (pptx2svg's).  ``True``, Word's: where the plot of a vertical
       chart would be shorter than :data:`~ooxml_common.chart.layout.WORD_SHORT_PLOT_EM`
@@ -126,12 +134,12 @@ class ChartRules:
     side_legend: str = "em"
     legend_under_title: bool = True
     top_right_legend: str = "band"
-    legend_order: str = "series"
-    bars_upward: bool = False
+    legend_order: str = "stack"
+    bars_upward: bool = True
     stated_line_width: bool = False
     legend_key_outlines: bool = False
     auto_title: bool = False
-    axis_titles: bool = False
+    axis_titles: bool = True
     short_plot: bool = False
 
 
