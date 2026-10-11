@@ -18,6 +18,7 @@ Back to the [README](../README.md).
 | `ooxml_common.text.measure` | The `TextMeasurer` protocol and both implementations |
 | `ooxml_common.imagemeta` | A picture's natural size, which a tiled fill is measured in, and the ICC profile it carries |
 | `ooxml_common.icc` | A matrix/TRC RGB profile read, and its colours converted to sRGB exactly, as PowerPoint converts a profiled picture |
+| `ooxml_common.svgimage` | An SVG picture's natural size as PowerPoint reads its root's `width` and `height`, and the SVG with them restated in pixels for a rasteriser (resvg draws nothing for `width="72pt"`) |
 | `ooxml_common.drawingml.model` | DrawingML's value types: colour choices and resolved colours, fills, outlines, effects, transforms, geometry, picture tiling |
 | `ooxml_common.drawingml.source` | DrawingML as the XML states it: unresolved fills, outlines, shape styles, effects, transforms, geometry, the theme's format scheme |
 | `ooxml_common.drawingml.read` | The reader: `a:` XML (a slide's or a Word shape's) into those types, and a theme's colour and format schemes |
