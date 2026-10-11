@@ -2418,6 +2418,34 @@ class ChartStyle:
     line_color: str | None = None
 
 
+class _AxisScale(tuple):
+    """An axis' ``(minimum, maximum, major unit)`` that runs from its maximum: the axis'
+    ``c:scaling/c:orientation`` is ``maxMin``.  Everything that maps a value to a position
+    goes through :meth:`ChartBuilder._value_to_x` and :meth:`ChartBuilder._value_to_y`,
+    which turn the axis round for it; everything else reads the three numbers as before."""
+
+    __slots__ = ()
+    reverse = True
+
+
+def _reversed(scale: tuple, axis: "c.SourceChartAxis | None") -> tuple:
+    """``scale``, turned round when ``axis`` says ``c:orientation val="maxMin"``.
+
+    Measured on PowerPoint 16's export of a bar chart, a column chart and a scatter written
+    by ooxml-edit (``set_axis_scale(reverse=True)``): a reversed category axis lists its
+    first category at the top of a bar chart and at the right of a column chart; a
+    reversed value axis puts its minimum at the top, so columns hang from it; the axis
+    crossing it stays where its own ``c:crosses`` puts it -- ``max`` being the far end of
+    the reversed axis, which is the near edge of the plot."""
+    if axis is None or axis.orientation != "maxMin" or isinstance(scale, _AxisScale):
+        return scale
+    return _AxisScale(scale)
+
+
+def _is_reversed(scale: tuple) -> bool:
+    return isinstance(scale, _AxisScale)
+
+
 @dataclass
 class _Rect:
     left: float
@@ -4237,6 +4265,7 @@ class ChartBuilder:
             self._draw_scene_floor(plot_rect, scale, category_axis)
         else:
             self._draw_gridlines(plot_rect, scale, value_axis)
+            self._draw_category_gridlines(plot_rect, category_axis, len(categories))
         for group, items in drawn:
             group._draw_marks(plot_rect, items, categories, scale_for(group))
         self._draw_axis_lines(plot_rect, scale, value_axis, category_axis)
@@ -4347,7 +4376,9 @@ class ChartBuilder:
         """
         lead, lead_series = pairs[0]
         numbers = [value for group, items in pairs for value in group._axis_reach(items)]
-        return lead._scale(lead_series, axis, numbers=numbers)
+        scale = lead._scale(lead_series, axis, numbers=numbers)
+        # A scene projects its own axes, and no reversed one is measured there.
+        return scale if self._is_three_d else _reversed(scale, axis)
 
     def _draw_marks(
         self,
@@ -4460,6 +4491,7 @@ class ChartBuilder:
             )
 
         x_scale, y_scale = scales(0.0)
+        x_scale, y_scale = _reversed(x_scale, x_axis), _reversed(y_scale, y_axis)
         rect = plot_for(x_scale, y_scale)
         if self._is_bubble:
             # **A bubble chart's value axis clears the bubbles, not their centres.**  The
@@ -4489,6 +4521,7 @@ class ChartBuilder:
             # See :func:`_clearance_extent` and ROADMAP.md 3.2a.
             radius = self._largest_bubble() / 2.0
             x_scale, y_scale = scales(radius / max(rect.height, 1.0))
+            x_scale, y_scale = _reversed(x_scale, x_axis), _reversed(y_scale, y_axis)
             rect = plot_for(x_scale, y_scale)
 
         x_ticks = self._tick_texts(x_scale, x_axis)
@@ -4512,18 +4545,35 @@ class ChartBuilder:
 
         self._draw_background(rect)
         self._draw_title()
-        if y_axis is not None and y_axis.major_gridlines:
-            outline = self._axis_outline(y_axis.major_gridline_outline)
-            for value in self._tick_values(y_scale):
-                y = self._value_to_y(rect, value, y_scale)
-                if abs(y - cross_y) >= 0.01:
-                    self._line(rect.left, y, rect.right, y, outline)
-        if x_axis is not None and x_axis.major_gridlines:
-            outline = self._axis_outline(x_axis.major_gridline_outline)
-            for value in self._tick_values(x_scale):
-                x = self._value_to_x(rect, value, x_scale)
-                if abs(x - cross_x) >= 0.01:
-                    self._line(x, rect.top, x, rect.bottom, outline)
+        self._draw_axis_titles(rect)
+        # Each axis' minor gridlines under its major ones, the y axis' first: measured on
+        # PowerPoint 16's export of a scatter with both, none at a major value.
+        for axis, axis_scale, to_position, crossing, across in (
+            (y_axis, y_scale, self._value_to_y, cross_y, False),
+            (x_axis, x_scale, self._value_to_x, cross_x, True),
+        ):
+            if axis is None:
+                continue
+            majors = [to_position(rect, value, axis_scale) for value in self._tick_values(axis_scale)]
+            if axis.minor_gridlines:
+                outline = self._axis_outline(axis.minor_gridline_outline)
+                for value in self._minor_tick_values(axis_scale, axis):
+                    at = to_position(rect, value, axis_scale)
+                    if abs(at - crossing) < 0.01 or any(abs(at - m_) < 0.01 for m_ in majors):
+                        continue
+                    if across:
+                        self._line(at, rect.top, at, rect.bottom, outline)
+                    else:
+                        self._line(rect.left, at, rect.right, at, outline)
+            if axis.major_gridlines:
+                outline = self._axis_outline(axis.major_gridline_outline)
+                for at in majors:
+                    if abs(at - crossing) < 0.01:
+                        continue
+                    if across:
+                        self._line(at, rect.top, at, rect.bottom, outline)
+                    else:
+                        self._line(rect.left, at, rect.right, at, outline)
 
         for index, item in enumerate(series):
             self._draw_scatter_series(
@@ -4649,6 +4699,8 @@ class ChartBuilder:
         step with it deliberately: a scatter's two value axes are the category axis and the
         value axis of a bar chart with the category names taken away.
         """
+        if _is_reversed(scale):
+            low, high = high, low
         if axis is not None and axis.tick_label_position == "low":
             return low
         crosses = axis.crosses if axis is not None else None
@@ -4708,6 +4760,7 @@ class ChartBuilder:
             left = max(left, frame.left + EDGE_INSET_PT + x_font.width(x_labels[0]) / 2)
             overhang = x_font.width(x_labels[-1]) / 2
 
+        left += self._axis_title_band("l")
         right = frame.right - EDGE_INSET_PT - overhang
         top = frame.top + self._top_inset(y_font.box)
         title = self._title_box()
@@ -4736,6 +4789,7 @@ class ChartBuilder:
             )
         else:
             bottom = frame.bottom - legend_bottom - self._top_inset(y_font.box)
+        bottom -= self._axis_title_band("b")
         if bottom - top < 1.0:
             bottom = top + 1.0
         return _Rect(left, top, right, bottom)
@@ -6705,12 +6759,19 @@ class ChartBuilder:
         if not self.rules.axis_titles:
             return found
         cartesian = not (
-            self._is_polar or self._is_of_pie or self._is_scatter or self._is_bubble or self._is_three_d
+            self._is_polar or self._is_of_pie or self._is_three_d
             or self._is_stock or self._is_surface
         )
         horizontal = (self.plot.bar_direction or "col") == "bar"
-        value_axis = self._axis_for(1) or self._axis_of_kind("valAx")
-        category_axis = self._axis_for(0) or self._axis_of_kind("catAx")
+        if self._is_scatter or self._is_bubble:
+            # The x axis stands for the category axis and the y axis for the value axis:
+            # measured on PowerPoint 16's export of a scatter and a bubble chart with both
+            # titles, placed as a column chart's.
+            category_axis, value_axis = self._scatter_axes()
+            horizontal = False
+        else:
+            value_axis = self._axis_for(1) or self._axis_of_kind("valAx")
+            category_axis = self._axis_for(0) or self._axis_of_kind("catAx")
         for axis in self.chart.axes:
             if not axis.title_stated or axis.delete:
                 continue
@@ -7544,16 +7605,38 @@ class ChartBuilder:
         where the primary drew ten for the same eleven, the missing one being the
         category axis' own line.
         """
-        if axis is None or not axis.major_gridlines:
+        if axis is None:
             return
-        outline = self._axis_outline(axis.major_gridline_outline)
         horizontal = (self.plot.bar_direction or "col") == "bar"
-        # A gridline runs *across* the value axis, so `barDir="bar"` turns them vertical.
-        # Measured on the horizontal probe: three vertical lines at the ticks for 2, 4 and
-        # 6, with the one for 0 left out because the category axis already draws it.
         axis_position = (
             self._category_axis_position(rect, scale, None) if skip_crossing else None
         )
+        if axis.minor_gridlines:
+            # **Under the major ones, and only between them**: measured on PowerPoint 16's
+            # export of a 0..4 axis by ones with a minor unit of a half, which drew four
+            # minor lines (0.5, 1.5, 2.5, 3.5) before the major ones, none at a major
+            # value and none at the crossing.
+            outline = self._axis_outline(axis.minor_gridline_outline)
+            majors = [
+                self._value_to_x(rect, v, scale) if horizontal else self._value_to_y(rect, v, scale)
+                for v in self._tick_values(scale)
+            ]
+            for value in self._minor_tick_values(scale, axis):
+                at = (self._value_to_x if horizontal else self._value_to_y)(rect, value, scale)
+                if any(abs(at - major) < 0.01 for major in majors) or (
+                    axis_position is not None and abs(at - axis_position) < 0.01
+                ):
+                    continue
+                if horizontal:
+                    self._line(at, rect.top, at, rect.bottom, outline)
+                else:
+                    self._line(rect.left, at, rect.right, at, outline)
+        if not axis.major_gridlines:
+            return
+        outline = self._axis_outline(axis.major_gridline_outline)
+        # A gridline runs *across* the value axis, so `barDir="bar"` turns them vertical.
+        # Measured on the horizontal probe: three vertical lines at the ticks for 2, 4 and
+        # 6, with the one for 0 left out because the category axis already draws it.
         for value in self._tick_values(scale):
             if horizontal:
                 x = self._value_to_x(rect, value, scale)
@@ -7565,6 +7648,31 @@ class ChartBuilder:
                 if axis_position is not None and abs(y - axis_position) < 0.01:
                     continue
                 self._line(rect.left, y, rect.right, y, outline)
+
+    def _draw_category_gridlines(
+        self, rect: _Rect, axis: "c.SourceChartAxis | None", count: int
+    ) -> None:
+        """A category axis' major gridlines: across the plot at every band edge, both of
+        the plot's edges included (at every category, a ``midCat`` axis' points on the
+        ticks).  Measured on PowerPoint 16's export of a three-category column chart:
+        four full-height lines in the gridline grey, after the value axis' gridlines."""
+        if axis is None or not axis.major_gridlines or count <= 0 or self._is_three_d:
+            return
+        outline = self._axis_outline(axis.major_gridline_outline)
+        horizontal = (self.plot.bar_direction or "col") == "bar"
+        length = rect.height if horizontal else rect.width
+        if self._points_on_ticks and not horizontal:
+            positions = self._category_positions(rect, count)
+        else:
+            step = length / count
+            start = rect.bottom if horizontal else rect.left
+            sign = -1.0 if horizontal else 1.0
+            positions = [start + sign * step * index for index in range(count + 1)]
+        for at in positions:
+            if horizontal:
+                self._line(rect.left, at, rect.right, at, outline)
+            else:
+                self._line(at, rect.top, at, rect.bottom, outline)
 
     def _tick_values(self, scale: tuple[float, float, float]) -> list[float]:
         """Every major tick on the value axis, or nothing when the unit is unusable.
@@ -7624,14 +7732,16 @@ class ChartBuilder:
 
         percent = grouping == "percentStacked"
         totals = _percent_totals(series) if percent else None
+        base = self._bar_base(scale)
         if self._draws_a_scene:
             self._prisms = []
 
         for point in range(len(categories)):
             # A horizontal bar chart runs its category axis bottom-to-top, so category 0
             # is the *lowest* band.  Measured: "Reader" labels the bottom bar.
+            place = self._category_slot(point, len(categories))
             band_start = (
-                rect.bottom - (point + 1) * band if horizontal else rect.left + point * band
+                rect.bottom - (place + 1) * band if horizontal else rect.left + place * band
             )
             centre = band_start + band / 2
             positive_base = 0.0
@@ -7656,13 +7766,16 @@ class ChartBuilder:
                         negative_base = end
                     slot = 0
                 else:
-                    start, end = 0.0, value
+                    start, end = base, value
                     slot = order
                     if horizontal and self.rules.bars_upward:
                         # The first series at the bottom of its group: see :mod:`.rules`.
                         slot = slots - 1 - order
 
                 offset = centre - cluster / 2 + slot * step
+                if self._categories_reversed:
+                    # The cluster turns round with its axis.
+                    offset = 2 * centre - offset - bar_size
                 self._bar(rect, item, point, offset, bar_size, start, end, scale, horizontal)
         self._paint_prisms()
 
@@ -7930,9 +8043,25 @@ class ChartBuilder:
             return []
         if self._points_on_ticks:
             step = rect.width / max(count - 1, 1)
-            return [rect.left + index * step for index in range(count)]
+            return [rect.left + self._category_slot(index, count) * step
+                    for index in range(count)]
         band = rect.width / count
-        return [rect.left + (index + 0.5) * band for index in range(count)]
+        return [rect.left + (self._category_slot(index, count) + 0.5) * band
+                for index in range(count)]
+
+    @property
+    def _categories_reversed(self) -> bool:
+        """Whether the category axis runs from its last category (``c:orientation
+        val="maxMin"``): the first category at the top of a bar chart, at the right of a
+        column chart -- PowerPoint's "Categories in reverse order".  Not on a scene."""
+        if self._is_three_d:
+            return False
+        axis = self._axis_for(0) or self._axis_of_kind("catAx") or self._axis_of_kind("dateAx")
+        return axis is not None and axis.orientation == "maxMin"
+
+    def _category_slot(self, index: int, count: int) -> int:
+        """Where category ``index`` of ``count`` stands, counted from the axis' start."""
+        return count - 1 - index if self._categories_reversed else index
 
     def _marker(self, centre: tuple[float, float], item: _Series) -> None:
         """One marker, centred on its data point.
@@ -8005,6 +8134,24 @@ class ChartBuilder:
             return
         self._rect(box, fill=fill, outline=outline)
 
+    def _bar_base(self, scale: tuple[float, float, float]) -> float:
+        """The value an unstacked bar grows from: zero, but the value axis' end where the
+        category axis crosses it there (``c:crosses`` ``max`` or ``min``).
+
+        Measured on PowerPoint 16's export of a column chart whose value axis is reversed
+        (0 at the top) with the category axis crossing at its maximum, at the bottom: the
+        columns rise from the bottom edge -- the axis' 40 -- to their values, rather than
+        hanging from the zero at the top."""
+        if self._draws_a_scene:
+            return 0.0
+        axis = self._axis_for(0) or self._axis_of_kind("catAx") or self._axis_of_kind("dateAx")
+        crosses = axis.crosses if axis is not None else None
+        if crosses == "max":
+            return scale[1]
+        if crosses == "min":
+            return scale[0]
+        return 0.0
+
     def _category_axis_position(
         self,
         rect: _Rect,
@@ -8029,6 +8176,9 @@ class ChartBuilder:
         """
         horizontal = (self.plot.bar_direction or "col") == "bar"
         low, high = (rect.left, rect.right) if horizontal else (rect.bottom, rect.top)
+        if _is_reversed(scale):
+            # The value axis' maximum is at its near end now: `max` is the plot's edge.
+            low, high = high, low
 
         if labels and axis is not None and axis.tick_label_position == "low":
             return low
@@ -8301,7 +8451,8 @@ class ChartBuilder:
                     rect,
                     # Category 0 is the lowest band on a horizontal chart.
                     [
-                        (rect.bottom - (index + 0.5) * band, text)
+                        (rect.bottom - (self._category_slot(index, len(categories)) + 0.5)
+                         * band, text)
                         for index, text in enumerate(categories)
                     ],
                     category_font,
@@ -8337,7 +8488,8 @@ class ChartBuilder:
                     self._rotated_labels_along_bottom(
                         [
                             (
-                                rect.left + (index + 0.5) * band,
+                                rect.left
+                                + (self._category_slot(index, len(categories)) + 0.5) * band,
                                 truncate_label(text, category_font, allowance),
                             )
                             for index, text in enumerate(categories)
@@ -8349,7 +8501,8 @@ class ChartBuilder:
                     self._labels_along_bottom(
                         rect,
                         [
-                            (rect.left + index * band, text)
+                            (rect.left + self._category_slot(index, len(categories)) * band,
+                             text)
                             for index, text in enumerate(categories)
                         ],
                         category_font,
@@ -8743,6 +8896,22 @@ class ChartBuilder:
         position = (item.labels.position if item.labels else None) or self._label_default()
         centre_x = (box.left + box.right) / 2
         centre_y = (box.top + box.bottom) / 2
+        if _is_reversed(scale) and value >= 0:
+            # A reversed value axis turns the bar round, and its label with it: the end is
+            # the edge nearer the axis' start, and "outside" is on that side.
+            if position == "ctr":
+                return centre_x, centre_y, "centre"
+            if horizontal:
+                if position == "inEnd":
+                    return box.left, centre_y, "outside-x-flip"
+                if position == "inBase":
+                    return box.right, centre_y, "inside-x"
+                return box.left, centre_y, "outside-x-left"
+            if position == "inEnd":
+                return centre_x, box.bottom, "inside-base-y"
+            if position == "inBase":
+                return centre_x, box.top, "inside-y"
+            return centre_x, box.bottom, "below"
         if horizontal:
             # The bar runs sideways, so "end" is its far edge in x.
             end, base = (box.right, box.left) if value >= 0 else (box.left, box.right)
@@ -8842,6 +9011,11 @@ class ChartBuilder:
             baseline = y + box.ink_centre
             left = x + DATA_LABEL_GAP_PT
             align = "l"
+        elif placement == "outside-x-left":
+            # A bar a reversed value axis runs leftwards: `outEnd` mirrored.
+            baseline = y + box.ink_centre
+            left = x - DATA_LABEL_GAP_PT - width
+            align = "r"
         else:  # outside-x
             baseline = y + box.ink_centre
             left = x + DATA_LABEL_GAP_PT
@@ -8951,11 +9125,17 @@ class ChartBuilder:
         )
         step = size * (1.0 - overlap / 100.0)
         cluster = size + step * (slots - 1)
+        place = self._category_slot(point, categories)
         band_start = (rect.top if horizontal else rect.left) + (
-            (categories - 1 - point) if horizontal else point
+            (categories - 1 - place) if horizontal else place
         ) * band
         centre = band_start + band / 2
-        offset = centre - cluster / 2 + (0 if stacked else order) * step
+        slot = 0 if stacked else order
+        if not stacked and horizontal and self.rules.bars_upward:
+            slot = slots - 1 - order  # as `_draw_bars` stands the cluster
+        offset = centre - cluster / 2 + slot * step
+        if self._categories_reversed:
+            offset = 2 * centre - offset - size
 
         start = 0.0
         if stacked:
@@ -8963,7 +9143,9 @@ class ChartBuilder:
                 earlier_value = _at(earlier.values, point) or 0.0
                 if (earlier_value >= 0) == (value >= 0):
                     start += earlier_value
-        end = start + value
+            end = start + value
+        else:
+            start, end = self._bar_base(scale), value
 
         if horizontal:
             x0 = self._value_to_x(rect, start, scale)
@@ -9214,7 +9396,10 @@ class ChartBuilder:
         stacked = (self.plot.grouping or "clustered") in ("stacked", "percentStacked")
         horizontal = (self.plot.bar_direction or "col") == "bar"
         if horizontal:
-            return not stacked
+            # A reversed category axis turns the cluster round, and the legend with it:
+            # measured on PowerPoint 16, a clustered bar chart's legend reads C B A, and
+            # A B C once its categories run top-down.
+            return not stacked and not self._categories_reversed
         # Stacked columns reverse at the side only; a legend under them reads left to
         # right in series order.
         return stacked and self._legend_position() in ("l", "r")
@@ -9368,6 +9553,10 @@ class ChartBuilder:
     def _value_to_y(self, rect: _Rect, value: float, scale: tuple[float, float, float]) -> float:
         minimum, maximum, _ = scale
         span = maximum - minimum
+        if _is_reversed(scale):
+            if span <= 0:
+                return rect.top
+            return rect.top + (value - minimum) / span * rect.height
         if span <= 0:
             return rect.bottom
         return rect.bottom - (value - minimum) / span * rect.height
@@ -9375,6 +9564,10 @@ class ChartBuilder:
     def _value_to_x(self, rect: _Rect, value: float, scale: tuple[float, float, float]) -> float:
         minimum, maximum, _ = scale
         span = maximum - minimum
+        if _is_reversed(scale):
+            if span <= 0:
+                return rect.right
+            return rect.right - (value - minimum) / span * rect.width
         if span <= 0:
             return rect.left
         return rect.left + (value - minimum) / span * rect.width

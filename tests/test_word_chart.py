@@ -223,9 +223,11 @@ def _legend_order(children):
     ("bar", "stacked", "r", False),
 ])
 def test_word_lists_the_legend_in_the_order_the_plot_stacks_it(direction, grouping, legend, reversed_):
+    """And so does PowerPoint 16, measured on the same six arrangements."""
     xml = chart(direction=direction, grouping=grouping, legend=legend)
-    assert _legend_order(build(xml)[1]) == ["Plan", "Actual"]
-    assert _legend_order(build(xml, chart_rules.WORD)[1]) == (["Actual", "Plan"] if reversed_ else ["Plan", "Actual"])
+    expected = ["Actual", "Plan"] if reversed_ else ["Plan", "Actual"]
+    assert _legend_order(build(xml)[1]) == expected
+    assert _legend_order(build(xml, chart_rules.WORD)[1]) == expected
 
 
 def test_word_s_clustered_bars_put_the_first_series_lowest():
@@ -235,7 +237,7 @@ def test_word_s_clustered_bars_put_the_first_series_lowest():
         lowest = max(bars, key=lambda box: box[5])
         return lowest[0]
 
-    assert first_bar(chart_rules.POWERPOINT) == "#ED7D31"
+    assert first_bar(chart_rules.POWERPOINT) == "#4472C4"  # PowerPoint 16 too, measured
     assert first_bar(chart_rules.WORD) == "#4472C4"
 
 
@@ -388,6 +390,8 @@ def _with_axis_titles(xml: str, value: str = "", category: str = "") -> str:
 
 
 def test_word_lays_out_and_draws_axis_titles():
+    import dataclasses
+
     plain = chart(title=False)
     xml = _with_axis_titles(plain, _axis_title("Revenue"), _axis_title("Region", ""))
     top, left, bottom = _plot_top_left_bottom(build(plain, chart_rules.WORD)[1])
@@ -400,8 +404,10 @@ def test_word_lays_out_and_draws_axis_titles():
               and c.text_body.paragraphs[0].runs[0].text == "Revenue"]
     assert len(turned) == 1 and turned[0].transform.rotation == -90.0
     assert "Region" in texts(children) and not builder.axis_titles_not_drawn
-    # PowerPoint's rule draws none, and nothing moves.
-    assert build(xml)[1] == build(plain)[1]
+    # PowerPoint draws them in the same places (measured on PowerPoint 16).
+    assert texts(build(xml)[1]).keys() >= {"Revenue", "Region"}
+    assert build(xml, dataclasses.replace(chart_rules.POWERPOINT, axis_titles=False))[1] == \
+        build(plain)[1]
     # Unturned at the left, or a title with no text: not drawn, and said.
     builder, children = build(_with_axis_titles(plain, _axis_title("Revenue", " rot='0'")), chart_rules.WORD)
     assert "Revenue" not in texts(children) and builder.axis_titles_not_drawn == ["placement"]
