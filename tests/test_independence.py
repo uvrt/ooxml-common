@@ -60,6 +60,7 @@ def test_the_package_has_the_modules_it_claims():
         "ooxml_common.drawingml.pattern",
         "ooxml_common.drawingml.preset_specs",
         "ooxml_common.imagemeta",
+        "ooxml_common.svgimage",
         "ooxml_common.drawingml.model",
         "ooxml_common.drawingml.color",
         "ooxml_common.drawingml.presets",

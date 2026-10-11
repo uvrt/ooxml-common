@@ -19,6 +19,8 @@ charts and the shape tree, with the shape and text body renderers that draw them
   with its grading, and the :class:`~ooxml_common.text.measure.TextMeasurer` protocol;
 * :mod:`ooxml_common.imagemeta` -- a picture's natural size, which a tiled fill is
   measured in;
+* :mod:`ooxml_common.svgimage` -- an SVG picture's natural size as PowerPoint reads it,
+  and the SVG with that size restated in pixels for a rasteriser;
 * :mod:`ooxml_common.drawingml` -- DrawingML's value types, colour resolution with every
   transform, shape-guide formulas, the complete ECMA-376 preset table with geometry as
   SVG path data, and fills, outlines, markers and effects as SVG; and the drawable scene
@@ -35,4 +37,4 @@ body's paragraphs against Word's own output.  :mod:`ooxml_common.drawingml.wrap`
 DrawingML text body's, which a chart and a SmartArt shape carry in either format.
 """
 
-__version__ = "0.11.0"
+__version__ = "0.12.0"
