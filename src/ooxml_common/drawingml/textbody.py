@@ -30,7 +30,7 @@ from . import scene as m
 from .context import RenderContext, escape_xml_attr, escape_xml_text, num
 from .geometry import text_area
 from .rules import POWERPOINT, DrawingRules
-from .wrap import LineSegment, wrap_paragraph
+from .wrap import LineSegment, WrappedLine, wrap_paragraph
 
 DEFAULT_LINE_SPACING = 1.0
 DEFAULT_FONT_SIZE_PT = 18.0
@@ -399,7 +399,15 @@ def _render_column(
         bullet_x = text_start_x + para_indent
         effective_text_width = text_width - para_margin_left
 
-        bullet_text = _bullet_text(properties, auto_num_counters)
+        has_text = any(run.text for run in paragraph.runs)
+        whitespace_is_text = context.rules.blank_paragraphs == "text"
+        # PowerPoint neither numbers nor counts a paragraph that holds nothing
+        # (:attr:`~.rules.DrawingRules.blank_paragraphs`).
+        bullet_text = (
+            _bullet_text(properties, auto_num_counters)
+            if has_text or not whitespace_is_text
+            else None
+        )
         bullet_blip = properties.bullet if isinstance(properties.bullet, m.BlipBullet) else None
         x_pos, anchor = _alignment(
             properties.alignment, text_start_x, effective_text_width, dims.width, dims.margin_right
@@ -417,7 +425,7 @@ def _render_column(
             properties.space_before, para_natural
         )
 
-        if not any(run.text for run in paragraph.runs):
+        if not has_text:
             # An empty paragraph is a line's worth of nothing, so it is as tall as a line
             # -- the font size alone, which this used to use, is short by the ascent the
             # face puts above its em.  Measured on `real-college-template` slide 7, whose
@@ -449,6 +457,11 @@ def _render_column(
                 font_scale,
                 context.measurer,
             )
+            if whitespace_is_text and not lines[0].segments:
+                # Whitespace is text to PowerPoint: a first line that holds only that still
+                # carries the bullet, in its runs' size and colour, and is as tall as they
+                # are.  The wrap trims it away, so it is put back here.
+                lines[0] = WrappedLine(segments=_first_line_whitespace(paragraph))
             for line_index, line in enumerate(lines):
                 line_gap = paragraph_gap if line_index == 0 else 0.0
 
@@ -1170,6 +1183,24 @@ def _segment_width(
 # --------------------------------------------------------------------------------------
 # Bullets
 # --------------------------------------------------------------------------------------
+
+
+def _first_line_whitespace(paragraph: m.Paragraph) -> list[LineSegment]:
+    """What a paragraph's first line holds when the wrap left it nothing: the whitespace
+    before the first break, run by run, or -- for a paragraph that opens with a break --
+    that break's own run, empty, so the line still has its size and colour."""
+    segments: list[LineSegment] = []
+    for run in paragraph.runs:
+        if not run.text:
+            continue
+        head, newline, _rest = run.text.partition("\n")
+        if head:
+            segments.append(LineSegment(head, run.properties))
+        if newline:
+            if not segments:
+                segments.append(LineSegment("", run.properties))
+            break
+    return segments
 
 
 def _bullet_text(
