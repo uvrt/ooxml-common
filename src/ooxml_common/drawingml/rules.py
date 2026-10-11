@@ -119,6 +119,17 @@ class DrawingRules:
       its ``bold-sizes`` deck): the regular outline filled and stroked in the text's
       colour (text rendering mode 2) with a line ``0.12 pt + 2%`` of the size -- 0.28 pt
       at 8 pt, 0.36 at 12, 0.48 at 18, 0.60 at 24, 0.68 at 28.
+    * ``blank_paragraphs`` -- what a paragraph of only whitespace is, and whether one of
+      nothing is numbered.  ``"empty"``: whitespace is laid out as an empty line, a line
+      of the default height with no bullet or number, and an empty paragraph advances its
+      auto-number though it draws none (pptx2svg's before the measurement; kept for Word,
+      which is not measured).  ``"text"``, PowerPoint's, measured on PowerPoint 16's PDF
+      export (ooxml-common's ``tests/test_blank_paragraphs.py`` has the cases): whitespace
+      -- a space, a tab, a no-break space, several, in one run or more -- is text, so the
+      paragraph draws its bullet or number on its first line in its run's size and colour,
+      the line as tall as that run, and an auto-number counts it; a paragraph holding
+      nothing (no run, or only an empty one) draws no marker and is not counted (``a``,
+      whitespace, ``b``, empty, ``c`` is numbered 1, 2, 3, -, 4).
     """
 
     name: str
@@ -135,11 +146,12 @@ class DrawingRules:
     autofit: str = "stored"
     kerning: KerningSource = _kerning.FEATURE
     synthetic_bold: str | None = None
+    blank_paragraphs: str = "empty"
 
 
 #: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
 POWERPOINT = DrawingRules("powerpoint", color.POWERPOINT, kerning=_kerning.POWERPOINT,
-                          synthetic_bold="stroke")
+                          synthetic_bold="stroke", blank_paragraphs="text")
 
 #: Word, as docx2svg measured it.
 WORD = DrawingRules("word", color.WORD, gradients="office", dashes="office", arrowheads="office",
