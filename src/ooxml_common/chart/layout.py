@@ -53,6 +53,7 @@ from dataclasses import dataclass, field, replace
 
 from ..drawingml import scene as m
 from ..drawingml import source_tree as s
+from ..locales import EN_US, Locale
 from . import read as c
 from .rules import POWERPOINT, ChartRules
 from ..text.fontmap import east_asian_family, metrics_for
@@ -1832,8 +1833,8 @@ def _reaches_decade(value: float, exponent: int) -> bool:
 # --------------------------------------------------------------------------------------
 
 
-def format_number(value: float, format_code: str | None) -> str:
-    """Render one number the way its ``c:formatCode`` asks.
+def format_number(value: float, format_code: str | None, locale: Locale = EN_US) -> str:
+    """Render one number the way its ``c:formatCode`` asks, in ``locale``'s separators.
 
     A subset of the Excel format language: the sections (positive; negative; zero), the
     number itself -- grouping, required and optional decimals, thousands scaling by
@@ -1841,15 +1842,17 @@ def format_number(value: float, format_code: str | None) -> str:
     escaped characters, a currency's ``[$€-413]``, ``_x`` padding as a space, and the
     plain characters Excel shows as they are (``$``, ``-``, ``(``, a space, ``€``).  A
     format with no digit placeholder at all -- a date, say -- falls through to
-    ``General``.  Separators are always ``.`` and ``,``: Office draws the operating
-    system's (a comma for the decimal on a Dutch Mac), which a document does not state.
+    ``General``.  The separators are ``locale``'s (:class:`~ooxml_common.locales.Locale`;
+    ``.`` and ``,`` by default): Office draws the operating system's (a comma for the
+    decimal on a Dutch Mac), which a document does not state, so the caller says.  Only
+    the number takes them; the format's own text (``"Total, "``) is printed as written.
 
     Measured, PowerPoint and Word 16 for Mac: data labels in ``"€"#,##0.0"m"`` read
     ``€12,4m``; in ``#,##0.00_);(#,##0.00)`` ``7,10`` and a trailing space; in
     ``[$€-413] #,##0.0`` ``€ 5,2``; and a value axis in ``"€"0"m"`` ``€0m`` to ``€20m``.
     """
     if format_code is None or format_code in ("General", "@"):
-        return _general(value)
+        return locale.number_text(_general(value))
 
     sections = _sections(format_code)
     # Excel's sections are positive; negative; zero; text.  A negative value uses the
@@ -1865,7 +1868,7 @@ def format_number(value: float, format_code: str | None) -> str:
     tokens = _format_tokens(section)
     kinds = [kind for kind, _ in tokens]
     if "digits" not in kinds and "general" not in kinds and ("date" in kinds or not tokens):
-        return _general(value)
+        return locale.number_text(_general(value))
     if "percent" in kinds:
         magnitude *= 100
     # The number goes where the first placeholder stands; a section of text alone (a zero
@@ -1876,8 +1879,9 @@ def format_number(value: float, format_code: str | None) -> str:
     for kind, text in tokens:
         if kind in ("digits", "general"):
             if not placed:
-                out.append(_general(magnitude) if pattern is None or kind == "general"
-                           else _format_digits(magnitude, pattern))
+                out.append(locale.number_text(
+                    _general(magnitude) if pattern is None or kind == "general"
+                    else _format_digits(magnitude, pattern)))
                 placed = True
         else:
             out.append(text)
@@ -3070,10 +3074,15 @@ class ChartBuilder:
         resolve_typeface=lambda typeface: typeface,
         plots: Sequence[c.SourceChartPlot] | None = None,
         rules: ChartRules = POWERPOINT,
+        locale: Locale = EN_US,
     ) -> None:
         self.chart = chart
         #: Which application's layout this reproduces (:mod:`~ooxml_common.chart.rules`).
         self.rules = rules
+        #: The regional settings numbers are printed in -- tick labels, data labels --
+        #: which the document does not state (:class:`~ooxml_common.locales.Locale`).
+        #: :attr:`ChartData` stays in the invariant ``.`` and ``,``.
+        self.locale = locale
         self.plot = plot
         #: Every drawable group in the plot area, in **document** order.  ``plot`` is the
         #: first of them and stays the one the frame's own decisions -- the title, the
@@ -3625,7 +3634,7 @@ class ChartBuilder:
                 value = values[index]
                 if value is not None:
                     parts.append(
-                        format_number(value, labels.number_format or item.format_code)
+                        format_number(value, labels.number_format or item.format_code, self.locale)
                     )
             parts = self._with_range(labels, item, index, parts)
             if parts:
@@ -4150,7 +4159,7 @@ class ChartBuilder:
                     parts.append(categories[index])
                 if labels.show_value:
                     parts.append(
-                        format_number(value, labels.number_format or item.format_code)
+                        format_number(value, labels.number_format or item.format_code, self.locale)
                     )
                 parts = self._with_range(labels, item, index, parts)
                 if not parts and own is None:
@@ -4636,6 +4645,7 @@ class ChartBuilder:
                     values=list(item.values),
                     # A scatter has no categories; the x values stand in for them, which is
                     # also what the reader caches into `c:cat` when there is no `c:cat`.
+                    # Data, not a label: in the invariant separators, whatever the locale.
                     categories=[
                         "" if value is None else format_number(value, None)
                         for value in x_values[index]
@@ -4996,7 +5006,7 @@ class ChartBuilder:
         PowerPoint's line box runs about a point taller than our metrics give.
         """
         categories = [
-            ["" if value is None else format_number(value, None) for value in column]
+            ["" if value is None else format_number(value, None, self.locale) for value in column]
             for column in x_values
         ]
         sizes = [self._bubble_sizes(order, len(item.values)) for order, item in enumerate(series)]
@@ -5621,8 +5631,8 @@ class ChartBuilder:
             format_code = "0%"
         values = self._tick_values(scale)
         if not values:
-            return [(minimum, format_number(minimum, format_code))]
-        return [(value, format_number(value, format_code)) for value in values]
+            return [(minimum, format_number(minimum, format_code, self.locale))]
+        return [(value, format_number(value, format_code, self.locale)) for value in values]
 
     def _axis_format(self, axis: c.SourceChartAxis | None) -> str | None:
         """The format code the value axis' labels are printed with.
@@ -6436,7 +6446,7 @@ class ChartBuilder:
                     parts.append(f"{shares[point]}%")
                 if labels.show_value:
                     parts.append(
-                        format_number(value, labels.number_format or item.format_code)
+                        format_number(value, labels.number_format or item.format_code, self.locale)
                     )
                 parts = self._with_range(labels, item, point, parts)
                 if not parts and own is None:
@@ -8757,19 +8767,18 @@ class ChartBuilder:
             parts.append(categories[point])
         if labels.show_percent:
             total = percent_totals[point] if point < len(percent_totals) else 0.0
-            parts.append(format_number(value / total if total else 0.0, "0%"))
+            parts.append(format_number(value / total if total else 0.0, "0%", self.locale))
         if labels.show_value:
             parts.append(
-                format_number(value, labels.number_format or item.format_code)
+                format_number(value, labels.number_format or item.format_code, self.locale)
             )
         if labels.show_bubble_size and bubble_size is not None:
-            parts.append(format_number(bubble_size, labels.number_format))
+            parts.append(format_number(bubble_size, labels.number_format, self.locale))
         return "\n".join(self._with_range(labels, item, point, parts))
 
-    @staticmethod
-    def _percent_text(value: float, point: int, percent_totals: list[float]) -> str:
+    def _percent_text(self, value: float, point: int, percent_totals: list[float]) -> str:
         total = percent_totals[point] if point < len(percent_totals) else 0.0
-        return format_number(value / total if total else 0.0, "0%")
+        return format_number(value / total if total else 0.0, "0%", self.locale)
 
     @staticmethod
     def _with_range(labels: _Labels, item: _Series, point: int, parts: list[str]) -> list[str]:
@@ -8810,12 +8819,12 @@ class ChartBuilder:
         fields = {
             "CELLRANGE": item.label_range[point] if point < len(item.label_range) else None,
             "VALUE": None if value is None else format_number(
-                value, labels.number_format or item.format_code),
+                value, labels.number_format or item.format_code, self.locale),
             "SERIESNAME": item.name,
             "CATEGORYNAME": categories[point] if point < len(categories) else None,
             "PERCENTAGE": percent,
             "BUBBLESIZE": None if bubble_size is None else format_number(
-                bubble_size, labels.number_format),
+                bubble_size, labels.number_format, self.locale),
         }
         fields["YVALUE"] = fields["VALUE"]
         fields["XVALUE"] = fields["CATEGORYNAME"]

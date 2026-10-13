@@ -10,6 +10,7 @@ Back to the [README](../README.md).
 | `ooxml_common.kinds` | The package kinds: which extension names which (`.docx`, `.dotm`, `.potx`, `.xltm`...), whether it is a template and may carry macros, its main part's content type, and `kind_mismatch` for a package whose content type its file name does not take |
 | `ooxml_common.xmlutil` | Namespace-agnostic helpers over `xml.etree` |
 | `ooxml_common.units` | EMU, point, pixel and angle conversions |
+| `ooxml_common.locales` | `Locale`, the regional settings a conversion or an edit is in -- decimal, thousands and list separators, date order, language -- with the fixed default `EN_US` and `locale_for` (see the README, "Locale") |
 | `ooxml_common.fonts` | The font bundle probe, embedded-font decoding (EOT, MicroType Express, SFNT) and the substitution report; `metrics_from_faces` builds an advance table, legacy kern pairs included, from a family's font files |
 | `ooxml_common.fonts.office` | Where Office for Mac finds a face, read in place: the applications' bundles, macOS's folders and Office's cloud-font cache (`cloud_font_dirs`), in each application's measured order (`POWERPOINT`, `WORD`); a header-only index with the names and CSS keys resvg files a face under (`find`, `css_match`), a standard-library face reader (`Face`), and advance tables built from installed faces (`metrics`, `layout_metrics`) |
 | `ooxml_common.text.metrics` | Generated advance-width tables for the faces measured |
