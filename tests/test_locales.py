@@ -227,3 +227,90 @@ def test_a_chart_builder_prints_its_labels_in_its_locale_and_keeps_its_data_inva
     # What the chart plots is data, not a label: the same in every locale.
     assert dutch_data == data
     assert data.series[0].categories == ["1.5", "2.5"]
+
+
+def _numeric_category_xml(code: str, values=(1.5, 2.25, 1234.5), point_code: str | None = None) -> str:
+    points = "".join(
+        f'<c:pt idx="{index}"{f" formatCode={chr(34)}{point_code}{chr(34)}" if point_code and index == 0 else ""}>'
+        f"<c:v>{value}</c:v></c:pt>"
+        for index, value in enumerate(values))
+    return f"""<c:chartSpace xmlns:c="{C}" xmlns:a="{A}"><c:chart><c:autoTitleDeleted val="1"/>
+  <c:plotArea><c:barChart><c:barDir val="col"/><c:grouping val="clustered"/><c:varyColors val="0"/>
+    <c:ser><c:idx val="0"/><c:order val="0"/>
+      <c:cat><c:numRef><c:numCache><c:formatCode>{code}</c:formatCode><c:ptCount val="{len(values)}"/>{points}
+        </c:numCache></c:numRef></c:cat>
+      <c:val><c:numRef><c:numCache><c:formatCode>General</c:formatCode><c:ptCount val="3"/>
+        <c:pt idx="0"><c:v>3</c:v></c:pt><c:pt idx="1"><c:v>5</c:v></c:pt><c:pt idx="2"><c:v>4</c:v></c:pt>
+      </c:numCache></c:numRef></c:val>
+    </c:ser><c:gapWidth val="80"/><c:axId val="1"/><c:axId val="2"/></c:barChart>
+    <c:catAx><c:axId val="1"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/>
+      <c:axPos val="b"/><c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="none"/>
+      <c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="2"/></c:catAx>
+    <c:valAx><c:axId val="2"/><c:scaling><c:orientation val="minMax"/></c:scaling><c:delete val="0"/>
+      <c:axPos val="l"/><c:numFmt formatCode="General" sourceLinked="1"/><c:majorTickMark val="out"/>
+      <c:minorTickMark val="none"/><c:tickLblPos val="nextTo"/><c:crossAx val="1"/></c:valAx>
+  </c:plotArea></c:chart></c:chartSpace>"""
+
+
+def _category_build(xml: str, locale: Locale):
+    source = parse_chart_space(ET.fromstring(xml))
+    plots = drawable_plots(source)
+    builder = ChartBuilder(
+        source, plots[0], width_pt=480, height_pt=300,
+        style=ChartStyle(font_family="Arial", font_size=default_font_size(source),
+                         color=m.ResolvedColor(hex="#000000"), accents=[m.ResolvedColor(hex="#1F4E79")]),
+        resolve_fill=lambda fill: None, resolve_outline=lambda outline: None,
+        resolve_text=lambda rich, text, size, align: None, plots=plots, locale=locale,
+    )
+    children, data = builder.build()
+    texts = [run.text for child in children
+             if isinstance(child, m.ShapeElement) and child.text_body
+             for paragraph in child.text_body.paragraphs for run in paragraph.runs]
+    return texts, data
+
+
+@pytest.mark.parametrize("code, english, dutch", [
+    # Measured, PowerPoint 16.106 for Mac, 13 October 2026: numeric categories on a
+    # category axis, in an English (United States) and a Dutch (Belgium) region.
+    ("General", ["1.5", "2.25", "1234.5"], ["1,5", "2,25", "1234,5"]),
+    ("#,##0.00", ["1.50", "2.25", "1,234.50"], ["1,50", "2,25", "1.234,50"]),
+])
+def test_numeric_categories_are_printed_in_their_format_and_locale(code, english, dutch):
+    xml = _numeric_category_xml(code)
+    series = parse_chart_space(ET.fromstring(xml)).plots[0].series[0]
+    assert series.category_values == [1.5, 2.25, 1234.5]
+    assert series.category_format_code == code
+    assert series.category_point_format_codes is None
+
+    english_texts, data = _category_build(xml, EN_US)
+    dutch_texts, dutch_data = _category_build(xml, DUTCH)
+    for text in english:
+        assert text in english_texts
+    for text in dutch:
+        assert text in dutch_texts
+    # The categories as data stay the reader's invariant text in every locale.
+    assert data.categories == dutch_data.categories == ["1.5", "2.25", "1234.5"]
+
+
+def test_a_category_points_own_format_code_comes_before_the_caches():
+    xml = _numeric_category_xml("General", point_code="0.000")
+    series = parse_chart_space(ET.fromstring(xml)).plots[0].series[0]
+    assert series.category_point_format_codes == ["0.000", None, None]
+    texts, _ = _category_build(xml, DUTCH)
+    assert "1,500" in texts and "2,25" in texts and "1234,5" in texts
+
+
+def test_date_coded_categories_keep_their_invariant_text():
+    # Not formatted here: PowerPoint printed `m/d/yyyy` as 10/13/2026 in both regions and
+    # took a date axis' month names from the interface language (16.106, 13 October 2026).
+    xml = _numeric_category_xml("m/d/yyyy", values=(46308, 46309, 46310))
+    for locale in (EN_US, DUTCH):
+        texts, _ = _category_build(xml, locale)
+        assert {"46308", "46309", "46310"} <= set(texts)
+
+
+def test_text_categories_have_no_numbers():
+    xml = _scatter_xml()
+    series = parse_chart_space(ET.fromstring(xml)).plots[0].series[0]
+    # A scatter's x values stand in for its categories but are not a category cache.
+    assert series.category_values is None

@@ -1954,6 +1954,14 @@ def _format_tokens(section: str) -> list[tuple[str, str]]:
     return tokens
 
 
+def _is_date_code(format_code: str | None) -> bool:
+    """Whether ``format_code`` prints a date or a time rather than a number."""
+    if not format_code or format_code in ("General", "@"):
+        return False
+    return any(kind == "date" for section in _sections(format_code)
+               for kind, _ in _format_tokens(section))
+
+
 def _placeholder_near(section: str, index: int) -> bool:
     """Whether the ``.`` or ``,`` at ``index`` belongs to a number -- a digit placeholder
     follows it -- rather than being text (``"Total, "`` unquoted)."""
@@ -3234,13 +3242,13 @@ class ChartBuilder:
                 m.ChartSeries(
                     name=item.name,
                     values=list(item.values),
-                    categories=list(categories),
+                    categories=self._categories(series, labels=False),
                     color=item.color,
                     format_code=item.format_code,
                 )
                 for item in series
             ],
-            categories=list(categories),
+            categories=self._categories(series, labels=False),
             title=self._title_text(),
             grouping=self.plot.grouping,
             bar_direction=None,
@@ -3278,13 +3286,13 @@ class ChartBuilder:
                 m.ChartSeries(
                     name=item.name,
                     values=list(item.values),
-                    categories=list(categories),
+                    categories=self._categories(series, labels=False),
                     color=item.color,
                     format_code=item.format_code,
                 )
                 for item in series
             ],
-            categories=list(categories),
+            categories=self._categories(series, labels=False),
             title=self._title_text(),
             grouping=self.plot.grouping,
             bar_direction=None,
@@ -3774,13 +3782,13 @@ class ChartBuilder:
                 m.ChartSeries(
                     name=item.name,
                     values=list(item.values),
-                    categories=list(categories),
+                    categories=self._categories(series, labels=False),
                     color=item.color,
                     format_code=item.format_code,
                 )
                 for item in series
             ],
-            categories=list(categories),
+            categories=self._categories(series, labels=False),
             title=self._title_text(),
             grouping=self.plot.grouping,
             bar_direction=None,
@@ -4347,13 +4355,13 @@ class ChartBuilder:
                 m.ChartSeries(
                     name=item.name,
                     values=list(item.values),
-                    categories=list(categories),
+                    categories=self._categories(series, labels=False),
                     color=item.color,
                     format_code=item.format_code,
                 )
                 for item in series
             ],
-            categories=list(categories),
+            categories=self._categories(series, labels=False),
             title=self._title_text(),
             grouping=self.plot.grouping,
             bar_direction=self.plot.bar_direction or "col",
@@ -5374,29 +5382,62 @@ class ChartBuilder:
             return self.style.accents[index % len(self.style.accents)]
         return m.ResolvedColor(hex="#4472C4")
 
-    def _categories(self, series: list[_Series]) -> list[str]:
+    def _categories(self, series: list[_Series], *, labels: bool = True) -> list[str]:
         """One label per category, as long as the longest series.
 
         The bars are indexed by this list, so a series longer than the labelled one would
         lose its tail.  Series in one group need not agree on length -- and a series may
         carry no ``c:cat`` at all -- so the labelled list is padded rather than trusted for
         its length.  PowerPoint numbers unlabelled categories from 1.
+
+        Numeric categories are printed as labels (:meth:`_category_texts`); with
+        ``labels=False`` they stay the reader's invariant text, which is what
+        :class:`~ooxml_common.drawingml.scene.ChartData` carries.
         """
         longest = max((len(item.values) for item in series), default=0)
-        labels: list[str] = []
+        names: list[str] = []
         # Every drawn group, in document order: a combo's groups share one category axis
         # and need not all carry `c:cat` -- the gallery's line group does, but a group
         # that did not would otherwise number its categories from 1 beside labelled bars.
         for plot in self.plots:
             for source in plot.series:
                 if any(source.categories):
-                    labels = list(source.categories)
+                    names = self._category_texts(source) if labels else list(source.categories)
                     break
-            if labels:
+            if names:
                 break
-        if len(labels) >= longest:
-            return labels
-        return labels + [str(index + 1) for index in range(len(labels), longest)]
+        if len(names) >= longest:
+            return names
+        return names + [str(index + 1) for index in range(len(names), longest)]
+
+    def _category_texts(self, source: c.SourceChartSeries) -> list[str]:
+        """``source``'s category labels, numeric ones printed in their format and locale.
+
+        Measured, PowerPoint 16.106 for Mac, 13 October 2026, on a column chart whose
+        ``c:cat`` is a number cache of 1.5, 2.25 and 1234.5 (the axis' ``c:numFmt``
+        source-linked): under ``General`` the axis reads ``1.5 2.25 1234.5`` in an
+        English (United States) region and ``1,5 2,25 1234,5`` in a Dutch (Belgium) one,
+        no grouping; under ``#,##0.00`` ``1.50 2.25 1,234.50`` and ``1,50 2,25 1.234,50``
+        -- the cache's ``c:formatCode`` in the region's separators, as a value label is.
+        A point's own ``formatCode`` (``CT_NumVal``) is taken before the cache's; that
+        precedence is the schema's, not measured.  A date or time code is left to the
+        reader's invariant text: in the same measurement ``m/d/yyyy`` printed
+        ``10/13/2026`` in both regions and a date axis took its month names from the
+        interface language, neither of which this formats.
+        """
+        names = list(source.categories)
+        values = source.category_values
+        if not values:
+            return names
+        own = source.category_point_format_codes or []
+        for index, value in enumerate(values):
+            if value is None or index >= len(names):
+                continue
+            code = (own[index] if index < len(own) else None) or source.category_format_code
+            if _is_date_code(code):
+                continue
+            names[index] = format_number(value, code, self.locale)
+        return names
 
     def _axis_for(self, position: int) -> c.SourceChartAxis | None:
         """The axis this plot group names in its ``c:axId`` list, by position.
@@ -9196,7 +9237,7 @@ class ChartBuilder:
             if any(source.categories):
                 return [
                     name
-                    for index, name in enumerate(source.categories)
+                    for index, name in enumerate(self._category_texts(source))
                     if name and index not in deleted
                 ]
         return []

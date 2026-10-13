@@ -240,7 +240,15 @@ class SourceChartSeries:
     bubble_sizes: list[float | None] | None = None
     #: ``c:formatCode`` off the value cache -- what PowerPoint prints in data labels.
     format_code: str | None = None
+    #: ``c:formatCode`` off the category cache, when the categories are numbers.
     category_format_code: str | None = None
+    #: The numbers of a numeric category cache (``c:cat/c:numRef`` or ``c:numLit``), dense
+    #: with ``None`` for blanks; ``None`` when the categories are text.  ``categories``
+    #: holds them as invariant text; a chart prints them through the format code.
+    category_values: list[float | None] | None = None
+    #: Each category point's own ``formatCode`` attribute (``CT_NumVal``), by index, where
+    #: any point has one; ``None`` otherwise.  A point's code is used before the cache's.
+    category_point_format_codes: list[str | None] | None = None
     fill: SourceFill | None = None
     outline: SourceOutline | None = None
     invert_if_negative: bool | None = None
@@ -615,6 +623,7 @@ def _series(ser: Element, fallback_index: int) -> SourceChartSeries:
 
     x_values, x_format = _numeric_points(child(ser, "xVal"))
     categories, category_format = _string_points(child(ser, "cat"))
+    category_values, category_point_codes = _numeric_categories(child(ser, "cat"))
     if not categories and x_values:
         # Scatter with a numeric x: the labels a category axis would have shown are the
         # x values themselves, formatted.
@@ -632,6 +641,8 @@ def _series(ser: Element, fallback_index: int) -> SourceChartSeries:
         bubble_sizes=bubble_sizes or None,
         format_code=format_code,
         category_format_code=category_format,
+        category_values=category_values,
+        category_point_format_codes=category_point_codes,
         fill=parse_fill(sp_pr),
         outline=parse_outline(sp_pr),
         invert_if_negative=_optional_flag(child(ser, "invertIfNegative")),
@@ -932,6 +943,33 @@ def _string_points(reference: Element | None) -> tuple[list[str], str | None]:
         return [_default_number_text(value) for value in values], format_code
 
     return _level_strings(cache, _point_count(cache)), None
+
+
+def _numeric_categories(
+    reference: Element | None,
+) -> tuple[list[float | None] | None, list[str | None] | None]:
+    """The numbers behind ``c:cat`` when :func:`_string_points` read it from a number cache,
+    and each point's own ``formatCode``; ``(None, None)`` for text categories."""
+    if reference is None or _cache(reference, "num") is None:
+        return None, None
+    cache = _cache(reference, "str")
+    if cache is not None and child(cache, "pt") is not None:
+        return None, None
+    multi = child(child(reference, "multiLvlStrRef"), "multiLvlStrCache")
+    if multi is None:
+        multi = child(reference, "multiLvlStrLit")
+    if multi is not None and children(multi, "lvl"):
+        return None, None
+    values, _ = _numeric_points(reference)
+    if not values:
+        return None, None
+    codes: list[str | None] = [None] * len(values)
+    for point in children(_cache(reference, "num"), "pt"):
+        index = int_attr(point, "idx")
+        code = (point.get("formatCode") or "").strip()
+        if code and index is not None and 0 <= index < len(codes):
+            codes[index] = code
+    return values, codes if any(codes) else None
 
 
 def _level_strings(container: Element, count: int) -> list[str]:
