@@ -283,11 +283,17 @@ def _has_crop(rect: m.SrcRect | m.StretchFillRect) -> bool:
 def render_table(table: m.TableElement, context: RenderContext) -> str:
     """Tables draw as a grid of cell rectangles, borders and text bodies.
 
+    The style's background (:attr:`TableData.background`) is drawn under the cells over the
+    table's full size, rows grown to their text included, and its effects
+    (:attr:`TableData.effects`) apply to the table as a whole, as a shape's do to the shape.
+
     Merged cells are skipped (the spanning cell already covers their area) and the
     spanning cell is widened/heightened by its ``gridSpan``/``rowSpan``.
     """
     data = table.table
-    parts = [f'<g transform="{build_transform_attr(table.transform)}">']
+    filter_attr = render_effects(data.effects, context)
+    parts = [f'<g transform="{build_transform_attr(table.transform)}"'
+             + (f" {filter_attr}" if filter_attr else "") + ">"]
 
     column_offsets: list[float] = [0.0]
     for column in data.columns:
@@ -297,6 +303,15 @@ def render_table(table: m.TableElement, context: RenderContext) -> str:
     row_offsets: list[float] = [0.0]
     for height in row_heights:
         row_offsets.append(row_offsets[-1] + emu_to_px(height))
+
+    # The style's background first, once across the whole table: its gradient spans the
+    # table, and a cell with no fill of its own (or a translucent one) shows it.
+    if data.background is not None:
+        box = (0.0, 0.0, column_offsets[-1], row_offsets[-1])
+        fill_attrs = render_fill_attrs(data.background, context, box, rules=context.rules)
+        parts.append(
+            f'<rect x="0" y="0" width="{num(box[2])}" height="{num(box[3])}" {fill_attrs}/>'
+        )
 
     # Fills and text first, then every border on top, so a neighbour's fill cannot
     # paint over a shared edge.

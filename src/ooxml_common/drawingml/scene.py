@@ -372,6 +372,13 @@ class TableColumn:
 class TableData:
     rows: list[TableRow] = field(default_factory=list)
     columns: list[TableColumn] = field(default_factory=list)
+    #: The table style's ``a:tblBg`` fill, drawn once over the whole table -- under every
+    #: cell, so a cell without a fill of its own shows it -- rather than repeated per cell:
+    #: a gradient runs across the table, not across each cell.
+    background: Fill | None = None
+    #: The table style's ``a:tblBg`` effects (a shadow under the table), applied to the
+    #: table as a whole.
+    effects: EffectList | None = None
 
 
 @dataclass
