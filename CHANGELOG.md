@@ -2,6 +2,9 @@
 
 Versions are set in `pyproject.toml`; there are no release tags or PyPI releases yet.
 
+## 0.14.0 -- unreleased
+- A table can carry its style's background: `TableData.background` is a fill drawn once over the whole table, under every cell (a gradient runs across the table, not across each cell; a cell without a fill of its own, or with a translucent one, shows it), and `TableData.effects` apply to the table as a whole, as a shape's do -- the `a:tblBg` of PowerPoint's "Themed Style 1" and "2", a theme fill style with an effect style's shadow. Both default to `None`, which draws as before. Measured by pptx2svg on PowerPoint 16's PDF export of both families under a 2013 and a 2007 Office theme.
+
 ## 0.13.0 -- unreleased
 - A paragraph holding only whitespace draws its bullet, as PowerPoint does: a space, a tab, a no-break space or several, in one run or more, first paragraph or later, in a placeholder or a text box, wrapped or not. The bullet (or number, or picture) takes the whitespace run's size and colour and the line is as tall as that run; a break before the text leaves the bullet alone on the first line. An auto-number numbers and counts such a paragraph, and no longer counts an empty one (no run, or only an empty run), which draws nothing: `a`, whitespace, `b`, empty, `c` is 1, 2, 3, -, 4, not 1, -, 3, -, 5. Measured on PowerPoint 16's PDF export (`tests/test_blank_paragraphs.py`). New `DrawingRules.blank_paragraphs`: `"text"` for PowerPoint; Word keeps `"empty"`, what was drawn before, as it is not measured.
 
