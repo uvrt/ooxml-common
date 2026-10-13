@@ -54,6 +54,27 @@ print(measurer.measure_text_width("Hello, world", 18, font_family="Calibri"))  #
   fidelity harnesses, and the metric generators, which stay in pptx2svg for now. Details
   in [docs/modules.md](docs/modules.md#what-is-deliberately-not-in-it).
 
+## Locale
+
+Office takes some of what it draws from the machine, not the file: the separators in a
+chart's numbers, the order of day and month, the list separator, the language of its own
+words. `ooxml_common.locales.Locale` holds them as one value, and every library in the
+family takes the same one -- a renderer through its conversion options, an editing session
+through its toolbox:
+
+```python
+from ooxml_common.locales import EN_US, Locale
+
+dutch = Locale(decimal_separator=",", thousands_separator=".", date_order="dmy",
+               language="nl-NL", list_separator=";")
+```
+
+The default is `EN_US`, fixed: never the machine's own locale, so the same file renders
+the same on any server, and the application passes each user's. Only `en-US` is listed
+for `locale_for(tag)`; what Office does in another locale is measured before it is listed,
+and until then the caller builds it. Charts print their tick and data labels in it
+(`ChartBuilder(..., locale=dutch)`: `€12,4m`).
+
 ## Font files
 
 The `[fonts]` extra is the **`pptx2svg-fonts`** distribution, the OFL-licensed font files

@@ -2,6 +2,10 @@
 
 Versions are set in `pyproject.toml`; there are no release tags or PyPI releases yet.
 
+## 0.15.0 -- unreleased
+- One locale for every library: new `ooxml_common.locales.Locale`, the regional settings Office takes from its machine rather than from the file -- `decimal_separator`, `thousands_separator`, `date_order` (`dmy`, `mdy` or `ymd`), `language` (a BCP 47 tag, kept in its conventional case: `nl_be` is `nl-BE`) and `list_separator`. Frozen, hashable, picklable and validated (one character each, not a letter or digit; the thousands and list separators not the decimal one). The default is `EN_US`, fixed -- never the machine's locale, so a file draws the same on any server; the caller passes the user's. `locale_for(tag)` finds a listed locale by tag and raises `LookupError` for any other rather than guessing; `KNOWN_LOCALES` lists only `en-US`, since what Office does in another locale is measured before it is listed.
+- A chart prints its numbers in a locale: `format_number(value, code, locale)` and `ChartBuilder(..., locale=...)` write tick labels and data labels (values, percentages, bubble sizes, a label's `VALUE` field) with the locale's separators, the format's own text unchanged: in a Dutch locale `"€"#,##0.0"m"` is `€12,4m`, as PowerPoint and Word 16 for Mac drew it on a Dutch machine. `ChartData` stays in the invariant `.` and `,`. Without a locale the output is what it was.
+
 ## 0.14.0 -- unreleased
 - A table can carry its style's background: `TableData.background` is a fill drawn once over the whole table, under every cell (a gradient runs across the table, not across each cell; a cell without a fill of its own, or with a translucent one, shows it), and `TableData.effects` apply to the table as a whole, as a shape's do -- the `a:tblBg` of PowerPoint's "Themed Style 1" and "2", a theme fill style with an effect style's shadow. Both default to `None`, which draws as before. Measured by pptx2svg on PowerPoint 16's PDF export of both families under a 2013 and a 2007 Office theme.
 
