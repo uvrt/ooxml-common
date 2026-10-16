@@ -6714,21 +6714,33 @@ class ChartBuilder:
             return self._resolved_text(rich, text, rich.paragraphs[0].runs[0].properties.font_size)
         size = _title_size(self.chart.title)
         rich = self.chart.title.rich if self.chart.title is not None else None
-        # A rich title that states no face and no size is not drawn in the face a text
-        # box gets: PowerPoint drew it in Arial (:attr:`~.rules.ChartRules.rich_title_face`).
-        face = self.rules.rich_title_face if title_states_no_font(self.chart) else None
-        return self._resolved_text(rich, text, size, face=face)
+        # A rich title is not drawn in the face a text box gets: PowerPoint's own fonts
+        # (:attr:`~.rules.ChartRules.rich_title_fonts`) -- Arial, regular, without a
+        # paragraph `a:defRPr`; with one, the minor face and bold unless stated.
+        face = bold = None
+        if self.rules.rich_title_fonts:
+            if title_states_no_font(self.chart):
+                face, bold = RICH_TITLE_FALLBACK_FACE, False
+            elif title_states_defaults(self.chart):
+                bold = True
+                if not _title_states(self.chart, "typeface"):
+                    face = self._resolve_typeface("+mn-lt")
+            if _title_states(self.chart, "bold"):
+                bold = None
+        return self._resolved_text(rich, text, size, face=face, bold=bold)
 
-    def _resolved_text(self, rich, text: str, size: float, *, face: str | None = None
-                       ) -> "tuple[m.TextBody, FontBox]":
+    def _resolved_text(self, rich, text: str, size: float, *, face: str | None = None,
+                       bold: bool | None = None) -> "tuple[m.TextBody, FontBox]":
         """A title's text, resolved through the caller and stamped with the size the
-        layout uses, and the box of its face; ``face``, where given, is stamped over every
-        run's Latin face."""
+        layout uses, and the box of its face; ``face`` and ``bold``, where given, are
+        stamped over every run's Latin face and weight."""
         body = self._resolve_text(rich, text, size, align="ctr")
-        if face is not None:
-            for paragraph in body.paragraphs:
-                for run in paragraph.runs:
+        for paragraph in body.paragraphs:
+            for run in paragraph.runs:
+                if face is not None:
                     run.properties.font_family = face
+                if bold is not None:
+                    run.properties.bold = bold
         family, resolved_size = _first_run_font(body)
         size = resolved_size or size
         # A run that named no size would otherwise take the *renderer's* default, which
@@ -10396,56 +10408,79 @@ def _text_typeface_ea(body: s.SourceTextBody | None) -> str | None:
     return run.typeface_ea if run is not None else None
 
 
+#: The face PowerPoint draws a rich chart title in when nothing states one
+#: (:func:`title_states_no_font`).
+RICH_TITLE_FALLBACK_FACE = "Arial"
+
+
 def title_states_no_font(chart: c.SourceChart) -> bool:
-    """Whether the chart's title is rich text (``c:title/c:tx/c:rich``) that states neither
-    a Latin face (``a:latin``) nor a size (``sz``) anywhere -- a run's ``a:rPr``, a
-    paragraph's ``a:defRPr``, its list style or the title's own ``c:txPr`` -- in a chart
-    space whose ``c:txPr`` names no face either.
+    """Whether the chart's title is rich text (``c:title/c:tx/c:rich``) whose paragraphs
+    state no ``a:defRPr`` and whose runs and list style name no Latin face (``a:latin``),
+    under a title ``c:txPr`` that states no face and no size.  A run may state a size.
 
-    PowerPoint draws such a title in **18 pt Arial**, regular and black, whatever the
-    chart-wide size and whatever face the deck's text boxes get.  Measured, PowerPoint 16
-    for Mac's PDF export, 16 October 2026: one run with ``<a:rPr lang="en-US"/>``, a
-    chart-wide ``sz`` of none, 800 and 2400, with and without an unsized title ``c:txPr``,
-    in a deck whose ``otherStyle`` and default text style name ``+mn-lt`` (Aptos), came out
-    ArialMT 18 pt ``#000000`` every time.  A chart-wide face over such a title, and a title
-    that states a size but no face, are not measured and are not covered: ``False``.  An
-    automatic title (no ``c:tx``) is not rich text: ``False``
-    (:func:`powerpoint_auto_title`, the minor face).
+    PowerPoint draws such a title in **Arial**, regular, black, at the run's size or
+    **18 pt**, whatever face the deck's text boxes get and whatever the chart-wide
+    ``c:txPr`` states.  Measured, PowerPoint 16 for Mac's PDF export, 16 October 2026, in a
+    deck whose ``otherStyle`` and default text style name ``+mn-lt`` (Aptos): one run with
+    ``<a:rPr lang="en-US"/>`` came out ArialMT 18 pt ``#000000`` at a chart-wide ``sz`` of
+    none, 800 and 2400, with and without an unsized title ``c:txPr``, and under a
+    chart-wide ``c:txPr`` naming ``+mn-lt``; with ``sz="2400"`` on the run, ArialMT 24 pt.
+    An empty ``<a:defRPr/>`` reads as none (not measured).  A title ``c:txPr`` stating a
+    face or a size is not measured: ``False``.  An automatic title (no ``c:tx``) is not
+    rich text: ``False`` (:func:`powerpoint_auto_title`, the minor face).
     """
-    return title_states_no_face(chart) and not (
-        _states_font(chart.title.rich, face=False)
-        or _states_font(chart.title_text_properties, face=False))
+    title = chart.title
+    if title is None or title.rich is None or title_states_defaults(chart):
+        return False
+    rich = title.rich
+    layers = _list_layers(rich) + [run.properties for p in rich.paragraphs for run in p.runs]
+    if any(layer is not None and layer.typeface for layer in layers):
+        return False
+    own = chart.title_text_properties
+    return not any(layer is not None and (layer.typeface or layer.font_size)
+                   for layer in _list_layers(own) + _paragraph_defaults(own))
 
 
-def title_states_no_face(chart: c.SourceChart) -> bool:
-    """:func:`title_states_no_font` without the size: a rich title that states no Latin
-    face in its runs, paragraphs, list style or ``c:txPr``, in a chart space whose
-    ``c:txPr`` names none, whatever size it states.  What PowerPoint draws one that states
-    a size in is not measured; pptx-agent's check asks for the face to be stated."""
+def title_states_defaults(chart: c.SourceChart) -> bool:
+    """Whether the chart's rich title has a paragraph whose ``a:pPr/a:defRPr`` states
+    something.  PowerPoint then draws the title in its title defaults: the theme's minor
+    face unless a face is stated, **bold** unless ``b`` is stated -- measured, PowerPoint
+    16 for Mac, 16 October 2026: ``a:defRPr sz="1862"`` alone, Aptos bold;
+    ``b="0"`` (with or without ``+mn-lt``), Aptos regular; ``+mn-lt`` and ``sz`` without
+    ``b`` on both ``a:defRPr`` and the run, Aptos bold."""
     title = chart.title
     if title is None or title.rich is None:
         return False
-    return not (_states_font(chart.text_properties, size=False)
-                or _states_font(title.rich, size=False)
-                or _states_font(chart.title_text_properties, size=False))
+    return any(layer is not None for layer in _paragraph_defaults(title.rich))
 
 
-def _states_font(body: s.SourceTextBody | None, *, face: bool = True, size: bool = True) -> bool:
-    """Whether a text body states a Latin face (with ``face``) or a size (with ``size``) in
-    its list style, a paragraph's ``a:defRPr`` or a run's ``a:rPr``."""
+def _paragraph_defaults(body: s.SourceTextBody | None) -> list:
+    """Each paragraph's ``a:defRPr`` that states something (``None`` for the others)."""
     if body is None:
-        return False
-    layers: list = []
-    if body.list_style is not None:
-        layers += [body.list_style.default_paragraph, *body.list_style.levels]
-    layers += [paragraph.properties for paragraph in body.paragraphs]
-    runs = [layer.default_run_properties for layer in layers if layer is not None]
-    runs += [run.properties for paragraph in body.paragraphs for run in paragraph.runs]
-    return any(
-        properties is not None
-        and ((face and properties.typeface) or (size and properties.font_size))
-        for properties in runs
-    )
+        return []
+    return [p.properties.default_run_properties if p.properties is not None else None
+            for p in body.paragraphs]
+
+
+def _list_layers(body: s.SourceTextBody | None) -> list:
+    """The ``a:defRPr`` of a text body's list style, its default paragraph and levels."""
+    if body is None or body.list_style is None:
+        return []
+    return [layer.default_run_properties
+            for layer in (body.list_style.default_paragraph, *body.list_style.levels)
+            if layer is not None]
+
+
+def _title_states(chart: c.SourceChart, name: str) -> bool:
+    """Whether the rich title states run property ``name`` (``typeface``, ``bold``)
+    anywhere: a run, a paragraph's ``a:defRPr``, its list style or the title's ``c:txPr``."""
+    rich = chart.title.rich if chart.title is not None else None
+    own = chart.title_text_properties
+    layers = (_list_layers(rich) + _paragraph_defaults(rich)
+              + [run.properties for p in (rich.paragraphs if rich else ()) for run in p.runs]
+              + _list_layers(own) + _paragraph_defaults(own))
+    return any(layer is not None and getattr(layer, name) is not None
+               and getattr(layer, name) != "" for layer in layers)
 
 
 def _title_size(title: c.SourceChartText | None) -> float:
@@ -10527,6 +10562,7 @@ def default_font_size(chart: c.SourceChart) -> float:
 
 __all__ = [
     "CHART_TEXT_BODY",
+    "RICH_TITLE_FALLBACK_FACE",
     "ChartBuilder",
     "ChartStyle",
     "accent_colors",
@@ -10540,6 +10576,6 @@ __all__ = [
     "radial_axis_intervals",
     "side_axis_intervals",
     "text_width",
-    "title_states_no_face",
+    "title_states_defaults",
     "title_states_no_font",
 ]

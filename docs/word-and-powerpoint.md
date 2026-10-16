@@ -69,6 +69,7 @@ documents (no settings part, compatibility modes 14 and 15, which draw every cha
 | A `c:title` with no text; one with text and `c:autoTitleDeleted` `1` | none; none | the sole series' **name** (over several, Word's own "Chart Title", its band kept and its words the caller's); **drawn** |
 | An axis' `c:title` | not drawn | **drawn**: at the left turned to read upwards, at the bottom across, each its **pitch + 9 pt** off the plot and its line box **12.5 pt** in from the frame (or a legend there) |
 | A plot shorter than 1.1 em of its value labels | what is left | the band under it gives up **half the shortfall** |
+| A rich title's face and weight (`rich_title_fonts`) | measured: no paragraph `a:defRPr` and no face on its runs, **Arial regular** at the run's size or 18 pt (a chart-wide face does not reach it); a paragraph `a:defRPr`, the **minor face**, **bold** unless `b` is stated | the text cascade's (not measured) |
 
 The last three rows are docx2svg's `tools/make_chart_text_probe.py` (80 charts, the same
 three documents). A chart's default axis and gridline colour is the caller's too
@@ -87,6 +88,14 @@ the same placement on the anchor.
 At 10 pt the side legend's pads are PowerPoint's to 0.03 pt and an 18 pt Arial title's band
 its to 0.002 pt, the one size and face each was measured at in PowerPoint; where the two
 part, PowerPoint was not measured, and pptx2svg's output does not move.
+
+**Measured and not applied: whole-point chart glyphs.** PowerPoint 16 for Mac draws a
+chart's glyphs -- titles, axis titles, data labels, tick labels -- at a whole-point size
+(`sz` 1749 drew 17 pt, 1750 18, 1850 and 1862 19, 2050 20, 1197 12) while its character
+spacing keeps each line's width at the stated size (about 5.9 pt per stated point, within
+0.5%). The rule at a half point is unclear (17.5 up, 18.5 up, 20.5 down), so the layout
+draws and measures at the stated size: the widths already agree to about 0.5%, and only the
+glyphs' height differs (oracle-titlefont probe2, 16 October 2026).
 
 What a chart cannot know is the consumer's, and comes in as parameters: the theme's faces,
 text colour and accent cycle (`chart.layout.ChartStyle`), and how a fill, an outline, a
