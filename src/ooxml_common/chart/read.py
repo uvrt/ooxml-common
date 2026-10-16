@@ -469,6 +469,12 @@ class SourceChart:
     color_map_override: SourceColorMap | None = None
     #: ``c:externalData@r:id`` -- the embedded workbook.  Recorded, not read.
     external_data_rel_id: str | None = None
+    #: ``c:date1904`` -- whether a date's serial counts from 1 January 1904 rather than
+    #: in the 1900 date system (ECMA-376 Part 1, 21.2.2.38; :mod:`ooxml_common.dates`).
+    date1904: bool = False
+    #: ``c:title/c:txPr`` -- the chart title's own text properties, which an automatic
+    #: title (a ``c:title`` with no ``c:tx``) is drawn with.  ``None`` when not stated.
+    title_text_properties: SourceTextBody | None = None
 
 
 # --------------------------------------------------------------------------------------
@@ -516,6 +522,8 @@ def parse_chart_space(chart_space: Element | None) -> SourceChart | None:
         round_corners=_optional_flag(child(chart_space, "roundedCorners")),
         color_map_override=_color_map_override(child(chart_space, "clrMapOvr")),
         external_data_rel_id=_rel_id(child(chart_space, "externalData")),
+        date1904=_flag(child(chart_space, "date1904"), default=False),
+        title_text_properties=parse_text_body(child(title, "txPr")),
     )
 
 

@@ -95,8 +95,13 @@ class ChartRules:
       where the series states one (Word: a 0.75 pt black ``a:ln`` and a 1.5 pt purple one
       came back round their keys), rather than only where it has no fill.
     * ``auto_title`` -- which title a chart shows (docx2svg's
-      ``make_chart_text_probe.py``).  ``False``: a ``c:title`` with text, unless
-      ``c:autoTitleDeleted`` is ``1`` (pptx2svg's).  ``True``, Word's: a ``c:title`` with
+      ``make_chart_text_probe.py``).  ``False``, PowerPoint's: a ``c:title`` with text,
+      unless ``c:autoTitleDeleted`` is ``1``; a ``c:title`` with no text the sole series'
+      name, bold in the theme's minor face at 1.2 times the chart's text size rounded
+      to the point, 18 pt without one
+      (:func:`~ooxml_common.chart.layout.powerpoint_auto_title`; measured on PowerPoint
+      16 for Mac), and nothing over several series (PowerPoint's own words there are not
+      measured).  ``True``, Word's: a ``c:title`` with
       text **whatever** ``c:autoTitleDeleted`` says; a ``c:title`` with no text the sole
       series' **name** (a pie's too), or -- over several series, or where
       ``c:autoTitleDeleted`` is ``1`` -- Word's own "Chart Title" in its interface's

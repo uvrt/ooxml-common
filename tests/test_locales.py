@@ -300,13 +300,21 @@ def test_a_category_points_own_format_code_comes_before_the_caches():
     assert "1,500" in texts and "2,25" in texts and "1234,5" in texts
 
 
-def test_date_coded_categories_keep_their_invariant_text():
-    # Not formatted here: PowerPoint printed `m/d/yyyy` as 10/13/2026 in both regions and
-    # took a date axis' month names from the interface language (16.106, 13 October 2026).
+def test_date_coded_categories_are_printed_as_dates_in_every_locale():
+    # PowerPoint printed `m/d/yyyy` as 10/13/2026 in both regions (16.106, 13 October
+    # 2026): a date's digits do not take the locale's number separators.
     xml = _numeric_category_xml("m/d/yyyy", values=(46308, 46309, 46310))
     for locale in (EN_US, DUTCH):
-        texts, _ = _category_build(xml, locale)
-        assert {"46308", "46309", "46310"} <= set(texts)
+        texts, data = _category_build(xml, locale)
+        assert {"10/13/2026", "10/14/2026", "10/15/2026"} <= set(texts)
+        assert data.categories == ["46308", "46309", "46310"]
+
+
+def test_time_coded_categories_keep_their_invariant_text():
+    # A time is not formatted (not measured): the serial stays as it was printed.
+    xml = _numeric_category_xml("h:mm", values=(46308.5, 46309.25, 46310))
+    texts, _ = _category_build(xml, EN_US)
+    assert {"46308.5", "46309.25", "46310"} <= set(texts)
 
 
 def test_text_categories_have_no_numbers():

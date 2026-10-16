@@ -53,6 +53,7 @@ from dataclasses import dataclass, field, replace
 
 from ..drawingml import scene as m
 from ..drawingml import source_tree as s
+from ..dates import format_serial
 from ..locales import EN_US, Locale
 from . import read as c
 from .rules import POWERPOINT, ChartRules
@@ -5420,10 +5421,17 @@ class ChartBuilder:
         no grouping; under ``#,##0.00`` ``1.50 2.25 1,234.50`` and ``1,50 2,25 1.234,50``
         -- the cache's ``c:formatCode`` in the region's separators, as a value label is.
         A point's own ``formatCode`` (``CT_NumVal``) is taken before the cache's; that
-        precedence is the schema's, not measured.  A date or time code is left to the
-        reader's invariant text: in the same measurement ``m/d/yyyy`` printed
-        ``10/13/2026`` in both regions and a date axis took its month names from the
-        interface language, neither of which this formats.
+        precedence is the schema's, not measured.
+
+        A date code prints the serial as a date (:func:`ooxml_common.dates.format_serial`):
+        measured, PowerPoint and Word 16 for Mac, 16 October 2026, drew serials 46027,
+        46063 and 46096 under ``[$-413]d\\ mmmm\\ yyyy`` as ``5 januari 2026`` ...
+        ``15 maart 2026``, under ``[$-407]d\\ mmm\\ yyyy`` ``5 Jan 2026`` ... ``15 Mär
+        2026`` and under ``[$-409]dd/mm/yyyy`` ``05/01/2026`` ...; in the measurement
+        above ``m/d/yyyy`` printed ``10/13/2026`` in both regions.  A code without a
+        language prefix takes the locale's language for its names (a date axis took
+        its month names from the interface language); ``c:date1904`` counts from 1904.
+        A time code, or a serial that names no day, keeps the invariant text.
         """
         names = list(source.categories)
         values = source.category_values
@@ -5435,6 +5443,9 @@ class ChartBuilder:
                 continue
             code = (own[index] if index < len(own) else None) or source.category_format_code
             if _is_date_code(code):
+                text = format_serial(value, code, self.locale, date1904=self.chart.date1904)
+                if text is not None:
+                    names[index] = text
                 continue
             names[index] = format_number(value, code, self.locale)
         return names
@@ -6694,8 +6705,13 @@ class ChartBuilder:
             # all the same -- it is the face's, not the words' -- and nothing is drawn in it.
             self._title_hidden = True
             text = ""
-        if text is None or (self.chart.title is None and not self.rules.auto_title):
+        if text is None:
             return None
+        if self.chart.title is None and not self.rules.auto_title:
+            # PowerPoint's automatic title: the sole series' name, in the text it is drawn
+            # with (:func:`powerpoint_auto_title`).
+            rich = powerpoint_auto_title(self.chart, text)
+            return self._resolved_text(rich, text, rich.paragraphs[0].runs[0].properties.font_size)
         size = _title_size(self.chart.title)
         rich = self.chart.title.rich if self.chart.title is not None else None
         return self._resolved_text(rich, text, size)
@@ -6730,8 +6746,13 @@ class ChartBuilder:
     def _title_text(self) -> str | None:
         if self.rules.auto_title:
             return self._shown_title_text()
-        if self.chart.auto_title_deleted or self.chart.title is None:
+        if self.chart.auto_title_deleted:
             return None
+        if self.chart.title is None:
+            # A `c:title` with no text is PowerPoint's automatic title: the sole series'
+            # name (measured on a one-series column chart).  Over several series it shows
+            # words of its own, which are not measured: nothing is drawn, as before.
+            return self._sole_series_name() if self.chart.title_stated else None
         return self.chart.title.plain or None
 
     def _shown_title_text(self) -> str | None:
@@ -10387,6 +10408,48 @@ def _title_size(title: c.SourceChartText | None) -> float:
     return 18.0
 
 
+def powerpoint_auto_title_size(chart: c.SourceChart) -> float:
+    """The size PowerPoint draws an automatic chart title at (a ``c:title`` with no
+    ``c:tx``, which shows the series' name): the size its own ``c:txPr`` states, else
+    **1.2 times** the chart's ``c:txPr`` size rounded to the nearest point, else
+    **18 pt**.
+
+    Measured, PowerPoint 16 for Mac, 16 October 2026 (the PDF's exact sizes): a chart-wide
+    ``sz`` of 800, 1000, 1100 and 2400 drew the automatic title at 10, 12, 13 and 29 pt,
+    none at 18 pt, and a title ``c:txPr`` with no size changed nothing.  A half point
+    (1.2 times 11.25 pt) rounds up; no such size was measured.  A title ``c:txPr`` that
+    states a size is the schema's (ECMA-376 Part 1, 21.2.2.217), not measured.  Word
+    scales without rounding (docx2svg's ``chart_title_size``).
+    """
+    stated = _text_size(chart.title_text_properties)
+    if stated:
+        return stated
+    wide = _text_size(chart.text_properties)
+    if not wide:
+        return 18.0
+    return float(math.floor(round(wide * 100) * 12 / 1000 + 0.5))
+
+
+def powerpoint_auto_title(chart: c.SourceChart, text: str) -> s.SourceTextBody:
+    """PowerPoint's automatic title as DrawingML text: one run of ``text`` -- the sole
+    series' name -- **bold**, in the theme's minor face (``+mn-lt``), at
+    :func:`powerpoint_auto_title_size`, in what the title's own ``c:txPr`` states over
+    those (its first ``a:defRPr``: face, weight, colour...).  Measured, PowerPoint 16 for
+    Mac, 16 October 2026: Aptos Bold, black, where nothing is stated; a rich title with
+    nothing stated is 18 pt Arial regular instead (:func:`_title_size`)."""
+    properties = s.SourceRunProperties(bold=True, typeface="+mn-lt",
+                                       font_size=powerpoint_auto_title_size(chart))
+    stated = _default_run(chart.title_text_properties)
+    if stated is not None:
+        for name in s.SourceRunProperties.__dataclass_fields__:
+            value = getattr(stated, name)
+            if value is not None and not (name == "font_size" and not value):
+                setattr(properties, name, value)
+    return s.SourceTextBody(paragraphs=[s.SourceParagraph(
+        runs=[s.SourceTextRun(text=text, properties=properties)],
+        properties=s.SourceParagraphProperties(align="ctr"))])
+
+
 def accent_colors(resolve) -> list[m.ResolvedColor]:
     """The theme accent cycle a series falls back to when it has no fill of its own."""
     out: list[m.ResolvedColor] = []
@@ -10411,6 +10474,8 @@ __all__ = [
     "font_box",
     "format_number",
     "nice_axis_scale",
+    "powerpoint_auto_title",
+    "powerpoint_auto_title_size",
     "radial_axis_intervals",
     "side_axis_intervals",
     "text_width",

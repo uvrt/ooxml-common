@@ -73,7 +73,11 @@ The default is `EN_US`, fixed: never the machine's own locale, so the same file 
 the same on any server, and the application passes each user's. Only `en-US` is listed
 for `locale_for(tag)`; what Office does in another locale is measured before it is listed,
 and until then the caller builds it. Charts print their tick and data labels in it
-(`ChartBuilder(..., locale=dutch)`: `€12,4m`).
+(`ChartBuilder(..., locale=dutch)`: `€12,4m`), and date categories in their format code
+(`ooxml_common.dates`): `[$-413]d\ mmmm\ yyyy` is `5 januari 2026` in any locale, a code
+without a language prefix takes the locale's language for its month names, and a `/` is
+printed as `/` -- Office shows the viewer's own date separator there, which `Locale` does
+not hold.
 
 ## Font files
 

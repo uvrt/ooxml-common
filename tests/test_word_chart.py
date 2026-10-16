@@ -363,8 +363,9 @@ def test_the_chart_s_title_that_word_shows():
     one = _one_series(_retitled(untitled))
     builder, children = build(one, chart_rules.WORD)
     assert _count(children, "Plan") == 2 and not builder.default_title_wanted  # the title and the legend's
+    # PowerPoint shows the one series' name too (measured, 16 October 2026; test_dates.py).
     builder, children = build(one)
-    assert _count(children, "Plan") == 1
+    assert _count(children, "Plan") == 2
     # Over two series, Word's own words, which the caller supplies: the band all the same.
     builder, children = build(_retitled(untitled), chart_rules.WORD)
     assert builder.default_title_wanted and "" not in texts(children)
