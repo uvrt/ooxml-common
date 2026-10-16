@@ -17,7 +17,8 @@ import pytest
 from ooxml_common import dates
 from ooxml_common.chart import rules
 from ooxml_common.chart.layout import (ChartBuilder, ChartStyle, default_font_size, drawable_plots,
-                                       powerpoint_auto_title, powerpoint_auto_title_size)
+                                       powerpoint_auto_title, powerpoint_auto_title_size,
+                                       title_states_defaults, title_states_no_font)
 from ooxml_common.chart.read import parse_chart_space
 from ooxml_common.drawingml import scene as m
 from ooxml_common.locales import EN_US, Locale
@@ -274,3 +275,98 @@ def test_words_automatic_title_is_left_to_the_caller():
     # The caller's resolver gets no rich text and sizes it itself (docx2svg does).
     assert [(run.properties.font_size, run.properties.bold) for run in runs if run.text == "Series 0"] == \
         [(18.0, False)]
+
+
+# -- a rich title's fonts (round 6, item 11) -------------------------------------------------
+# Measured, PowerPoint 16 for Mac's PDF export, 16 October 2026 (oracle-charttitle P1-P7,
+# oracle-titlefont S1-S5 and B1-B4), in a deck whose text boxes are Aptos.
+
+MINOR = "+mn-lt"   # what the test's resolver leaves a theme face as
+
+
+def _rich(rpr: str = '<a:rPr lang="en-US"/>', *, ppr: str = "", lst: str = "", txpr: str = "") -> str:
+    return (f'<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle>{lst}</a:lstStyle><a:p>{ppr}<a:r>{rpr}'
+            f'<a:t>Probe</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/>{txpr}</c:title>')
+
+
+UNSIZED_TXPR = ('<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr/></a:pPr>'
+                '<a:endParaRPr lang="en-US"/></a:p></c:txPr>')
+FACES = '<a:latin typeface="+mn-lt"/><a:ea typeface="+mn-ea"/><a:cs typeface="+mn-cs"/>'
+
+
+def _title_runs(xml: str, chart_rules=rules.POWERPOINT):
+    runs, _ = _build(xml, chart_rules=chart_rules)
+    return [(run.properties.font_family, run.properties.font_size, run.properties.bold)
+            for run in runs if run.text == "Probe"]
+
+
+@pytest.mark.parametrize("wide, txpr", [(None, ""), (800, ""), (2400, ""), (800, UNSIZED_TXPR),
+                                        (2400, UNSIZED_TXPR)])
+def test_a_title_that_states_no_font_is_arial_18_regular(wide, txpr):
+    # P1, P3, P4, P5, P7, S1.
+    xml = _chart_xml("General", title=_rich(txpr=txpr), wide=wide)
+    assert title_states_no_font(parse_chart_space(ET.fromstring(xml)))
+    assert _title_runs(xml) == [("Arial", 18.0, False)]
+
+
+def test_the_runs_size_stays_and_a_chart_wide_face_does_not_reach_the_title():
+    # S4: run sz=2400, no face: ArialMT 24.  S5: chart-wide c:txPr names +mn-lt: ArialMT 18.
+    assert _title_runs(_chart_xml("General", title=_rich('<a:rPr lang="en-US" sz="2400"/>'))) == \
+        [("Arial", 24.0, False)]
+    xml = _chart_xml("General", title=_rich(), wide=2400).replace(
+        '<a:defRPr sz="2400"/>', '<a:defRPr sz="2400"><a:latin typeface="+mn-lt"/></a:defRPr>')
+    assert _title_runs(xml) == [("Arial", 18.0, False)]
+
+
+@pytest.mark.parametrize("ppr, rpr, drawn", [
+    # B1: a paragraph a:defRPr with a size only: the minor face, bold.
+    ('<a:pPr><a:defRPr sz="1862"/></a:pPr>', '<a:rPr lang="en-US" sz="1862"/>', (MINOR, 18.62, True)),
+    # S2: +mn-lt and 18.62 on both, no b: bold.
+    (f'<a:pPr><a:defRPr sz="1862">{FACES}</a:defRPr></a:pPr>',
+     f'<a:rPr lang="en-US" sz="1862">{FACES}</a:rPr>', (MINOR, 18.62, True)),
+    # B2: b="0" and +mn-lt: regular.
+    (f'<a:pPr><a:defRPr sz="1862" b="0">{FACES}</a:defRPr></a:pPr>',
+     f'<a:rPr lang="en-US" sz="1862">{FACES}</a:rPr>', (MINOR, 18.62, False)),
+    # B4: b="0" alone on the paragraph: the minor face, regular.
+    ('<a:pPr><a:defRPr b="0"/></a:pPr>', '<a:rPr lang="en-US" sz="1862"/>', (MINOR, 18.62, False)),
+    # B3: no paragraph defaults, the run names +mn-lt: that face, regular.
+    ("", f'<a:rPr lang="en-US" sz="1862">{FACES}</a:rPr>', (MINOR, 18.62, False)),
+    # S3: the run names Georgia: Georgia, regular.
+    ("", '<a:rPr lang="en-US"><a:latin typeface="Georgia"/></a:rPr>', ("Georgia", 18.0, False)),
+])
+def test_paragraph_defaults_are_the_minor_face_and_bold_unless_stated(ppr, rpr, drawn):
+    xml = _chart_xml("General", title=_rich(rpr, ppr=ppr))
+    source = parse_chart_space(ET.fromstring(xml))
+    assert title_states_defaults(source) == bool(ppr)
+    assert not title_states_no_font(source)
+    assert _title_runs(xml) == [drawn]
+
+
+@pytest.mark.parametrize("title", [
+    _rich(lst='<a:lvl1pPr><a:defRPr><a:latin typeface="Georgia"/></a:defRPr></a:lvl1pPr>'),
+    _rich(txpr='<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr><a:latin typeface="Georgia"/>'
+               '</a:defRPr></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>'),
+    _rich(txpr='<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr sz="1400"/></a:pPr>'
+               '<a:endParaRPr lang="en-US"/></a:p></c:txPr>'),
+    AUTO,
+])
+def test_what_is_not_measured_keeps_the_cascade(title):
+    xml = _chart_xml("General", title=title, wide=2400)
+    source = parse_chart_space(ET.fromstring(xml))
+    assert not title_states_no_font(source) and not title_states_defaults(source)
+    assert all(face != "Arial" for face, _, _ in _title_runs(xml))
+
+
+def test_a_stated_weight_stays():
+    assert _title_runs(_chart_xml("General", title=_rich('<a:rPr lang="en-US" b="1"/>'))) == \
+        [("Arial", 18.0, True)]
+
+
+def test_words_rich_title_keeps_the_callers_face():
+    # Word is not measured: rules.WORD leaves face and weight to the caller (docx2svg's cascade).
+    assert rules.WORD.rich_title_fonts is False
+    assert _title_runs(_chart_xml("General", title=_rich()), chart_rules=rules.WORD) == \
+        [(None, 18.0, False)]
+    assert _title_runs(_chart_xml("General", title=_rich('<a:rPr lang="en-US" sz="1862"/>',
+                                                         ppr='<a:pPr><a:defRPr sz="1862"/></a:pPr>')),
+                       chart_rules=rules.WORD) == [(None, 18.62, False)]
