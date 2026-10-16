@@ -127,6 +127,18 @@ class ChartRules:
       the gap above a bottom legend, or the frame's own inset -- and the plot keeps the
       other half, down to nothing.  Measured on charts 30 to 82 pt high, with 8, 10 and
       14 pt text, with a legend at the bottom and without one.
+    * ``rich_title_face`` -- the face a chart title of rich text (``c:tx/c:rich``) is
+      drawn in when it states no face and no size anywhere -- not in a run's ``a:rPr``,
+      a paragraph's ``a:defRPr``, its list style or the title's ``c:txPr`` -- and the
+      chart space's ``c:txPr`` names no face
+      (:func:`~ooxml_common.chart.layout.title_states_no_font`).  ``"Arial"``,
+      PowerPoint's: measured, PowerPoint 16 for Mac's PDF export, 16 October 2026, such a
+      title came out 18 pt ArialMT, regular and black, at a chart-wide size of none, 8 and
+      24 pt and under an unsized title ``c:txPr``, in a deck whose ``otherStyle`` and
+      default text style name ``+mn-lt`` (Aptos) -- not the face a text box there gets.
+      Only the Latin face changes; size, weight and colour stay the text cascade's (18 pt,
+      regular and ``tx1`` black in that deck).  ``None``: the text cascade's face (Word's,
+      not measured).
     """
 
     name: str
@@ -146,6 +158,7 @@ class ChartRules:
     auto_title: bool = False
     axis_titles: bool = True
     short_plot: bool = False
+    rich_title_face: str | None = "Arial"
 
 
 #: PowerPoint, as pptx2svg reproduces it.  The default everywhere here.
@@ -170,4 +183,5 @@ WORD = ChartRules(
     auto_title=True,
     axis_titles=True,
     short_plot=True,
+    rich_title_face=None,
 )

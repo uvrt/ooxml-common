@@ -6714,12 +6714,21 @@ class ChartBuilder:
             return self._resolved_text(rich, text, rich.paragraphs[0].runs[0].properties.font_size)
         size = _title_size(self.chart.title)
         rich = self.chart.title.rich if self.chart.title is not None else None
-        return self._resolved_text(rich, text, size)
+        # A rich title that states no face and no size is not drawn in the face a text
+        # box gets: PowerPoint drew it in Arial (:attr:`~.rules.ChartRules.rich_title_face`).
+        face = self.rules.rich_title_face if title_states_no_font(self.chart) else None
+        return self._resolved_text(rich, text, size, face=face)
 
-    def _resolved_text(self, rich, text: str, size: float) -> "tuple[m.TextBody, FontBox]":
+    def _resolved_text(self, rich, text: str, size: float, *, face: str | None = None
+                       ) -> "tuple[m.TextBody, FontBox]":
         """A title's text, resolved through the caller and stamped with the size the
-        layout uses, and the box of its face."""
+        layout uses, and the box of its face; ``face``, where given, is stamped over every
+        run's Latin face."""
         body = self._resolve_text(rich, text, size, align="ctr")
+        if face is not None:
+            for paragraph in body.paragraphs:
+                for run in paragraph.runs:
+                    run.properties.font_family = face
         family, resolved_size = _first_run_font(body)
         size = resolved_size or size
         # A run that named no size would otherwise take the *renderer's* default, which
@@ -10387,6 +10396,48 @@ def _text_typeface_ea(body: s.SourceTextBody | None) -> str | None:
     return run.typeface_ea if run is not None else None
 
 
+def title_states_no_font(chart: c.SourceChart) -> bool:
+    """Whether the chart's title is rich text (``c:title/c:tx/c:rich``) that states neither
+    a Latin face (``a:latin``) nor a size (``sz``) anywhere -- a run's ``a:rPr``, a
+    paragraph's ``a:defRPr``, its list style or the title's own ``c:txPr`` -- in a chart
+    space whose ``c:txPr`` names no face either.
+
+    PowerPoint draws such a title in **18 pt Arial**, regular and black, whatever the
+    chart-wide size and whatever face the deck's text boxes get.  Measured, PowerPoint 16
+    for Mac's PDF export, 16 October 2026: one run with ``<a:rPr lang="en-US"/>``, a
+    chart-wide ``sz`` of none, 800 and 2400, with and without an unsized title ``c:txPr``,
+    in a deck whose ``otherStyle`` and default text style name ``+mn-lt`` (Aptos), came out
+    ArialMT 18 pt ``#000000`` every time.  A chart-wide face over such a title, and a title
+    that states a size but no face, are not measured and are not covered: ``False``.  An
+    automatic title (no ``c:tx``) is not rich text: ``False``
+    (:func:`powerpoint_auto_title`, the minor face).
+    """
+    title = chart.title
+    if title is None or title.rich is None:
+        return False
+    if _states_font(chart.text_properties, size=False):
+        return False
+    return not (_states_font(title.rich) or _states_font(chart.title_text_properties))
+
+
+def _states_font(body: s.SourceTextBody | None, *, size: bool = True) -> bool:
+    """Whether a text body states a Latin face -- or, with ``size``, a size -- in its list
+    style, a paragraph's ``a:defRPr`` or a run's ``a:rPr``."""
+    if body is None:
+        return False
+    layers: list = []
+    if body.list_style is not None:
+        layers += [body.list_style.default_paragraph, *body.list_style.levels]
+    layers += [paragraph.properties for paragraph in body.paragraphs]
+    runs = [layer.default_run_properties for layer in layers if layer is not None]
+    runs += [run.properties for paragraph in body.paragraphs for run in paragraph.runs]
+    return any(
+        properties is not None
+        and (properties.typeface or (size and properties.font_size))
+        for properties in runs
+    )
+
+
 def _title_size(title: c.SourceChartText | None) -> float:
     """A chart title's point size.
 
@@ -10479,4 +10530,5 @@ __all__ = [
     "radial_axis_intervals",
     "side_axis_intervals",
     "text_width",
+    "title_states_no_font",
 ]

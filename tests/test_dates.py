@@ -17,7 +17,8 @@ import pytest
 from ooxml_common import dates
 from ooxml_common.chart import rules
 from ooxml_common.chart.layout import (ChartBuilder, ChartStyle, default_font_size, drawable_plots,
-                                       powerpoint_auto_title, powerpoint_auto_title_size)
+                                       powerpoint_auto_title, powerpoint_auto_title_size,
+                                       title_states_no_font)
 from ooxml_common.chart.read import parse_chart_space
 from ooxml_common.drawingml import scene as m
 from ooxml_common.locales import EN_US, Locale
@@ -274,3 +275,67 @@ def test_words_automatic_title_is_left_to_the_caller():
     # The caller's resolver gets no rich text and sizes it itself (docx2svg does).
     assert [(run.properties.font_size, run.properties.bold) for run in runs if run.text == "Series 0"] == \
         [(18.0, False)]
+
+
+# -- a rich title that states no font -----------------------------------------------------
+
+
+def _rich(rpr: str = '<a:rPr lang="en-US"/>', *, ppr: str = "", lst: str = "", txpr: str = "") -> str:
+    return (f'<c:title><c:tx><c:rich><a:bodyPr/><a:lstStyle>{lst}</a:lstStyle><a:p>{ppr}<a:r>{rpr}'
+            f'<a:t>Probe</a:t></a:r></a:p></c:rich></c:tx><c:overlay val="0"/>{txpr}</c:title>')
+
+
+UNSIZED_TXPR = ('<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr/></a:pPr>'
+                '<a:endParaRPr lang="en-US"/></a:p></c:txPr>')
+
+
+def _title_runs(xml: str, chart_rules=rules.POWERPOINT):
+    runs, _ = _build(xml, chart_rules=chart_rules)
+    return [(run.properties.font_family, run.properties.font_size, run.properties.bold)
+            for run in runs if run.text == "Probe"]
+
+
+@pytest.mark.parametrize("wide, txpr", [(None, ""), (800, ""), (2400, ""), (800, UNSIZED_TXPR),
+                                        (2400, UNSIZED_TXPR)])
+def test_powerpoint_draws_a_rich_title_that_states_no_font_in_arial(wide, txpr):
+    # The measured probes (P1, P3, P4, P5, P7): 18 pt ArialMT regular, whatever the
+    # chart-wide size, with and without an unsized title txPr.
+    xml = _chart_xml("General", title=_rich(txpr=txpr), wide=wide)
+    assert title_states_no_font(parse_chart_space(ET.fromstring(xml)))
+    assert _title_runs(xml) == [("Arial", 18.0, False)]
+
+
+@pytest.mark.parametrize("title", [
+    _rich('<a:rPr lang="en-US"><a:latin typeface="+mn-lt"/></a:rPr>'),
+    _rich('<a:rPr lang="en-US"><a:latin typeface="Georgia"/></a:rPr>'),
+    _rich('<a:rPr lang="en-US" sz="1400"/>'),
+    _rich(ppr='<a:pPr><a:defRPr sz="1862"><a:latin typeface="+mn-lt"/></a:defRPr></a:pPr>'),
+    _rich(lst='<a:lvl1pPr><a:defRPr><a:latin typeface="Georgia"/></a:defRPr></a:lvl1pPr>'),
+    _rich(txpr='<c:txPr><a:bodyPr/><a:lstStyle/><a:p><a:pPr><a:defRPr><a:latin typeface="Georgia"/>'
+               '</a:defRPr></a:pPr><a:endParaRPr lang="en-US"/></a:p></c:txPr>'),
+    AUTO,   # an automatic title is the minor face, bold (measured)
+])
+def test_a_title_that_states_a_face_or_a_size_keeps_the_cascades_face(title):
+    xml = _chart_xml("General", title=title, wide=2400)
+    assert not title_states_no_font(parse_chart_space(ET.fromstring(xml)))
+    runs = _title_runs(xml)
+    assert all(face != "Arial" for face, _, _ in runs)
+
+
+def test_a_chart_wide_face_is_not_measured_and_keeps_the_cascades_face():
+    xml = _chart_xml("General", title=_rich(), wide=2400).replace(
+        '<a:defRPr sz="2400"/>', '<a:defRPr sz="2400"><a:latin typeface="+mn-lt"/></a:defRPr>')
+    assert not title_states_no_font(parse_chart_space(ET.fromstring(xml)))
+    assert _title_runs(xml) == [(None, 18.0, False)]
+
+
+def test_a_stated_weight_stays():
+    xml = _chart_xml("General", title=_rich('<a:rPr lang="en-US" b="1"/>'))
+    assert _title_runs(xml) == [("Arial", 18.0, True)]
+
+
+def test_words_rich_title_keeps_the_callers_face():
+    # Word is not measured: rules.WORD leaves the face to the caller (docx2svg's cascade).
+    assert rules.WORD.rich_title_face is None
+    assert _title_runs(_chart_xml("General", title=_rich()), chart_rules=rules.WORD) == \
+        [(None, 18.0, False)]
