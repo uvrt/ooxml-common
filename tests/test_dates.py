@@ -18,7 +18,7 @@ from ooxml_common import dates
 from ooxml_common.chart import rules
 from ooxml_common.chart.layout import (ChartBuilder, ChartStyle, default_font_size, drawable_plots,
                                        powerpoint_auto_title, powerpoint_auto_title_size,
-                                       title_states_no_font)
+                                       title_states_no_face, title_states_no_font)
 from ooxml_common.chart.read import parse_chart_space
 from ooxml_common.drawingml import scene as m
 from ooxml_common.locales import EN_US, Locale
@@ -339,3 +339,12 @@ def test_words_rich_title_keeps_the_callers_face():
     assert rules.WORD.rich_title_face is None
     assert _title_runs(_chart_xml("General", title=_rich()), chart_rules=rules.WORD) == \
         [(None, 18.0, False)]
+
+
+def test_a_title_that_states_only_a_size_states_no_face():
+    sized = parse_chart_space(ET.fromstring(_chart_xml("General", title=_rich('<a:rPr lang="en-US" sz="2400"/>'))))
+    assert title_states_no_face(sized) and not title_states_no_font(sized)
+    named = parse_chart_space(ET.fromstring(_chart_xml("General", title=_rich(
+        '<a:rPr lang="en-US"><a:latin typeface="+mn-lt"/></a:rPr>'))))
+    assert not title_states_no_face(named)
+    assert not title_states_no_face(parse_chart_space(ET.fromstring(_chart_xml("General", title=AUTO))))

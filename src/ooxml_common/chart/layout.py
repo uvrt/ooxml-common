@@ -10412,17 +10412,27 @@ def title_states_no_font(chart: c.SourceChart) -> bool:
     automatic title (no ``c:tx``) is not rich text: ``False``
     (:func:`powerpoint_auto_title`, the minor face).
     """
+    return title_states_no_face(chart) and not (
+        _states_font(chart.title.rich, face=False)
+        or _states_font(chart.title_text_properties, face=False))
+
+
+def title_states_no_face(chart: c.SourceChart) -> bool:
+    """:func:`title_states_no_font` without the size: a rich title that states no Latin
+    face in its runs, paragraphs, list style or ``c:txPr``, in a chart space whose
+    ``c:txPr`` names none, whatever size it states.  What PowerPoint draws one that states
+    a size in is not measured; pptx-agent's check asks for the face to be stated."""
     title = chart.title
     if title is None or title.rich is None:
         return False
-    if _states_font(chart.text_properties, size=False):
-        return False
-    return not (_states_font(title.rich) or _states_font(chart.title_text_properties))
+    return not (_states_font(chart.text_properties, size=False)
+                or _states_font(title.rich, size=False)
+                or _states_font(chart.title_text_properties, size=False))
 
 
-def _states_font(body: s.SourceTextBody | None, *, size: bool = True) -> bool:
-    """Whether a text body states a Latin face -- or, with ``size``, a size -- in its list
-    style, a paragraph's ``a:defRPr`` or a run's ``a:rPr``."""
+def _states_font(body: s.SourceTextBody | None, *, face: bool = True, size: bool = True) -> bool:
+    """Whether a text body states a Latin face (with ``face``) or a size (with ``size``) in
+    its list style, a paragraph's ``a:defRPr`` or a run's ``a:rPr``."""
     if body is None:
         return False
     layers: list = []
@@ -10433,7 +10443,7 @@ def _states_font(body: s.SourceTextBody | None, *, size: bool = True) -> bool:
     runs += [run.properties for paragraph in body.paragraphs for run in paragraph.runs]
     return any(
         properties is not None
-        and (properties.typeface or (size and properties.font_size))
+        and ((face and properties.typeface) or (size and properties.font_size))
         for properties in runs
     )
 
@@ -10530,5 +10540,6 @@ __all__ = [
     "radial_axis_intervals",
     "side_axis_intervals",
     "text_width",
+    "title_states_no_face",
     "title_states_no_font",
 ]
