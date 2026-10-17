@@ -399,7 +399,7 @@ def test_world_transforms():
     drawn = Drawn(e.build())
     close(drawn.bbox(drawn.paths[0]), (243.84, 163.09, 355.16, 256.16), 0.1)
     close(drawn.bbox(drawn.paths[1]), (100, 59.99, 139.9, 99.89))
-    assert dict(drawn.drawing.skipped) == {"EMR_MODIFYWORLDTRANSFORM": 1}
+    assert drawn.drawing.complete
 
 
 # --------------------------------------------------------------------------------------

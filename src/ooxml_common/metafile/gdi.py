@@ -485,9 +485,11 @@ class Player:
             self.set(world=mul(m, self.dc.world))
         elif mode == 3:
             self.set(world=mul(self.dc.world, m))
+        elif mode == 4:
+            # MWT_SET is in MS-EMF, but Windows' player leaves the transform as it is
+            # (measured: a rectangle after MWT_SET translate (20, 20) at (0, 0)).
+            return True
         else:
-            # 4 (MWT_SET) is in MS-EMF, but Windows' player leaves the transform as it
-            # is (measured: a rectangle after MWT_SET translate (20, 20) at (0, 0)).
             return False
         return True
 
