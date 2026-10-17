@@ -396,12 +396,15 @@ class Player:
             self.truncated = True
             raise Stop
 
-    def _write(self, text: str, *, drawn: bool = True) -> None:
+    def _write(self, text: str, *, drawn: bool = True, clip: str | None | bool = False) -> None:
+        """Append ``text`` to the drawing, inside the current clip -- the DC's, or
+        ``clip`` where one is given (``None`` for no clip): the EMF+ player keeps its own."""
         self.size += len(text)
         if self.size > MAX_OUTPUT_BYTES:
             self.truncated = True
             raise Stop
-        clip = self.dc.clip
+        if clip is False:
+            clip = self.dc.clip
         if clip != self._open_clip:
             if self._open_clip is not None:
                 self.body.append("</g>")
@@ -1012,22 +1015,9 @@ class Player:
             anchor = ' text-anchor="end"'
         angle = font.escapement / 10
         group = f"translate({num(px)} {num(py)})" + (f" rotate({num(-angle)})" if angle else "")
-        from ..text.fontmap import font_family_value
-
-        family = font_family_value([font.face or "Arial"], self.font_mapping)
-        generic = _generic(font.pitch_family)
-        if family and not family.endswith(generic) and font.pitch_family & 0xF0:
-            family = family.rsplit(", ", 1)[0] + ", " + generic
-        attrs = [f'font-size="{num(size)}"']
-        if family:
-            attrs.append(f'font-family="{escape(family, {chr(34): "&quot;"})}"')
-        if font.weight >= 600:
-            attrs.append('font-weight="bold"')
-        if font.italic:
-            attrs.append('font-style="italic"')
-        deco = " ".join(n for n, on in (("underline", font.underline), ("line-through", font.strike)) if on)
-        if deco:
-            attrs.append(f'text-decoration="{deco}"')
+        attrs = font_attributes(font.face, size, bold=font.weight >= 600, italic=font.italic,
+                                underline=font.underline, strike=font.strike,
+                                pitch_family=font.pitch_family, font_mapping=self.font_mapping)
         parts = [f'<g transform="{group}">']
         if dc.bk_mode == OPAQUE and total:
             parts.append(f'<rect x="{num(start)}" y="{num(base - ascent * size)}" width="{num(total)}" '
@@ -1049,6 +1039,47 @@ class Player:
                 rad = math.radians(angle)
                 ex, ey = px + total * math.cos(rad), py - total * math.sin(rad)
                 self.set(position=apply(inverse, ex, ey))
+
+
+def font_attributes(face: str, size: float, *, bold: bool = False, italic: bool = False,
+                    underline: bool = False, strike: bool = False, pitch_family: int = 0,
+                    font_mapping=None) -> list[str]:
+    """A ``<text>``'s font attributes: its size, the renderer's ``font-family`` for the
+    face (:func:`ooxml_common.text.fontmap.font_family_value`), weight, style and
+    decoration -- the one text path GDI and EMF+ text share."""
+    from ..text.fontmap import font_family_value
+
+    family = font_family_value([face or "Arial"], font_mapping)
+    generic = _generic(pitch_family)
+    if family and not family.endswith(generic) and pitch_family & 0xF0:
+        family = family.rsplit(", ", 1)[0] + ", " + generic
+    attrs = [f'font-size="{num(size)}"']
+    if family:
+        attrs.append(f'font-family="{escape(family, {chr(34): "&quot;"})}"')
+    if bold:
+        attrs.append('font-weight="bold"')
+    if italic:
+        attrs.append('font-style="italic"')
+    deco = " ".join(n for n, on in (("underline", underline), ("line-through", strike)) if on)
+    if deco:
+        attrs.append(f'text-decoration="{deco}"')
+    return attrs
+
+
+def line_metrics(face: str) -> tuple[float, float, float]:
+    """Ascent, descent and line gap as fractions of the em (Arial's when the face has no
+    measured table)."""
+    ascent, descent = _vertical_metrics(face)
+    gap = 67 / 2048
+    try:
+        from ..text.fontmap import metrics_for
+
+        metrics = metrics_for(face) if face else None
+        if metrics is not None and metrics.units_per_em and metrics.line_gap is not None:
+            gap = metrics.line_gap / metrics.units_per_em
+    except Exception:  # a table lookup must never stop the drawing
+        pass
+    return ascent, descent, gap
 
 
 def _code_units(text: str) -> list[int]:

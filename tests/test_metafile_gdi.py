@@ -560,12 +560,14 @@ def test_text_inlined_for_a_rasteriser():
 # --------------------------------------------------------------------------------------
 
 
-def test_an_emf_plus_dual_file_is_drawn_from_its_gdi_records_and_says_so():
+def test_an_emf_plus_file_whose_emf_plus_records_draw_nothing_falls_back_to_its_gdi_records():
+    """Only an EmfPlusHeader: Windows would draw nothing; the GDI fallback is drawn and
+    the warning says so (test_metafile_emfplus covers files whose EMF+ records draw)."""
     e = Emf()
     e.rec(70, struct.pack("<II", 28, 0x2B464D45) + struct.pack("<HHII", 0x4001, 1, 28, 16) + bytes(16))
     e.select(NULL_PEN).select(e.brush(0, RED)).box(43, 220, 20, 380, 140)
     drawing = metafile_to_svg(e.build())
-    assert drawing.emf_plus and not drawing.complete and drawing.drawn == 1
+    assert drawing.emf_plus and drawing.gdi_fallback and not drawing.complete and drawing.drawn == 1
     assert "EMF+" in drawing.warning()
 
 

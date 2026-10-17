@@ -10,9 +10,12 @@ one pixel fills the box.  That is the 0.9975 Windows draws a 400 x 300 px frame 
 400 x 300 pt box (px 40 at 139.9 pt, px 360 at 459.1; 240 at y 299.40 pt), where Mac
 PowerPoint maps the frame exactly.
 
-EMF+ (records carried in ``EMR_COMMENT``) is **not** played here: Windows draws only a
-dual file's EMF+ records, and this player draws its GDI records instead, which a dual
-file carries for exactly that purpose; :attr:`MetafileDrawing.emf_plus` says so.
+EMF+ (records carried in ``EMR_COMMENT``) is played by :mod:`.emfplus`, as Windows
+PowerPoint plays it: once a file's first EMF+ comment is read, its GDI records are not
+drawn -- a dual file's are the fallback for players without EMF+, an EMF+-only file's
+are not meant to be drawn -- except those that follow an ``EmfPlusGetDC``, until the
+next EMF+ record.  A file whose EMF+ records draw nothing at all is drawn from its GDI
+records instead (``gdi_only``), and :attr:`MetafileDrawing.gdi_fallback` says so.
 """
 
 from __future__ import annotations
@@ -22,6 +25,7 @@ import struct
 
 from . import gdi
 from .dib import split_packed_dib
+from .emfplus import PlusPlayer
 from .gdi import Brush, Figure, Font, Pen, Placeholder, Player, Stop
 
 EMF_SIGNATURE = 0x464D4520
@@ -105,13 +109,16 @@ class Header:
         return w, h
 
 
-def play(data: bytes, *, font_mapping=None):
-    """``(player, header, emf_plus)`` for EMF bytes, or ``None`` when they are not one."""
+def play(data: bytes, *, font_mapping=None, gdi_only: bool = False, nesting: int = 0):
+    """``(player, header, emf_plus)`` for EMF bytes, or ``None`` when they are not one.
+
+    ``emf_plus`` is whether the file carries EMF+ records; unless ``gdi_only``, they are
+    what is drawn (with the GDI records after an ``EmfPlusGetDC``)."""
     if not is_emf(data) or len(data) > MAX_INPUT_BYTES:
         return None
     header = Header(data)
     player = Player(device_per_mm=header.per_mm, font_mapping=font_mapping, canvas=header.canvas())
-    reader = _Reader(player)
+    reader = _Reader(player, gdi_only=gdi_only, nesting=nesting)
     offset = 0
     try:
         for _ in range(MAX_RECORDS):
@@ -136,9 +143,13 @@ def play(data: bytes, *, font_mapping=None):
 
 
 class _Reader:
-    def __init__(self, player: Player):
+    def __init__(self, player: Player, *, gdi_only: bool = False, nesting: int = 0):
         self.p = player
         self.emf_plus = False
+        self.gdi_only = gdi_only
+        self.nesting = nesting
+        #: The EMF+ player, from the first EMF+ comment on.
+        self.plus: PlusPlayer | None = None
         self.handlers = {
             2: self.polybezier, 85: self.polybezier, 3: self.polygon, 86: self.polygon,
             4: self.polyline, 87: self.polyline, 5: self.polybezierto, 88: self.polybezierto,
@@ -163,6 +174,8 @@ class _Reader:
         }
 
     def record(self, record_type: int, rec: bytes) -> None:
+        if self.plus is not None and record_type != 70 and not self.plus.get_dc:
+            return  # an EMF+ file's GDI records: not drawn (Windows)
         if record_type in _IGNORED:
             return
         handler = self.handlers.get(record_type)
@@ -377,6 +390,12 @@ class _Reader:
     def comment(self, rec):
         if len(rec) >= 16 and struct.unpack_from("<I", rec, 12)[0] == EMF_PLUS_IDENTIFIER:
             self.emf_plus = True
+            if self.gdi_only:
+                return
+            if self.plus is None:
+                self.plus = PlusPlayer(self.p, nesting=self.nesting)
+            size = struct.unpack_from("<I", rec, 8)[0]
+            self.plus.play(rec[16 : 12 + min(size, len(rec) - 12)])
 
     # ---- objects ------------------------------------------------------------------------
 
