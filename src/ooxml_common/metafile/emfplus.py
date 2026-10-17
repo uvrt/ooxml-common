@@ -127,6 +127,9 @@ NAMES = {
 
 #: Records with nothing for an SVG to change: hints and qualities (Windows' slide show
 #: antialiases whatever they say), and the comment.
+_EVENODD_FILL = ' fill-rule="evenodd"'
+_EVENODD_CLIP = ' clip-rule="evenodd"'
+
 _NO_OP = {0x4003, 0x401E, 0x401F, 0x4020, 0x4022, 0x4024}
 
 # UnitType
@@ -895,7 +898,7 @@ class PlusPlayer:
         if self.gradient_pixels + pw * ph > MAX_GRADIENT_PIXELS:
             self.p.skip("EmfPlus path gradients beyond the shading cap (drawn in their centre colour)")
             self._write(f'<path d="{path_data(figures)}"{Player._transform(m)}{_fill(brush.center_color)}'
-                        f'{" fill-rule=\"evenodd\"" if evenodd else ""}/>')
+                        f'{_EVENODD_FILL if evenodd else ""}/>')
             return
         self.gradient_pixels += pw * ph
         rgba = _shade(brush, polygons, centre, x0, y0, pw, ph, (x1 - x0) / pw, (y1 - y0) / ph)
@@ -920,7 +923,7 @@ class PlusPlayer:
         ``parent``."""
         cid = self.p._id("c")
         chained = f' clip-path="url(#{parent.cid})"' if parent else ""
-        children = "".join(f'<path d="{path_data(list(figs)) or "M0 0Z"}"{" clip-rule=\"evenodd\"" if eo else ""}/>'
+        children = "".join(f'<path d="{path_data(list(figs)) or "M0 0Z"}"{_EVENODD_CLIP if eo else ""}/>'
                            for figs, eo in parts) or '<path d="M0 0Z"/>'
         self.p._def(f'<clipPath id="{cid}" clipPathUnits="userSpaceOnUse"{chained}>{children}</clipPath>')
         return Clip(cid, None if parent else tuple(parts))
