@@ -5430,7 +5430,8 @@ class ChartBuilder:
         2026`` and under ``[$-409]dd/mm/yyyy`` ``05/01/2026`` ...; in the measurement
         above ``m/d/yyyy`` printed ``10/13/2026`` in both regions.  A code without a
         language prefix takes the locale's language for its names (a date axis took
-        its month names from the interface language); ``c:date1904`` counts from 1904.
+        its month names from the interface language, in that language's unprefixed
+        set: :data:`ooxml_common.dates.INTERFACE_NAMES`); ``c:date1904`` counts from 1904.
         A time code, or a serial that names no day, keeps the invariant text.
         """
         names = list(source.categories)

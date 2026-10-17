@@ -114,6 +114,70 @@ def test_a_code_without_a_prefix_is_named_in_the_locales_language():
     assert dates.names_language("mmmm", Locale(language="en-BE")) == "en-US"
 
 
+# Measured in PowerPoint for Mac's charts, 2026-10-17, under each interface language
+# (region Dutch (Belgium)): 5 January, 17 March, 20 May and 31 December 2026.
+INTERFACE_DAYS = (46027, 46098, 46162, 46387)
+
+
+@pytest.mark.parametrize("language, shown", [
+    ("fr-FR", "lun. 5 janv · mar. 17 mars · mer. 20 mai · jeu. 31 déc"),
+    ("fr-BE", "lun. 5 janv · mar. 17 mars · mer. 20 mai · jeu. 31 déc"),
+    ("es-ES", "lun 5 ene · mar 17 mar · mié 20 may · jue 31 dic"),
+    ("es-MX", "lun 5 ene · mar 17 mar · mié 20 may · jue 31 dic"),
+    ("en-GB", "Mon 5 Jan · Tue 17 Mar · Wed 20 May · Thu 31 Dec"),
+    ("de-DE", "Mo 5 Jan · Di 17 Mär · Mi 20 Mai · Do 31 Dez"),
+    ("nl-NL", "ma 5 jan · di 17 mrt · wo 20 mei · do 31 dec"),
+])
+def test_an_unprefixed_code_takes_the_interface_languages_own_names(language, shown):
+    locale = Locale(language=language)
+    assert " · ".join(dates.format_serial(value, r"ddd\ d\ mmm", locale)
+                      for value in INTERFACE_DAYS) == shown
+
+
+@pytest.mark.parametrize("language, shown", [
+    ("fr-FR", "lundi 5 janvier · mardi 17 mars · mercredi 20 mai · jeudi 31 décembre"),
+    ("es-MX", "lunes 5 enero · martes 17 marzo · miércoles 20 mayo · jueves 31 diciembre"),
+])
+def test_an_unprefixed_codes_full_names_are_the_languages(language, shown):
+    assert " · ".join(dates.format_serial(value, r"dddd\ d\ mmmm", Locale(language=language))
+                      for value in INTERFACE_DAYS) == shown
+
+
+def test_a_prefix_keeps_its_own_names_under_any_interface_language():
+    for language in ("fr-FR", "es-ES", "nl-BE", "en-US"):
+        locale = Locale(language=language)
+        assert dates.format_serial(46027, r"[$-40C]ddd\ d\ mmm", locale) == "lun. 5 janv."
+        assert dates.format_serial(46027, r"[$-80C]d\ mmm", locale) == "5 janv."
+        assert dates.format_serial(46027, r"[$-C0A]ddd\ d\ mmm", locale) == "lu. 5 ene."
+        assert dates.format_serial(46027, r"[$-80A]ddd\ d\ mmm", locale) == "lun. 5 ene."
+
+
+def test_the_interface_sets_and_what_is_inferred():
+    french = dates.INTERFACE_NAMES["fr"]
+    # Inferred, not measured: fr-FR's months without their trailing dot, its days as is.
+    assert french.short_months == ("janv", "févr", "mars", "avr", "mai", "juin", "juil",
+                                   "août", "sept", "oct", "nov", "déc")
+    assert french.short_days == dates.NAMES["fr-FR"].short_days
+    assert french.months == dates.NAMES["fr-FR"].months
+    # Spanish: [$-A]'s set, every name of it measured.
+    assert dates.INTERFACE_NAMES["es"] == dates.NAMES["es"]
+    assert dates.names_language("mmm", Locale(language="fr-CA")) == "fr"
+    assert dates.names_language("mmm", Locale(language="es-AR")) == "es"
+    assert dates.names_language("[$-40C]mmm", Locale(language="es-ES")) == "fr-FR"
+    assert dates.date_names("[$-411]mmm", Locale(language="fr-BE")) == french
+    # A bare [$] (a re-saved chart's Fallback) is the interface language's, as no prefix.
+    assert dates.format_serial(46387, "[$]d mmm", Locale(language="fr-BE")) == "31 déc"
+    # Italian was not measured under its own interface: its prefixed names, as before.
+    assert dates.format_serial(46027, "ddd d mmm", Locale(language="it-IT")) == "lun 5 gen"
+
+
+def test_an_unprefixed_date_axis_in_french_is_drawn_without_the_months_dot():
+    texts = {run.text for run in _build(_chart_xml("d mmm"), Locale(language="fr-BE"))[0]}
+    assert {"5 janv", "10 févr", "15 mars"} <= texts
+    texts = {run.text for run in _build(_chart_xml(r"[$-80C]d\ mmm"), Locale(language="fr-BE"))[0]}
+    assert {"5 janv.", "10 févr.", "15 mars"} <= texts
+
+
 def test_every_token_and_literal():
     day = 46083   # Monday 2 March 2026
     assert dates.format_serial(day, "d dd ddd dddd") == "2 02 Mon Monday"
