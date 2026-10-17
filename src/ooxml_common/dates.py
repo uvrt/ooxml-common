@@ -14,14 +14,18 @@ names (:data:`NAMES`) are the ones Excel for Mac showed under ``[$-LCID]mmmm``, 
 first letter.  Not taken from any other source.
 
 **Which language names a date.**  The code's ``[$-LCID]`` prefix (or its ``[$-ll-CC]``
-spelling) when :data:`LCIDS` lists it: the prefix changes the names only, never the
-order or the separators (measured in Excel, in every region tried).  A code without a
-prefix -- or with one this does not list -- is named in the caller's
-:attr:`~ooxml_common.locales.Locale.language`, standing for the application's interface
-language: measured, Excel's unprefixed codes and PowerPoint's date axis took their month
-names from the interface language (Dutch ``mrt``) whatever the region.  A language with no
-measured names falls back to en-US's, as a date field with no table does in pptx2svg;
-:func:`names_language` says which was used.
+spelling) when its names are known: the prefix changes the names only, never the order or
+the separators (measured in Excel, in every region tried).  A region shows its language's
+names (:data:`LANGUAGES`; measured in Excel for Mac, 2026-10-17: ``[$-80C]`` and
+``[$-fr-BE]`` French, ``[$-1809]`` and ``[$-en-BE]`` English, ``[$-9]`` English,
+``[$-de-BE]`` German), so a prefix is read when :data:`LCIDS` lists its id or its tag's
+language has names.  A code without a prefix -- or with one not read (an id not
+measured: ``[$-411]``) -- is named in the caller's
+:attr:`~ooxml_common.locales.Locale.language`, or that language's names for a region,
+standing for the application's interface language: measured, Excel's unprefixed codes and
+PowerPoint's date axis took their month names from the interface language (Dutch ``mrt``)
+whatever the region.  A language with no measured names falls back to en-US's, as a date
+field with no table does in pptx2svg; :func:`names_language` says which was used.
 
 **Separators are written as the code has them.**  Office shows a ``/`` in a stored code as
 the *viewer's* date separator (measured, switching the macOS region: ``dd/mm/yyyy`` read
@@ -51,8 +55,8 @@ from typing import Mapping, NamedTuple
 
 from .locales import EN_US, Locale, canonical_language
 
-__all__ = ["LCIDS", "NAMES", "DateNames", "date_of_serial", "format_serial", "is_date_code",
-           "language_of_code", "names_language"]
+__all__ = ["LANGUAGES", "LCIDS", "NAMES", "DateNames", "date_of_serial", "format_serial",
+           "is_date_code", "language_of_code", "names_language", "names_tag"]
 
 
 class DateNames(NamedTuple):
@@ -112,13 +116,33 @@ NAMES: Mapping[str, DateNames] = MappingProxyType({
     "de-DE": _GERMAN, "fr-FR": _FRENCH, "es-ES": _SPANISH, "it-IT": _ITALIAN,
 })
 
+#: The tag in :data:`NAMES` whose names every region of a language shows, by language
+#: subtag.  Measured in Excel for Mac, 2026-10-17: en-BE and en-IE named a date as en-US,
+#: fr-BE and fr-CH as fr-FR, de-BE and de-CH as de-DE (and nl-BE as nl-NL, 2026-10-16);
+#: es and it follow the same rule, no other region of theirs measured.  ooxml-edit's
+#: ``ooxml_edit.dates.LANGUAGES``.
+LANGUAGES: Mapping[str, str] = MappingProxyType({
+    "en": "en-US", "nl": "nl-NL", "de": "de-DE", "fr": "fr-FR", "es": "es-ES", "it": "it-IT",
+})
+
 #: The locale id of a code's ``[$-LCID]`` prefix, per language tag: each accepted and
-#: honoured (names in that language) by Excel for Mac, 2026-10-16.
+#: honoured (names in that language) by Excel for Mac, 2026-10-16; the regional and
+#: language-only ones are what Excel for Mac stored for a ``[$-fr-BE]``, ``[$-en]`` ...
+#: prefix, 2026-10-17, each showing its language's names.
 LCIDS: Mapping[str, int] = MappingProxyType({
     "en-US": 0x409, "en-GB": 0x809, "nl-NL": 0x413, "nl-BE": 0x813,
     "de-DE": 0x407, "fr-FR": 0x40C, "es-ES": 0xC0A, "it-IT": 0x410,
+    "en-IE": 0x1809, "fr-BE": 0x80C, "fr-CH": 0x100C,
+    "en": 0x9, "nl": 0x13, "de": 0x7, "fr": 0xC,
 })
 _LANGUAGE_OF_LCID = {lcid: tag for tag, lcid in LCIDS.items()}
+
+
+def names_tag(language: str) -> str | None:
+    """The tag in :data:`NAMES` whose names ``language`` (a tag in canonical case) shows:
+    itself when listed, else its language's (:data:`LANGUAGES`: fr-BE shows fr-FR's);
+    ``None`` for a language with no measured names."""
+    return language if language in NAMES else LANGUAGES.get(language.split("-", 1)[0])
 
 #: The 1900 date system's day 0, for every serial from 61 (1 March 1900) on, and the
 #: day before its serial 1 (1 January 1900) below 60: the system counts a 29 February 1900
@@ -226,33 +250,40 @@ def is_date_code(format_code: str | None) -> bool:
 
 
 def language_of_code(format_code: str | None) -> str | None:
-    """The language tag a code's ``[$-LCID]`` (or ``[$-ll-CC]``) prefix names, when
-    :data:`LCIDS` lists it; ``None`` without a prefix or for one not listed.  An LCID's
-    upper bits (a calendar, ``[$-10413]``) are ignored."""
+    """The language tag a code's ``[$-LCID]`` (or ``[$-ll-CC]``) prefix names, when its
+    names are known: an id :data:`LCIDS` lists (``[$-80C]`` is fr-BE), a tag whose
+    language has names (``[$-en-BE]``); ``None`` without a prefix or for one not read.  An
+    LCID's upper bits (a calendar, ``[$-10413]``) are ignored."""
     for section in _sections(format_code or ""):
         for kind, text in _tokens(section):
             if kind != "locale":
                 continue
             try:
-                return _LANGUAGE_OF_LCID.get(int(text, 16) & 0xFFFF)
+                stated = _LANGUAGE_OF_LCID.get(int(text, 16) & 0xFFFF)
             except ValueError:
-                pass
+                stated = None
+            if stated is not None:
+                return stated
+            # A tag; or an id not listed, which reads as no tag either ([$-411]) -- ``de``
+            # is both, and the tag wins.
             try:
                 tag = canonical_language(text)
             except ValueError:
                 return None
-            return tag if tag in LCIDS else None
+            return tag if tag in LCIDS or names_tag(tag) is not None else None
     return None
 
 
 def names_language(format_code: str | None, locale: Locale = EN_US) -> str:
     """The language whose :data:`NAMES` a code's month and day names are printed in: its
-    prefix's (:func:`language_of_code`), else ``locale``'s when it has measured names,
-    else en-US (see the module's notes)."""
+    prefix's (:func:`language_of_code`), else ``locale``'s when it has measured names --
+    a region's being its language's (:func:`names_tag`) -- else en-US (see the module's
+    notes)."""
     stated = language_of_code(format_code)
-    if stated is not None:
-        return stated
-    return locale.language if locale.language in NAMES else EN_US.language
+    shown = names_tag(stated) if stated is not None else None
+    if shown is not None:
+        return shown
+    return names_tag(locale.language) or EN_US.language
 
 
 def date_of_serial(value: float, *, date1904: bool = False) -> _dt.date | None:

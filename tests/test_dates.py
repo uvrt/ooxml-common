@@ -52,6 +52,31 @@ def test_a_prefix_names_the_language_and_its_spelling_as_a_tag_too():
         "March", "March", "maart", "maart", "März", "mars", "marzo", "marzo"]
 
 
+@pytest.mark.parametrize("code, shown", [
+    # What Excel for Mac stored for a region's or a language's prefix, 2026-10-17, and
+    # the names it showed there: the language's.
+    ("[$-80C]", "lundi 2 mars"), ("[$-100C]", "lundi 2 mars"), ("[$-C]", "lundi 2 mars"),
+    ("[$-1809]", "Monday 2 March"), ("[$-9]", "Monday 2 March"), ("[$-7]", "Montag 2 März"),
+    ("[$-13]", "maandag 2 maart"),
+    # A tag in the code, as a file may have it ([$-en-BE] measured: English).
+    ("[$-en-BE]", "Monday 2 March"), ("[$-fr-BE]", "lundi 2 mars"),
+    ("[$-de-BE]", "Montag 2 März"), ("[$-de]", "Montag 2 März"),
+    ("[$-es-MX]", "lunes 2 marzo"),
+])
+def test_a_regions_prefix_names_the_date_in_its_language(code, shown):
+    for locale in (EN_US, DUTCH):
+        assert dates.format_serial(46083, code + r"dddd\ d\ mmmm", locale) == shown
+
+
+def test_a_regions_prefix_says_which_names_it_took():
+    assert dates.language_of_code("[$-80C]mmmm") == "fr-BE"
+    assert dates.names_language("[$-80C]mmmm") == "fr-FR"
+    assert dates.names_language("[$-en-BE]mmmm", DUTCH) == "en-US"
+    assert dates.language_of_code("[$-pt-BR]mmmm") is None       # no measured names
+    assert dates.names_tag("de-CH") == "de-DE" and dates.names_tag("ja-JP") is None
+    assert all(tag in dates.NAMES for tag in dates.LANGUAGES.values())
+
+
 def test_a_code_without_a_prefix_is_named_in_the_locales_language():
     # Excel's unprefixed codes and PowerPoint's date axis took the interface language.
     assert dates.format_serial(46083, "d mmm yyyy") == "2 Mar 2026"
@@ -62,6 +87,12 @@ def test_a_code_without_a_prefix_is_named_in_the_locales_language():
     assert dates.format_serial(46083, "mmmm", japanese) == "March"
     assert dates.names_language("mmmm", japanese) == "en-US"
     assert dates.names_language("[$-411]mmmm", DUTCH) == "nl-BE"
+    # A region of a language with names takes that language's, as a prefix does; a bare
+    # [$] (Excel: the machine's language) is the locale's too.
+    belgian_french = Locale(language="fr-BE")
+    assert dates.format_serial(46083, "dddd d mmmm", belgian_french) == "lundi 2 mars"
+    assert dates.format_serial(46083, "[$]mmmm", belgian_french) == "mars"
+    assert dates.names_language("mmmm", Locale(language="en-BE")) == "en-US"
 
 
 def test_every_token_and_literal():
@@ -118,6 +149,7 @@ def test_is_date_code():
 def test_the_names_agree_with_ooxml_edits():
     edit = pytest.importorskip("ooxml_edit.dates")
     assert dict(dates.LCIDS) == dict(edit.LCIDS)
+    assert dict(dates.LANGUAGES) == dict(getattr(edit, "LANGUAGES", dates.LANGUAGES))
     assert {tag: tuple(names) for tag, names in dates.NAMES.items()} == \
         {tag: tuple(names) for tag, names in edit.NAMES.items()}
 
@@ -126,7 +158,8 @@ def test_the_names_agree_with_ooxml_edits():
                                      'd "de" mmmm', "yyyy-mm-dd", "m.d.yyyy"])
 def test_a_code_ooxml_edit_keeps_prints_what_it_writes(pattern):
     edit = pytest.importorskip("ooxml_edit.dates")
-    for tag in edit.NAMES:
+    regions = ["en-BE", "fr-BE", "de-CH", "en-IE", "fr-CH", "es-MX", "nl", "fr"]
+    for tag in [*edit.NAMES, *(regions if hasattr(edit, "LANGUAGES") else ())]:
         locale = Locale(language=tag)
         for day in (dt.date(2026, 1, 5), dt.date(2026, 3, 2), dt.date(2026, 12, 25)):
             code = edit.format_code(pattern, locale)
