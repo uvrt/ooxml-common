@@ -27,6 +27,40 @@ PowerPoint's date axis took their month names from the interface language (Dutch
 whatever the region.  A language with no measured names falls back to en-US's, as a date
 field with no table does in pptx2svg; :func:`names_language` says which was used.
 
+**An unprefixed code's own names** (:data:`INTERFACE_NAMES`).  Switching Office's interface
+language (PowerPoint and Excel for Mac, 2026-10-17, region Dutch (Belgium)) showed that an
+unprefixed code does not always take the names its language's prefix gives.  English,
+German and Dutch interfaces named 5 January, 17 March, 20 May and 31 December 2026 as
+``[$-409]``, ``[$-407]`` and ``[$-413]`` do; fr-FR and fr-BE, es-ES and es-MX each alike:
+
+* French: ``mmm`` ``janv févr mars avr mai juin juil août sept oct nov déc`` -- fr-FR's
+  without their dots (``[$-40C]`` and ``[$-80C]`` give ``janv.``, ``févr.``); ``ddd`` in a
+  PowerPoint chart ``lun. mar. mer. jeu. ven. sam. dim.``, as ``[$-40C]`` (an Excel cell
+  showed ``lun mar mer jeu ven sam dim``: the two differ, and a chart is what is drawn
+  here); full names fr-FR's.
+* Spanish: ``mmm`` ``ene feb mar abr may jun jul ago sept oct nov dic`` and ``ddd`` ``lun
+  mar mié jue vie sáb dom`` -- neither es-ES's (``ene.``, ``lu.``) nor ``[$-A]``'s
+  (``set``); full names es-ES's.
+* Italian: ``mmm`` ``gen feb mar apr mag giu lug ago set ott nov dic`` and ``ddd`` ``lun
+  mar mer gio ven sab dom``, full names it-IT's: it-IT's own names, listed as measured.
+
+Every month (the 15th of each, 2026) and day (5 to 11 January 2026) was measured under
+each of those interfaces, the same text in an Excel cell, its PDF and a PowerPoint chart
+but for French ``ddd``; English (UK) and Dutch showed their prefixed sets.  A prefix
+names as it always does, whatever the interface language (measured the same day).
+
+**A known limit: ``m/d/yy``.**  A chart keeps a date in the workbook's built-in short
+date (id 14) -- or in a custom ``m/d/yy`` -- as the code text ``m/d/yy``, and this prints
+it as written (``1/5/26``).  Office shows the viewer's short date there, never in that
+order: measured in PowerPoint for Mac's charts (cache or axis code, linked or not) and
+Excel's id 14 cells, 2026-10-17, region Dutch (Belgium), 5 January 2026 read
+``5/01/2026`` under a Dutch, Spanish or Italian interface, ``5/01/26`` under a French one,
+``05/01/2026`` under English (UK); and under a Dutch interface Excel's id 14 followed the
+region (2026-10-16: ``2/03/2026`` Dutch (Belgium), ``02-03-2026`` Dutch (Netherlands),
+``02.03.26`` German, ``3/2/26`` English (United States)).  The pattern depends on the
+interface language and the region together, and their combinations are not measured, so
+no pattern is substituted.
+
 **Separators are written as the code has them.**  Office shows a ``/`` in a stored code as
 the *viewer's* date separator (measured, switching the macOS region: ``dd/mm/yyyy`` read
 ``02-03-2026`` in a Dutch (Netherlands) region, ``02.03.2026`` in a German one and
@@ -55,8 +89,8 @@ from typing import Mapping, NamedTuple
 
 from .locales import EN_US, Locale, canonical_language
 
-__all__ = ["LANGUAGES", "LCIDS", "NAMES", "DateNames", "date_of_serial", "format_serial",
-           "is_date_code", "language_of_code", "names_language", "names_tag"]
+__all__ = ["INTERFACE_NAMES", "LANGUAGES", "LCIDS", "NAMES", "DateNames", "date_of_serial", "format_serial",
+           "date_names", "is_date_code", "language_of_code", "names_language", "names_tag"]
 
 
 class DateNames(NamedTuple):
@@ -148,6 +182,30 @@ LCIDS: Mapping[str, int] = MappingProxyType({
     "es-MX": 0x80A, "it-CH": 0x810, "es": 0xA, "it": 0x10,
 })
 _LANGUAGE_OF_LCID = {lcid: tag for tag, lcid in LCIDS.items()}
+
+# Measured in PowerPoint (charts) and Excel for Mac, 2026-10-17, under each interface
+# language, every month and day (module notes).
+_FRENCH_INTERFACE = _FRENCH._replace(
+    short_months=tuple("janv févr mars avr mai juin juil août sept oct nov déc".split()),
+    short_days=tuple("lun. mar. mer. jeu. ven. sam. dim.".split()))   # PowerPoint's
+_SPANISH_INTERFACE = _SPANISH._replace(
+    short_months=tuple("ene feb mar abr may jun jul ago sept oct nov dic".split()),
+    short_days=tuple("lun mar mié jue vie sáb dom".split()))
+_ITALIAN_INTERFACE = _names(
+    "gennaio febbraio marzo aprile maggio giugno luglio agosto settembre ottobre novembre "
+    "dicembre",
+    "gen feb mar apr mag giu lug ago set ott nov dic",
+    "lunedì martedì mercoledì giovedì venerdì sabato domenica",
+    "lun mar mer gio ven sab dom")
+
+#: The names an unprefixed code shows under an interface language, by language subtag,
+#: where they are not :data:`NAMES`' for that language (see the module's notes):
+#: measured in PowerPoint and Excel for Mac, 2026-10-17, fr-FR = fr-BE and es-ES = es-MX.
+#: English, German and Dutch interfaces showed their prefixed names and are not listed;
+#: Italian's are it-IT's, listed as measured.
+INTERFACE_NAMES: Mapping[str, DateNames] = MappingProxyType({
+    "fr": _FRENCH_INTERFACE, "es": _SPANISH_INTERFACE, "it": _ITALIAN_INTERFACE,
+})
 
 
 def names_tag(language: str) -> str | None:
@@ -287,15 +345,29 @@ def language_of_code(format_code: str | None) -> str | None:
 
 
 def names_language(format_code: str | None, locale: Locale = EN_US) -> str:
-    """The language whose :data:`NAMES` a code's month and day names are printed in: its
-    prefix's (:func:`language_of_code`), else ``locale``'s when it has measured names --
-    a region's being its language's (:func:`names_tag`) -- else en-US (see the module's
-    notes)."""
+    """The language a code's month and day names are printed in, a tag in :data:`NAMES`:
+    its prefix's (:func:`language_of_code`), else ``locale``'s when it has measured names
+    -- a region's being its language's (:func:`names_tag`) -- else en-US (see the
+    module's notes).  Without a prefix read the names may be that language's interface
+    set (:data:`INTERFACE_NAMES`); :func:`date_names` gives the names themselves."""
     stated = language_of_code(format_code)
     shown = names_tag(stated) if stated is not None else None
     if shown is not None:
         return shown
     return names_tag(locale.language) or EN_US.language
+
+
+def date_names(format_code: str | None, locale: Locale = EN_US) -> DateNames:
+    """The month and day names :func:`format_serial` prints ``format_code`` with: its
+    prefix's :data:`NAMES`; without a prefix read, the interface language's -- ``locale``
+    standing for it -- from :data:`INTERFACE_NAMES` where listed, else :data:`NAMES`
+    (:func:`names_language`)."""
+    stated = language_of_code(format_code)
+    if stated is None or names_tag(stated) is None:
+        interface = INTERFACE_NAMES.get(locale.primary_language)
+        if interface is not None:
+            return interface
+    return NAMES[names_language(format_code, locale)]
 
 
 def date_of_serial(value: float, *, date1904: bool = False) -> _dt.date | None:
@@ -323,7 +395,7 @@ def date_of_serial(value: float, *, date1904: bool = False) -> _dt.date | None:
 def format_serial(value: float, format_code: str | None, locale: Locale = EN_US, *,
                   date1904: bool = False) -> str | None:
     """``value``, a date's serial, as ``format_code`` shows it: day, month and year
-    tokens with the names of :func:`names_language`, every other character as the code
+    tokens with the names of :func:`date_names`, every other character as the code
     writes it (a quoted text, an escaped character, ``/``, ``-``, ``.``, a space).
     ``None`` where this does not print it -- a code that is no date, has a time in it, or
     a token not read, and a serial that names no day (see the module's notes) -- for the
@@ -344,7 +416,7 @@ def format_serial(value: float, format_code: str | None, locale: Locale = EN_US,
         return None
     if not any(kind == "token" for kind, _ in tokens):
         return None
-    names = NAMES[names_language(format_code, locale)]
+    names = date_names(format_code, locale)
     out: list[str] = []
     for kind, text in tokens:
         if kind == "literal":

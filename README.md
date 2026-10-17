@@ -75,9 +75,12 @@ for `locale_for(tag)`; what Office does in another locale is measured before it 
 and until then the caller builds it. Charts print their tick and data labels in it
 (`ChartBuilder(..., locale=dutch)`: `€12,4m`), and date categories in their format code
 (`ooxml_common.dates`): `[$-413]d\ mmmm\ yyyy` is `5 januari 2026` in any locale, a code
-without a language prefix takes the locale's language for its month names, and a `/` is
+without a language prefix takes the locale's language for its month names -- the
+locale standing for the viewer's interface language, whose own names an unprefixed code
+shows (`d mmm` is `5 janv` in French, without the prefixed `janv.`) -- and a `/` is
 printed as `/` -- Office shows the viewer's own date separator there, which `Locale` does
-not hold.
+not hold. Likewise a chart's `m/d/yy` (the built-in short date) is printed as written,
+where Office shows the viewer's short date (a known limit; see `ooxml_common.dates`).
 
 ## Font files
 
