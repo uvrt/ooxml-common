@@ -10,12 +10,13 @@ mapping modes and world transforms, bitmaps, text -- into one SVG document whose
 Windows PowerPoint is the reference (round 7; PowerPoint for Mac's metafile player is a
 reimplementation that differs from it -- null pens, fill modes, palettes, dashes,
 rotated text -- and from the file's GDI meaning):
-:mod:`.gdi` lists what was measured.  EMF+ records are not played yet; a dual EMF+ file
-is drawn from its GDI records, which say what its EMF+ records say for players without
-EMF+, and :attr:`MetafileDrawing.emf_plus` reports it.
+:mod:`.gdi` and :mod:`.emfplus` list what was measured.  An EMF+ file -- dual or not --
+is drawn from its EMF+ records, as Windows draws it, its GDI records skipped but those
+after an ``EmfPlusGetDC``; :attr:`MetafileDrawing.emf_plus` reports one.
 
 * :mod:`.gdi` -- the device context and the SVG it draws;
 * :mod:`.emf` -- the EMF record reader;
+* :mod:`.emfplus` -- the EMF+ records an EMF's comments carry;
 * :mod:`.wmf` -- the WMF record reader (placeable or not);
 * :mod:`.dib` -- device-independent bitmaps to PNG (moved from pptx2svg).
 
@@ -49,8 +50,11 @@ class MetafileDrawing:
     height: float
     #: What was not drawn (or drawn approximately), by record or reason, with counts.
     skipped: tuple[tuple[str, int], ...] = ()
-    #: The file carries EMF+ records, which are not played; its GDI records were.
+    #: The file carries EMF+ records, and they are what was drawn (its GDI records only
+    #: after an ``EmfPlusGetDC``).
     emf_plus: bool = False
+    #: Its EMF+ records drew nothing, so its GDI records were drawn instead.
+    gdi_fallback: bool = False
     #: A cap stopped the playback before the end of the file.
     truncated: bool = False
     #: How many elements were drawn; ``0`` when the metafile draws nothing this player
@@ -60,8 +64,9 @@ class MetafileDrawing:
 
     @property
     def complete(self) -> bool:
-        """Every record was understood: nothing skipped, no EMF+, not truncated."""
-        return not self.skipped and not self.emf_plus and not self.truncated
+        """Every record was understood: nothing skipped, not drawn from an EMF+ file's GDI
+        fallback, not truncated."""
+        return not self.skipped and not self.gdi_fallback and not self.truncated
 
     def warning(self) -> str | None:
         """One sentence naming what was not drawn, or ``None`` when everything was."""
@@ -69,9 +74,9 @@ class MetafileDrawing:
         if self.skipped:
             parts.append("not drawn: " + ", ".join(f"{name} (x{count})" if count > 1 else name
                                                    for name, count in self.skipped))
-        if self.emf_plus:
-            parts.append("its EMF+ records are not played yet (Windows draws those), so its GDI records "
-                         "are drawn instead")
+        if self.gdi_fallback:
+            parts.append("its EMF+ records draw nothing, so its GDI records are drawn instead (Windows draws "
+                         "only the EMF+ records)")
         if self.truncated:
             parts.append("it is larger than the player's limits, so the rest of it is not drawn")
         return "; ".join(parts) or None
@@ -93,13 +98,19 @@ def metafile_to_svg(data: bytes, *, font_mapping: dict[str, str] | None = None) 
         return None
 
 
-def _draw(data: bytes, font_mapping) -> MetafileDrawing | None:
+def _draw(data: bytes, font_mapping, *, nesting: int = 0) -> MetafileDrawing | None:
+    """The drawing; ``nesting`` counts the EMF+ metafile images this one is inside."""
     prefix = "m" + hashlib.sha1(data).hexdigest()[:10] + "-"
+    fallback = False
     if _emf.is_emf(data):
-        played = _emf.play(data, font_mapping=font_mapping)
+        played = _emf.play(data, font_mapping=font_mapping, nesting=nesting)
         if played is None:
             return None
         player, header, emf_plus = played
+        if emf_plus and not player.drawn and not player.truncated:
+            again = _emf.play(data, font_mapping=font_mapping, gdi_only=True, nesting=nesting)
+            if again is not None and again[0].drawn:
+                player, fallback = again[0], True
         width, height = header.natural_size()
     elif _wmf.is_wmf(data):
         played = _wmf.play(data, font_mapping=font_mapping)
@@ -113,7 +124,7 @@ def _draw(data: bytes, font_mapping) -> MetafileDrawing | None:
     svg = _with_prefix(player.svg(width, height), prefix)
     return MetafileDrawing(svg=svg, width=width, height=height,
                            skipped=tuple(sorted(player.skipped.items())), emf_plus=emf_plus,
-                           truncated=player.truncated, drawn=player.drawn)
+                           gdi_fallback=fallback, truncated=player.truncated, drawn=player.drawn)
 
 
 def _with_prefix(svg: bytes, prefix: str) -> bytes:
