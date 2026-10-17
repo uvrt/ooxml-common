@@ -103,6 +103,13 @@ _SPANISH = _names(
     "ene. feb. mar. abr. may. jun. jul. ago. sep. oct. nov. dic.",
     "lunes martes miércoles jueves viernes sábado domingo",
     "lu. ma. mi. ju. vi. sá. do.")
+# Measured in PowerPoint and Word for Mac, 2026-10-17, under [$-80A] and [$-A] (what Office
+# stores for [$-es-MX] and [$-es]): the months and days of es-ES, other abbreviations.
+_SPANISH_MEXICO = _SPANISH._replace(
+    short_days=tuple("lun. mar. mié. jue. vie. sáb. dom.".split()))
+_SPANISH_ANY = _SPANISH._replace(
+    short_months=tuple("ene feb mar abr may jun jul ago set oct nov dic".split()),
+    short_days=tuple("lun mar mié jue vie sáb dom".split()))
 _ITALIAN = _names(
     "gennaio febbraio marzo aprile maggio giugno luglio agosto settembre ottobre novembre "
     "dicembre",
@@ -114,15 +121,17 @@ _ITALIAN = _names(
 NAMES: Mapping[str, DateNames] = MappingProxyType({
     "en-US": _ENGLISH, "en-GB": _ENGLISH, "nl-NL": _DUTCH, "nl-BE": _DUTCH,
     "de-DE": _GERMAN, "fr-FR": _FRENCH, "es-ES": _SPANISH, "it-IT": _ITALIAN,
+    "es-MX": _SPANISH_MEXICO, "es": _SPANISH_ANY,
 })
 
 #: The tag in :data:`NAMES` whose names every region of a language shows, by language
 #: subtag.  Measured in Excel for Mac, 2026-10-17: en-BE and en-IE named a date as en-US,
 #: fr-BE and fr-CH as fr-FR, de-BE and de-CH as de-DE (and nl-BE as nl-NL, 2026-10-16);
-#: es and it follow the same rule, no other region of theirs measured.  ooxml-edit's
-#: ``ooxml_edit.dates.LANGUAGES``.
+#: it-CH ([$-810]) and it ([$-10]) as it-IT, 2026-10-17.  Not Spanish: es-MX and es
+#: abbreviate otherwise than es-ES (:data:`NAMES` has each), so another Spanish region is
+#: not guessed.  ooxml-edit's ``ooxml_edit.dates.LANGUAGES``.
 LANGUAGES: Mapping[str, str] = MappingProxyType({
-    "en": "en-US", "nl": "nl-NL", "de": "de-DE", "fr": "fr-FR", "es": "es-ES", "it": "it-IT",
+    "en": "en-US", "nl": "nl-NL", "de": "de-DE", "fr": "fr-FR", "it": "it-IT",
 })
 
 #: The locale id of a code's ``[$-LCID]`` prefix, per language tag: each accepted and
@@ -134,6 +143,9 @@ LCIDS: Mapping[str, int] = MappingProxyType({
     "de-DE": 0x407, "fr-FR": 0x40C, "es-ES": 0xC0A, "it-IT": 0x410,
     "en-IE": 0x1809, "fr-BE": 0x80C, "fr-CH": 0x100C,
     "en": 0x9, "nl": 0x13, "de": 0x7, "fr": 0xC,
+    # What Office stored for [$-es-MX], [$-it-CH] on re-saving, 2026-10-17; [$-A] and
+    # [$-10] honoured (es's and it-IT's names).
+    "es-MX": 0x80A, "it-CH": 0x810, "es": 0xA, "it": 0x10,
 })
 _LANGUAGE_OF_LCID = {lcid: tag for tag, lcid in LCIDS.items()}
 

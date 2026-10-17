@@ -61,11 +61,30 @@ def test_a_prefix_names_the_language_and_its_spelling_as_a_tag_too():
     # A tag in the code, as a file may have it ([$-en-BE] measured: English).
     ("[$-en-BE]", "Monday 2 March"), ("[$-fr-BE]", "lundi 2 mars"),
     ("[$-de-BE]", "Montag 2 März"), ("[$-de]", "Montag 2 März"),
-    ("[$-es-MX]", "lunes 2 marzo"),
+    # Measured on PowerPoint and Word for Mac, 2026-10-17 (Office's re-saved ids too).
+    ("[$-80A]", "lunes 2 marzo"), ("[$-A]", "lunes 2 marzo"), ("[$-es-MX]", "lunes 2 marzo"),
+    ("[$-810]", "lunedì 2 marzo"), ("[$-10]", "lunedì 2 marzo"),
+    ("[$-it-CH]", "lunedì 2 marzo"),
 ])
 def test_a_regions_prefix_names_the_date_in_its_language(code, shown):
     for locale in (EN_US, DUTCH):
         assert dates.format_serial(46083, code + r"dddd\ d\ mmmm", locale) == shown
+
+
+@pytest.mark.parametrize("code, shown", [
+    ("[$-C0A]", "lu. 2 mar. · mi. 2 sep."),
+    ("[$-80A]", "lun. 2 mar. · mié. 2 sep."),
+    ("[$-A]", "lun 2 mar · mié 2 set"),
+])
+def test_spanish_abbreviations_are_each_regions_own(code, shown):
+    assert " · ".join(dates.format_serial(value, code + r"ddd\ d\ mmm")
+                      for value in (46083, 46267)) == shown
+
+
+def test_another_spanish_region_is_not_given_es_es_names():
+    assert dates.language_of_code("[$-es-AR]mmmm") is None
+    assert dates.names_tag("es-AR") is None
+    assert dates.format_serial(46083, "[$-es-AR]mmmm", DUTCH) == "maart"   # the locale's
 
 
 def test_a_regions_prefix_says_which_names_it_took():
@@ -158,7 +177,7 @@ def test_the_names_agree_with_ooxml_edits():
                                      'd "de" mmmm', "yyyy-mm-dd", "m.d.yyyy"])
 def test_a_code_ooxml_edit_keeps_prints_what_it_writes(pattern):
     edit = pytest.importorskip("ooxml_edit.dates")
-    regions = ["en-BE", "fr-BE", "de-CH", "en-IE", "fr-CH", "es-MX", "nl", "fr"]
+    regions = ["en-BE", "fr-BE", "de-CH", "en-IE", "fr-CH", "it-CH", "nl", "fr", "es", "it"]
     for tag in [*edit.NAMES, *(regions if hasattr(edit, "LANGUAGES") else ())]:
         locale = Locale(language=tag)
         for day in (dt.date(2026, 1, 5), dt.date(2026, 3, 2), dt.date(2026, 12, 25)):
@@ -240,6 +259,48 @@ def test_a_charts_date_categories_are_drawn_as_dates(chart_rules):
 
 def test_an_unprefixed_date_axis_takes_the_locales_names():
     texts = {run.text for run in _build(_chart_xml("d mmm"), DUTCH)[0]}
+    assert {"5 jan", "10 feb", "15 mrt"} <= texts
+
+
+MC = "http://schemas.openxmlformats.org/markup-compatibility/2006"
+C16R2 = "http://schemas.microsoft.com/office/drawing/2015/06/chart"
+
+
+def _resaved(tag: str, code: str, *, choice: bool = True) -> str:
+    """A made-up chart in the shape PowerPoint and Word for Mac re-saved a code with a
+    language tag in, 17 October 2026: the cache's code in an ``mc:AlternateContent``
+    (a ``c16r2`` Choice's ``formatcode2``, a Fallback ``[$]``), the axis' ``numFmt`` with a
+    ``c16r2:formatcode2`` attribute; no ``mc:Ignorable`` on the chart space."""
+    xml = _chart_xml("CODE")
+    branch = (f'<mc:Choice Requires="c16r2" xmlns:c16r2="{C16R2}">'
+              f"<c16r2:formatcode2>[$-{tag}]{code}</c16r2:formatcode2></mc:Choice>"
+              if choice else "")
+    xml = xml.replace("<c:formatCode>CODE</c:formatCode>",
+                      f'<mc:AlternateContent xmlns:mc="{MC}">{branch}<mc:Fallback>'
+                      f"<c:formatCode>[$]{code}</c:formatCode></mc:Fallback>"
+                      "</mc:AlternateContent>")
+    return xml.replace('<c:axPos val="b"/><c:numFmt formatCode="General" sourceLinked="1"/>',
+                       f'<c:axPos val="b"/><c:numFmt xmlns:c16r2="{C16R2}" '
+                       f'formatCode="[$]{code}" c16r2:formatcode2="[$-{tag}]{code}" '
+                       'sourceLinked="1"/>')
+
+
+@pytest.mark.parametrize("tag, shown", [
+    ("en-BE", {"Mon 5 Jan", "Tue 10 Feb", "Sun 15 Mar"}),     # measured: English
+    ("de-BE", {"Mo 5 Jan", "Di 10 Feb", "So 15 Mär"}),        # measured: German
+])
+def test_a_resaved_tag_code_is_drawn_with_the_tags_names(tag, shown):
+    code = r"ddd\ d\ mmm"
+    source = parse_chart_space(ET.fromstring(_resaved(tag, code)))
+    assert source.plots[0].series[0].category_format_code == f"[$-{tag}]{code}"
+    assert source.axes[0].number_format == f"[$-{tag}]{code}"
+    texts = {run.text for run in _build(_resaved(tag, code), DUTCH)[0]}
+    assert shown <= texts and "46027" not in texts
+
+
+def test_a_resaved_code_without_its_choice_takes_the_fallback_in_the_locale():
+    # A bare [$] is the machine's language: the locale's.
+    texts = {run.text for run in _build(_resaved("en-BE", "d mmm", choice=False), DUTCH)[0]}
     assert {"5 jan", "10 feb", "15 mrt"} <= texts
 
 
