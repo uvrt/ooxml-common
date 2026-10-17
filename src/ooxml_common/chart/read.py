@@ -728,7 +728,7 @@ def _data_labels(d_lbls: Element | None) -> SourceChartDataLabels | None:
         show_legend_key=_optional_flag(child(d_lbls, "showLegendKey")),
         show_leader_lines=_optional_flag(child(d_lbls, "showLeaderLines")),
         position=attr(child(d_lbls, "dLblPos"), "val"),
-        number_format=attr(num_fmt, "formatCode"),
+        number_format=_num_fmt_code(num_fmt),
         number_format_source_linked=_bool_attr(num_fmt, "sourceLinked"),
         text_properties=parse_text_body(child(d_lbls, "txPr")),
         fill=parse_fill(sp_pr),
@@ -761,7 +761,7 @@ def _axis(node: Element) -> SourceChartAxis:
         major_unit=num_attr(child(node, "majorUnit"), "val"),
         minor_unit=num_attr(child(node, "minorUnit"), "val"),
         log_base=num_attr(child(scaling, "logBase"), "val"),
-        number_format=attr(num_fmt, "formatCode"),
+        number_format=_num_fmt_code(num_fmt),
         number_format_source_linked=_bool_attr(num_fmt, "sourceLinked"),
         major_tick_mark=_tick_mark(child(node, "majorTickMark")),
         minor_tick_mark=_tick_mark(child(node, "minorTickMark")),
@@ -915,9 +915,41 @@ def _numeric_points(reference: Element | None) -> tuple[list[float | None], str 
         if value == value and value not in (float("inf"), float("-inf")):
             values[index] = value
 
-    format_node = child(cache, "formatCode")
-    format_code = (format_node.text or "").strip() if format_node is not None else ""
-    return values, format_code or None
+    return values, _cache_format_code(cache)
+
+
+def _cache_format_code(cache: Element) -> str | None:
+    """A number cache's format code: its ``c:formatCode``; or, where it is in an
+    ``mc:AlternateContent``, a Choice's ``formatcode2`` before the Fallback's
+    ``c:formatCode``.  Measured, PowerPoint and Word for Mac, 17 October 2026: a code with a
+    language tag (``[$-en-BE]d\\ mmm``) is re-saved so, the Choice (``Requires="c16r2"``)
+    holding the tag and the Fallback ``[$]d\\ mmm`` -- a bare ``[$]``, the machine's
+    language -- and drawn with the tag's names; the Choice says more, as Excel's
+    ``formatCode16`` wins over its ``formatCode``."""
+    node = child(cache, "formatCode")
+    if node is not None:
+        return (node.text or "").strip() or None
+    for alternate in children(cache, "AlternateContent"):
+        for choice in children(alternate, "Choice"):
+            node = child(choice, "formatcode2")
+            if node is not None and (node.text or "").strip():
+                return node.text.strip()
+        node = child(child(alternate, "Fallback"), "formatCode")
+        if node is not None and (node.text or "").strip():
+            return node.text.strip()
+    return None
+
+
+def _num_fmt_code(num_fmt: Element | None) -> str | None:
+    """A ``c:numFmt``'s code: its ``formatcode2`` attribute where Office wrote one (a
+    ``c16r2`` attribute holding a code with a language tag, measured as for
+    :func:`_cache_format_code`), else ``formatCode``."""
+    if num_fmt is None:
+        return None
+    for name, value in num_fmt.attrib.items():
+        if name.rpartition("}")[2] == "formatcode2" and name != "formatcode2" and value:
+            return value
+    return attr(num_fmt, "formatCode")
 
 
 def _string_points(reference: Element | None) -> tuple[list[str], str | None]:
