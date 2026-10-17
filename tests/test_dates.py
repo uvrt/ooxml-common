@@ -152,23 +152,52 @@ def test_a_prefix_keeps_its_own_names_under_any_interface_language():
         assert dates.format_serial(46027, r"[$-80A]ddd\ d\ mmm", locale) == "lun. 5 ene."
 
 
-def test_the_interface_sets_and_what_is_inferred():
-    french = dates.INTERFACE_NAMES["fr"]
-    # Inferred, not measured: fr-FR's months without their trailing dot, its days as is.
-    assert french.short_months == ("janv", "févr", "mars", "avr", "mai", "juin", "juil",
-                                   "août", "sept", "oct", "nov", "déc")
+# Measured in PowerPoint for Mac's charts and Excel, 2026-10-17, under each interface
+# language: the 15th of every month of 2026, and 5 to 11 January 2026.
+MONTHS_15TH = [(dt.date(2026, month, 15) - dt.date(1899, 12, 30)).days for month in range(1, 13)]
+WEEK = range(46027, 46034)
+
+
+@pytest.mark.parametrize("language, months, days", [
+    ("fr-FR", "janv févr mars avr mai juin juil août sept oct nov déc",
+     "lun. mar. mer. jeu. ven. sam. dim."),
+    ("es-ES", "ene feb mar abr may jun jul ago sept oct nov dic", "lun mar mié jue vie sáb dom"),
+    ("it-IT", "gen feb mar apr mag giu lug ago set ott nov dic", "lun mar mer gio ven sab dom"),
+    ("nl-NL", "jan feb mrt apr mei jun jul aug sep okt nov dec", "ma di wo do vr za zo"),
+    ("en-GB", "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec", "Mon Tue Wed Thu Fri Sat Sun"),
+])
+def test_every_unprefixed_month_and_day_as_measured(language, months, days):
+    locale = Locale(language=language)
+    assert " ".join(dates.format_serial(v, "mmm", locale) for v in MONTHS_15TH) == months
+    assert " ".join(dates.format_serial(v, "ddd", locale) for v in WEEK) == days
+
+
+def test_the_interface_sets_against_the_prefixed_ones():
+    french, spanish, italian = (dates.INTERFACE_NAMES[k] for k in ("fr", "es", "it"))
+    # French: fr-FR's abbreviated months without their dots, its days (PowerPoint) as is.
+    assert french.short_months == tuple(n.removesuffix(".") for n in dates.NAMES["fr-FR"].short_months)
     assert french.short_days == dates.NAMES["fr-FR"].short_days
     assert french.months == dates.NAMES["fr-FR"].months
-    # Spanish: [$-A]'s set, every name of it measured.
-    assert dates.INTERFACE_NAMES["es"] == dates.NAMES["es"]
-    assert dates.names_language("mmm", Locale(language="fr-CA")) == "fr"
-    assert dates.names_language("mmm", Locale(language="es-AR")) == "es"
+    # Spanish: neither es-ES's nor [$-A]'s (``set``); full names es-ES's.
+    assert spanish.short_months[8] == "sept" and dates.NAMES["es"].short_months[8] == "set"
+    assert spanish.short_days == dates.NAMES["es"].short_days
+    assert (spanish.months, spanish.days) == (dates.NAMES["es-ES"].months, dates.NAMES["es-ES"].days)
+    # Italian: it-IT's own names, listed as measured.
+    assert italian == dates.NAMES["it-IT"]
+    # A [$-A] prefix keeps its own September under a Spanish interface.
+    assert dates.format_serial(46280, "[$-A]mmm", Locale(language="es-ES")) == "set"
+    assert dates.format_serial(46280, "mmm", Locale(language="es-AR")) == "sept"
+    assert dates.names_language("mmm", Locale(language="fr-CA")) == "fr-FR"
     assert dates.names_language("[$-40C]mmm", Locale(language="es-ES")) == "fr-FR"
     assert dates.date_names("[$-411]mmm", Locale(language="fr-BE")) == french
     # A bare [$] (a re-saved chart's Fallback) is the interface language's, as no prefix.
     assert dates.format_serial(46387, "[$]d mmm", Locale(language="fr-BE")) == "31 déc"
-    # Italian was not measured under its own interface: its prefixed names, as before.
-    assert dates.format_serial(46027, "ddd d mmm", Locale(language="it-IT")) == "lun 5 gen"
+
+
+def test_m_d_yy_is_printed_as_written():
+    # A known limit: Office shows the viewer's short date here (module notes).
+    for language in ("nl-BE", "fr-FR", "en-GB", "es-ES", "it-IT"):
+        assert dates.format_serial(46027, "m/d/yy", Locale(language=language)) == "1/5/26"
 
 
 def test_an_unprefixed_date_axis_in_french_is_drawn_without_the_months_dot():
