@@ -2,12 +2,12 @@
 
 The files are built here, record by record from [MS-EMFPLUS], by a small writer of our
 own.  The numbers they are held to are Windows PowerPoint's (PowerPoint for Microsoft
-365, round 7): its PDF export (and, for slides 11 to 15, its slide show) of 22 made-up
-EMF+ files in a 400 x 300 pt picture at (100, 60), each canvas 400 x 300 px on a 96 dpi
+365, round 7): its PDF export of 28 made-up EMF+ files (slide 26 does not export) in a
+400 x 300 pt picture at (100, 60), and its slide show of slides 11 to 15, 23 and 26
+(which wins where the two differ), each canvas 400 x 300 px on a 96 dpi
 reference device, so that one EMF+ pixel is 400/401 pt.  Positions are compared in
 points on that slide, to 0.1 pt unless a test says otherwise.  Tests marked *spec* hold
-the player to [MS-EMFPLUS] where Windows has not been measured yet (bitmap alpha and
-interpolation, text, GetDC, translucency).
+the player to [MS-EMFPLUS] where Windows has not been measured.
 """
 
 from __future__ import annotations
@@ -275,7 +275,8 @@ def test_an_emf_plus_file_is_drawn_from_its_emf_plus_records_only(dual):
 
 
 def test_gdi_records_after_get_dc_are_drawn_until_the_next_emf_plus_record():
-    """*spec* ([MS-EMFPLUS] EmfPlusGetDC; Windows slide 28 not measured yet)."""
+    """Windows slide 28: green, the GDI red rectangle, blue; not the GDI rectangle after
+    the blue EMF+ one."""
     p = Plus().fill_rects(GREEN, (20, 20, 160, 100)).r(0x4004)
     gdi_red_rect(p)
     p.fill_rects(BLUE, (20, 180, 160, 100))
@@ -782,8 +783,8 @@ def test_a_source_rectangle_is_clipped():
 
 
 def test_nearest_neighbour_interpolation_is_sharp():
-    """*spec*: InterpolationModeNearestNeighbor; the default smooths (as Windows' slide show
-    smooths enlarged GDI bitmaps)."""
+    """Windows' slide show (slide 23): NearestNeighbor sharp; Default, Bilinear and
+    HighQualityBicubic smoothed."""
     p = Plus().obj(5, 0, bitmap(8, 6, MARKER))
     draw_image(p, 0, (0, 0, 8, 6), (0, 0, 80, 60))
     p.r(0x4021, 5)
@@ -801,7 +802,7 @@ def test_a_metafile_image_is_drawn_inline():
 
 
 # --------------------------------------------------------------------------------------
-# Text (spec: Windows' slides 24 to 26 are not measured yet)
+# Text (Windows' PDF of slides 24 and 25; slide 26, DrawDriverString, does not export)
 # --------------------------------------------------------------------------------------
 
 
@@ -820,8 +821,10 @@ def draw_string(p, font_id, colour, fmt, rect, text):
 
 
 def test_draw_string_sizes_alignment_and_first_baseline():
-    """*spec*: 18 pt is 24 px at 96 dpi; Near/Center/Far left, centre and right of the
-    layout rectangle; the first baseline an ascent below its top."""
+    """Windows slide 24: 18 pt is 24 px (the same ink width as 24 px); Near text at the
+    box's x (ink from 21.7 px, Arial's L bearing 1.76 px), Center a sixth of an em left of
+    the centre (ink centred at 196.5 px), Far a third of an em in; the first baseline
+    41.08 px for a top of 20 (0.97 of Arial's ascent)."""
     p = Plus().obj(6, 0, font(24)).obj(6, 1, font(18, U_POINT, 3))
     for k in range(3):
         p.obj(7, 10 + k, string_format(k))
@@ -830,8 +833,8 @@ def test_draw_string_sizes_alignment_and_first_baseline():
     draw_string(p, 0, WHITE, 12, (20, 108, 360, 36), "Right")
     texts = [e for e, _ in Drawn(p.build()).of("text")]
     assert [t.get("font-size") for t in texts] == ["24", "24", "24"]
-    assert [(t.get("x"), t.get("text-anchor")) for t in texts] == [("20", None), ("200", "middle"), ("380", "end")]
-    assert float(texts[0].get("y")) == pytest.approx(20 + 24 * 1854 / 2048, abs=0.01)
+    assert [(t.get("x"), t.get("text-anchor")) for t in texts] == [("20", None), ("196", "middle"), ("372", "end")]
+    assert float(texts[0].get("y")) == pytest.approx(41.08, abs=0.1)
     assert texts[1].get("font-weight") == "bold" and texts[1].get("font-style") == "italic"
 
 
@@ -845,15 +848,20 @@ def test_draw_string_wraps_in_its_rectangle_and_clips_unless_told_not_to():
     wrapped = [t for t in texts if t.get("x") == "20"]
     assert len(wrapped) == 3 and " ".join(t.text for t in wrapped) == fox
     assert len([t for t in texts if t.get("x") == "240"]) == 1
-    assert sum(1 for e, _ in drawn.of("g") if e.get("clip-path")) == 2
+    clips = [drawn.by_id(e.get("clip-path")) for e, _ in drawn.of("g") if e.get("clip-path")]
+    assert len(clips) == 2
+    # Windows: the clip is the box moved a sixth of an em left (16.72 pt for 19.95).
+    assert _numbers(clips[0].find(SVG + "path").get("d"))[:2] == pytest.approx([20 - 20 / 6, 200], abs=0.01)
 
 
-@pytest.mark.parametrize("line_align, top", [(0, 20), (1, 20 + (260 - 28 * 2355 / 2048) / 2), (2, 280 - 28 * 2355 / 2048)])
-def test_line_alignment(line_align, top):
+@pytest.mark.parametrize("line_align, baseline", [(0, 44.6), (1, 157.27), (2, 269.95)])
+def test_line_alignment(line_align, baseline):
+    """Windows slide 25: Arial 28 px in (20, 20) 110 x 260, baselines 44.49, 156.88 and
+    269.28 pt (44.6, 157.27, 269.95 px)."""
     p = Plus().obj(6, 0, font(28)).obj(7, 1, string_format(1, line_align))
     draw_string(p, 0, WHITE, 1, (20, 20, 110, 260), "Middle")
     (text, _m), = Drawn(p.build()).of("text")
-    assert float(text.get("y")) == pytest.approx(top + 28 * 1854 / 2048, abs=0.01)
+    assert float(text.get("y")) == pytest.approx(baseline, abs=0.1)
 
 
 def test_driver_string_places_each_character_and_skips_glyph_indices():
@@ -874,13 +882,14 @@ def test_driver_string_places_each_character_and_skips_glyph_indices():
 
 
 def test_translucent_colours_and_source_copy():
-    """*spec*: alpha as opacity; SourceCopy is drawn as SourceOver and named."""
+    """Windows slides 27 and 29: alpha as opacity (0.502 for 128); SourceCopy blended as
+    SourceOver."""
     p = Plus().fill_rects(argb(230, 40, 40, 128), (20, 20, 160, 50)).pen(1, 10, argb(30, 200, 220, 160))
     p.draw_rects(1, (220, 180, 160, 50)).r(0x4023, 1).fill_rects(argb(230, 40, 40, 128), (20, 200, 160, 80))
     drawn = Drawn(p.build())
     fill, stroke, copy = (e for e, _ in drawn.of("path"))
     assert fill.get("fill-opacity") == "0.502" and stroke.get("stroke-opacity") == "0.627"
-    assert "SourceCopy" in drawn.drawing.warning()
+    assert copy.get("fill-opacity") == "0.502" and drawn.drawing.warning() is None
 
 
 # --------------------------------------------------------------------------------------
@@ -934,3 +943,19 @@ def test_continued_objects_are_assembled():
 
 def test_the_output_is_reproducible():
     assert metafile_to_svg(_busy()).svg == metafile_to_svg(_busy()).svg
+
+
+def test_an_image_is_sampled_as_windows_samples_it():
+    """Windows' slide show (slide 23): a 4 x 4 checker in 80 x 80 with NearestNeighbor
+    starts with a 10 px block and stops 10 px early; smoothed ones fade out at the right
+    and bottom.  The bitmap is drawn half a source pixel up and left with a transparent
+    column and row after it, clipped to the source rectangle."""
+    rows = [[(230, 40, 40, 255) if (x + y) % 2 == 0 else (255, 255, 255, 255) for x in range(4)] for y in range(4)]
+    p = Plus().obj(5, 0, bitmap(4, 4, rows)).r(0x4021, 5)
+    draw_image(p, 0, (0, 0, 4, 4), (220, 20, 80, 80))
+    drawn = Drawn(p.build())
+    (image, m), = drawn.of("image")
+    assert (image.get("x"), image.get("y"), image.get("width"), image.get("height")) == ("-0.5", "-0.5", "5", "5")
+    width, height, pixel = _png_pixels(image.get("href"))
+    assert (width, height) == (5, 5) and pixel(4, 0)[3] == 0 and pixel(0, 4)[3] == 0 and pixel(0, 0)[3] == 255
+    close(drawn.slide(m[0] * -0.5 + m[4], m[5]), (100 + 210 * 400 / 401, 60 + 20 * 0.99757))

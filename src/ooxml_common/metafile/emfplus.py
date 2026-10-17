@@ -63,9 +63,21 @@ made-up EMF+ files, round 7; :mod:`.gdi` lists the GDI measurements), followed h
 * bitmaps' rows are top-down; ``DrawImagePoints`` maps the source rectangle's upper-left,
   upper-right and lower-left corners onto its three points.
 
-Not measured (part 4 of the Windows check is outstanding) and drawn to the spec: bitmap
-alpha and interpolation modes, ``DrawString``, ``DrawDriverString``, antialiasing and
-compositing hints, ``GetDC`` and translucent colours.
+Also measured (Windows' PDF of slides 23 to 29 but 26): the GDI records after an
+``EmfPlusGetDC`` drawn until the next EMF+ record, and none after it; translucent colours
+as opacity; ``SourceCopy`` blended like ``SourceOver``; bitmaps with alpha (ARGB, PARGB,
+PNG) alike; ``DrawString`` -- the layout box moved a sixth of an em left and padded a
+sixth of an em on either side (``Near`` text at the box's x, ``Center`` a sixth of an em
+left of its centre, ``Far`` a third of an em in), clipped to the moved box, lines the
+ascent and descent apart, the first baseline 0.97 of the ascent below the top, an aligned
+block 0.12 em taller than its lines, ``NoWrap`` one line clipped; a gradient brush on text.
+On screen (slides 23 and 26): a bitmap's source pixel i is centred on i, not i + 1/2,
+and past the image transparency is sampled -- a nearest-neighbour image starts with a
+half block and ends half a block early, a smoothed one (every other mode) fades out at
+its right and bottom (the PDF draws every mode sharp and exact; the screen is followed);
+``DrawDriverString`` with characters places each at its origin on the baseline, or from
+the first with natural advances (its PDF export fails).  Antialiasing and text hints
+are ignored.
 
 Never raises: each record is played inside a guard, and what cannot be drawn is named in
 :attr:`.gdi.Player.skipped`.
@@ -241,6 +253,9 @@ class Image:
     mime: str
     width: float
     height: float
+    #: The bitmap with a transparent column and row after its last: what Windows samples
+    #: past the image (PNG), or ``None`` where it could not be made.
+    padded: bytes | None = None
 
 
 @dataclass(frozen=True)
@@ -595,8 +610,8 @@ class PlusPlayer:
         self.p._write(text, clip=clip.cid if clip else None)
 
     def _note_compositing(self, brush) -> None:
-        if self.state.compositing == 1 and not (isinstance(brush, Solid) and argb(brush.color)[1] >= 1):
-            self.p.skip("EmfPlusSetCompositingMode SourceCopy (drawn as SourceOver)")
+        """``SourceCopy`` is drawn as ``SourceOver``, as Windows draws it (slide 27: a
+        50 % red over stripes blended alike in both modes)."""
 
     def paint_layers(self, brush, m: Matrix, prop: str = "fill") -> list[str] | None:
         """The ``fill`` (or ``stroke``) attributes of ``brush`` for a shape in the space of
@@ -1037,8 +1052,17 @@ class PlusPlayer:
         # The source rectangle onto the unit square, then the destination.
         to_unit = (1 / sw, 0.0, 0.0, 1 / sh, -sx / sw, -sy / sh)
         whole = mul(to_unit, m)
-        inner = _image_markup(image, 0, 0, image.width, image.height, self.state.interpolation)
-        if (sx, sy, sw, sh) != (0, 0, image.width, image.height):
+        if image.kind == "bitmap":
+            # Windows' slide show (slide 23) centres source pixel i on i, not i + 1/2, and
+            # samples transparency past the image: a nearest-neighbour image starts with a
+            # half block and ends half a block early; a smoothed one fades out at its right
+            # and bottom.  The bitmap drawn half a pixel up and left, padded, clipped.
+            inner = _image_markup(image, -0.5, -0.5, image.width + (1 if image.padded else 0),
+                                  image.height + (1 if image.padded else 0), self.state.interpolation,
+                                  padded=True)
+        else:
+            inner = _image_markup(image, 0, 0, image.width, image.height, self.state.interpolation)
+        if image.kind == "bitmap" or (sx, sy, sw, sh) != (0, 0, image.width, image.height):
             cid = self.p._id("c")
             self.p._def(f'<clipPath id="{cid}" clipPathUnits="userSpaceOnUse"><path d="'
                         f'{path_data([_rect_figure(sx, sy, sw, sh)])}"/></clipPath>')
@@ -1072,13 +1096,20 @@ class PlusPlayer:
         if fmt.flags & 0x0003:
             self.p.skip("EmfPlusDrawString right-to-left or vertical (drawn left to right)")
         x, y, w, h = rect
-        ascent, descent, gap = gdi.line_metrics(font.family)
-        line_height = (ascent + descent + gap) * size
+        ascent, descent, _gap = gdi.line_metrics(font.family)
+        # Measured (Windows slides 24, 25; Arial 16 to 28 px): the layout box is moved a
+        # sixth of an em left and padded a sixth of an em on either side; lines are the
+        # ascent and descent apart; the first baseline is 0.97 of the ascent below the top;
+        # a block is 0.12 em taller than its lines when it is aligned.
+        pad_em = size / 6
+        x -= pad_em
+        line_height = (ascent + descent) * size
         wrap = w > 0 and not fmt.flags & 0x1000
-        lines = _lines(text, size, bold, font.family, w - (fmt.leading + fmt.trailing) * size if wrap else None)
+        inner = w - 2 * pad_em - (fmt.leading + fmt.trailing) * size
+        lines = _lines(text, size, bold, font.family, inner if wrap else None)
         if not lines:
             return
-        total = len(lines) * line_height
+        total = len(lines) * line_height + 0.12 * size
         if h > 0 and fmt.line_align == 1:
             top = y + (h - total) / 2
         elif h > 0 and fmt.line_align == 2:
@@ -1092,9 +1123,9 @@ class PlusPlayer:
         if fmt.align == 1:
             tx, anchor = x + w / 2, ' text-anchor="middle"'
         elif fmt.align == 2:
-            tx, anchor = x + w - fmt.trailing * size, ' text-anchor="end"'
+            tx, anchor = x + w - pad_em - fmt.trailing * size, ' text-anchor="end"'
         else:
-            tx, anchor = x + fmt.leading * size, ""
+            tx, anchor = x + pad_em + fmt.leading * size, ""
         attrs = " ".join(gdi.font_attributes(font.family, size, bold=bold, italic=italic,
                                              underline=bool(font.style & 4), strike=bool(font.style & 8),
                                              font_mapping=self.p.font_mapping))
@@ -1102,7 +1133,7 @@ class PlusPlayer:
         for k, line in enumerate(lines):
             if not line.strip():
                 continue
-            baseline = top + k * line_height + ascent * size
+            baseline = top + k * line_height + 0.97 * ascent * size
             parts.append(f'<text x="{num(tx)}" y="{num(baseline)}"{paint} {attrs}{anchor} '
                          f'xml:space="preserve">{escape(line)}</text>')
         if not parts:
@@ -1275,10 +1306,13 @@ def _lines(text: str, size: float, bold: bool, family: str, width: float | None)
     return out
 
 
-def _image_markup(image: Image, x, y, w, h, interpolation: int) -> str:
+def _image_markup(image: Image, x, y, w, h, interpolation: int, *, padded: bool = False) -> str:
     if image.kind == "svg":
         return _nested_svg(image, x, y, w, h)
-    href = f"data:{image.mime};base64," + base64.b64encode(image.data).decode("ascii")
+    if padded and image.padded:
+        href = "data:image/png;base64," + base64.b64encode(image.padded).decode("ascii")
+    else:
+        href = f"data:{image.mime};base64," + base64.b64encode(image.data).decode("ascii")
     sharp = ' image-rendering="optimizeSpeed" style="image-rendering:pixelated"' if interpolation == 5 else ""
     return (f'<image x="{num(x)}" y="{num(y)}" width="{num(w)}" height="{num(h)}" preserveAspectRatio="none"'
             f'{sharp} href="{href}"/>')
@@ -1591,13 +1625,14 @@ def parse_image(d: _Data, pp: PlusPlayer):
 def _compressed(payload: bytes, width: int, height: int, pp: PlusPlayer):
     for magic, mime in ((b"\x89PNG\r\n\x1a\n", "image/png"), (b"\xff\xd8", "image/jpeg"), (b"GIF8", "image/gif")):
         if payload.startswith(magic):
-            return Image("bitmap", payload, mime, float(width), float(height))
+            return Image("bitmap", payload, mime, float(width), float(height), _pad_png(payload))
     if payload.startswith(b"BM") and len(payload) > 14:
         split = dib.split_packed_dib(payload[14:])
         if split is not None:
             image = dib.dib_to_image(*split)
             if image is not None:
-                return Image("bitmap", image.data, image.mime_type, float(width), float(height))
+                return Image("bitmap", image.data, image.mime_type, float(width), float(height),
+                             _pad_png(image.data))
     pp.p.skip("EmfPlus compressed bitmaps other than PNG, JPEG, GIF or BMP (not drawn)")
     return Other("bitmap")
 
@@ -1661,7 +1696,71 @@ def _pixels(payload: bytes, width: int, height: int, stride: int, fmt: int, pp: 
                 alpha = True
             rgba[out + 4 * x : out + 4 * x + 4] = bytes((r, g, b, a))
     png = dib.encode_png(width, height, bytes(rgba), has_alpha=alpha)
-    return Image("bitmap", png, "image/png", float(width), float(height))
+    return Image("bitmap", png, "image/png", float(width), float(height), _padded(width, height, rgba))
+
+
+def _padded(width: int, height: int, rgba) -> bytes:
+    """A PNG of the pixels with a transparent column and row after them."""
+    row = 4 * width
+    out = bytearray()
+    for y in range(height):
+        out += rgba[y * row : (y + 1) * row] + bytes(4)
+    out += bytes(4 * (width + 1))
+    return dib.encode_png(width + 1, height + 1, bytes(out), has_alpha=True)
+
+
+def _pad_png(data: bytes) -> bytes | None:
+    """:func:`_padded` of an 8-bit RGB or RGBA, non-interlaced PNG; ``None`` for any
+    other (or one larger than the decoding cap)."""
+    try:
+        import zlib
+
+        if data[12:16] != b"IHDR":
+            return None
+        width, height, depth, colour, _c, _f, interlace = struct.unpack(">IIBBBBB", data[16:29])
+        if depth != 8 or colour not in (2, 6) or interlace or width * height > 4_000_000:
+            return None
+        channels = 4 if colour == 6 else 3
+        at, compressed = 8, bytearray()
+        while at + 8 <= len(data):
+            length = struct.unpack(">I", data[at : at + 4])[0]
+            tag = data[at + 4 : at + 8]
+            if tag == b"IDAT":
+                compressed += data[at + 8 : at + 8 + length]
+            if tag == b"IEND":
+                break
+            at += 12 + length
+        stride = width * channels
+        raw = zlib.decompressobj().decompress(bytes(compressed), (stride + 1) * height)
+        if len(raw) < (stride + 1) * height:
+            return None
+        previous = bytearray(stride)
+        rgba = bytearray()
+        for y in range(height):
+            kind = raw[y * (stride + 1)]
+            line = bytearray(raw[y * (stride + 1) + 1 : (y + 1) * (stride + 1)])
+            for i in range(stride):
+                a = line[i - channels] if i >= channels else 0
+                b = previous[i]
+                c = previous[i - channels] if i >= channels else 0
+                if kind == 1:
+                    line[i] = (line[i] + a) & 0xFF
+                elif kind == 2:
+                    line[i] = (line[i] + b) & 0xFF
+                elif kind == 3:
+                    line[i] = (line[i] + (a + b) // 2) & 0xFF
+                elif kind == 4:
+                    pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                    line[i] = (line[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 0xFF
+            previous = line
+            if channels == 4:
+                rgba += line
+            else:
+                for x in range(width):
+                    rgba += line[3 * x : 3 * x + 3] + b"\xff"
+        return _padded(width, height, rgba)
+    except Exception:  # a picture we cannot pad is drawn unpadded
+        return None
 
 
 def _metafile_image(payload: bytes, pp: PlusPlayer):
