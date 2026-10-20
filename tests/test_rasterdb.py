@@ -233,4 +233,7 @@ def test_file_stamps_are_the_load_order_with_times_and_sizes(tmp_path):
     assert [path for path, _, _ in stamps] == load_order([str(single)], [str(folder)])
     assert sorted(size for _, _, size in stamps) == [5, 10, 20]
     (folder / "d.ttf").write_bytes(b"v" * 7)              # a face added: a new stamp set
+    # The folder's time as a later change leaves it (Windows' clock may not have moved).
+    stamp = os.stat(folder).st_mtime_ns + 2_000_000_000
+    os.utime(folder, ns=(stamp, stamp))
     assert len(file_stamps([str(single)], [str(folder)])) == 4
