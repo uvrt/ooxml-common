@@ -43,6 +43,7 @@ and it resolves to itself.*
 
 from __future__ import annotations
 
+import functools
 from dataclasses import dataclass
 
 from ..fonts import BUNDLED_FAMILIES
@@ -529,12 +530,32 @@ def mapped_font(font_family: str | None, mapping: dict[str, str]) -> str | None:
             return direct
 
     lowered = normalized.strip().lower()
-    for key, value in mapping.items():
-        if family_key(key) == lowered:
-            return value
+    try:
+        index = _keyed(tuple(mapping.items()))
+    except TypeError:                    # a value that cannot be hashed: index it here
+        index = _index_of(mapping.items())
+    if lowered in index:
+        return index[lowered]
 
     substitution = substitution_for(font_family)
     return substitution.substitute if substitution else None
+
+
+def _index_of(items) -> dict:
+    """``family_key(name) -> value``, the first name of a key winning -- what scanning the
+    mapping in order for the first name whose key matches returns."""
+    out: dict = {}
+    for key, value in items:
+        out.setdefault(family_key(key), value)
+    return out
+
+
+@functools.lru_cache(maxsize=16)
+def _keyed(items: tuple) -> dict:
+    """:func:`_index_of`, cached by the mapping's items themselves, so a mapping changed in
+    place is indexed afresh.  A conversion asks for every run's face: scanning the
+    mapping per call was about 50,000 name normalisations on a template."""
+    return _index_of(items)
 
 
 def metrics_for(font_family: str | None) -> FontMetrics | None:

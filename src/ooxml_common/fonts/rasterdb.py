@@ -53,7 +53,7 @@ from typing import Iterable, Mapping, Sequence
 from .office import _cmap_subtable, decode_name
 
 __all__ = ["RESVG_DEFAULT_FAMILIES", "file_stamps", "forget", "load_order", "needed_font_files",
-           "resvg_system_dirs"]
+           "parsed_svg", "resvg_system_dirs"]
 
 #: The extensions resvg's font database loads from a folder (fontdb's
 #: ``load_fonts_dir``), exactly: no other case is.
@@ -101,6 +101,15 @@ class _Unanswerable(Exception):
     """The SVG may name a family in a way this module does not follow."""
 
 
+@functools.lru_cache(maxsize=2)
+def parsed_svg(svg: str) -> ET.Element:
+    """``xml.etree.ElementTree.fromstring(svg)``, kept for the last two documents, so the
+    checks a rasterisation runs over one SVG -- pptx2svg's glyph check, then
+    :func:`needed_font_files` -- parse it once.  Read it; never change it.  Raises
+    :class:`~xml.etree.ElementTree.ParseError` as ``fromstring`` does."""
+    return ET.fromstring(svg)
+
+
 def _stacks(svg: str, depth: int = 0) -> "tuple[bool, dict[str | None, set[str]]]":
     """``(has <text>, {font-family value or None: characters under it})`` over the whole
     document and the SVG pictures it carries as data; every character of every element
@@ -108,7 +117,7 @@ def _stacks(svg: str, depth: int = 0) -> "tuple[bool, dict[str | None, set[str]]
     if depth > 4:
         raise _Unanswerable("pictures nested too deep")
     try:
-        root = ET.fromstring(svg)
+        root = parsed_svg(svg) if depth == 0 else ET.fromstring(svg)
     except ET.ParseError as error:
         raise _Unanswerable(str(error)) from error
     out: dict[str | None, set[str]] = {}

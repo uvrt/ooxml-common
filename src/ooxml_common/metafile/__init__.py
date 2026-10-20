@@ -138,6 +138,52 @@ _ATTRIBUTE = re.compile(r'([\w:-]+)="([^"]*)"')
 _ROOT = re.compile(rb"<svg\b[^>]*>")
 _VIEWBOX = re.compile(rb'viewBox="([^"]*)"')
 _LIMIT = 64 * 1024 * 1024
+#: Base64 characters of a picture read to find its root (768 bytes; a multiple of four).
+_HEAD = 1024
+
+
+#: payload -> what :func:`inline_metafile_images` writes inline for it, or ``None`` (not a
+#: picture this module drew): a slide is rasterised in several passes and calls.
+_INLINE: dict = {}
+_INLINE_LIMIT = 64
+#: At most this many characters of payload kept (the content kept is about three quarters).
+_INLINE_CHARS = 32 * 1024 * 1024
+
+
+def _inline_parts(encoded: str) -> "tuple[str | None, str] | None":
+    """``(viewBox or None, the content inside the root)`` of a picture :func:`metafile_to_svg`
+    drew, from its base64 payload; ``None`` for any other picture."""
+    if len(encoded) > _LIMIT:
+        return None
+    if len(encoded) > _HEAD and not _drawn_here(encoded[:_HEAD]):
+        # The root, read from the payload's first bytes, is not one this module wrote:
+        # not decoded whole (a photograph's SVG picture is megabytes, every slide).
+        return None
+    try:
+        data = base64.b64decode(encoded, validate=True)
+    except ValueError:
+        return None
+    root = _ROOT.search(data)
+    if root is None or root.start() > 64 or MARKER.encode() not in root.group(0) or not data.rstrip().endswith(b"</svg>"):
+        return None
+    view_box = _VIEWBOX.search(root.group(0))
+    inner = data[root.end() : data.rstrip().rfind(b"</svg>")].decode("utf-8", errors="replace")
+    return (view_box.group(1).decode() if view_box else None), inner
+
+
+def _drawn_here(head: str) -> bool:
+    """Whether a picture whose payload starts ``head`` may be one :func:`metafile_to_svg`
+    drew: false only where its first bytes hold a whole ``<svg>`` root tag that is not
+    one -- past the 64th byte, or without the marker -- or are not base64 at all, which
+    the whole payload's decoding would say too."""
+    try:
+        data = base64.b64decode(head, validate=True)
+    except ValueError:
+        return False
+    root = _ROOT.search(data)
+    if root is None:
+        return b"<svg" in data       # a root tag longer than the head: decode it all
+    return root.start() <= 64 and MARKER.encode() in root.group(0)
 
 
 def inline_metafile_images(svg: str) -> str:
@@ -156,23 +202,21 @@ def inline_metafile_images(svg: str) -> str:
 
     def replace(match: re.Match) -> str:
         encoded = match.group(2)
-        if len(encoded) > _LIMIT:
+        parts = _INLINE.get(encoded, False)
+        if parts is False:
+            parts = _inline_parts(encoded)
+            if len(_INLINE) >= _INLINE_LIMIT or sum(map(len, _INLINE)) + len(encoded) > _INLINE_CHARS:
+                _INLINE.clear()
+            _INLINE[encoded] = parts
+        if parts is None:
             return match.group(0)
-        try:
-            data = base64.b64decode(encoded, validate=True)
-        except ValueError:
-            return match.group(0)
-        root = _ROOT.search(data)
-        if root is None or root.start() > 64 or MARKER.encode() not in root.group(0) or not data.rstrip().endswith(b"</svg>"):
-            return match.group(0)
-        view_box = _VIEWBOX.search(root.group(0))
-        inner = data[root.end() : data.rstrip().rfind(b"</svg>")].decode("utf-8", errors="replace")
+        view_box, inner = parts
         attributes = dict(_ATTRIBUTE.findall(match.group(1) + " " + match.group(3)))
         box = " ".join(f'{name}="{attributes.pop(name)}"' for name in ("x", "y", "width", "height")
                        if name in attributes)
         attributes.pop("preserveAspectRatio", None)
         outer = "".join(f' {name}="{value}"' for name, value in attributes.items())
-        view = f' viewBox="{view_box.group(1).decode()}"' if view_box else ""
+        view = f' viewBox="{view_box}"' if view_box is not None else ""
         return (f"<g{outer}><svg {box}{view} preserveAspectRatio=\"none\" overflow=\"hidden\">"
                 f"{inner}</svg></g>")
 
