@@ -150,7 +150,8 @@ def warn_if_slow(paths: Iterable, *, what: str = "font folder",
     warned = []
     for path in fresh:
         try:
-            real = os.path.realpath(path)
+            # Mount points are POSIX paths; elsewhere (a table given by a test) as given.
+            real = os.path.realpath(path) if os.sep == "/" else path.replace("\\", "/")
         except (OSError, ValueError):
             continue
         found = slow_mount(real, table)

@@ -70,7 +70,7 @@ def test_user_font_dirs_checks_its_folders(monkeypatch):
     monkeypatch.setattr(slowfs, "warn_if_slow", lambda paths, **kw: seen.extend(paths))
     monkeypatch.setattr(slowfs, "check_package", lambda: None)
     office.user_font_dirs(["/somewhere/fonts"])
-    assert [str(p) for p in seen] == ["/somewhere/fonts"]
+    assert [p.as_posix() for p in seen] == ["/somewhere/fonts"]
 
 
 def test_nothing_is_checked_where_there_is_no_mount_table(monkeypatch, caplog):
