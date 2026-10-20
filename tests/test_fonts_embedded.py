@@ -267,3 +267,34 @@ def test_relabelling_keeps_every_advance_width(probe_font):
     after = read_sfnt(relabel(probe_font, "Something Else", bold=False, italic=True))
     assert after.advances == before.advances
     assert after.units_per_em == before.units_per_em
+
+
+# --------------------------------------------------------------------------------------
+# Decoded faces handed from one process to another (decoded_faces, remember_decoded)
+# --------------------------------------------------------------------------------------
+
+
+def test_a_face_decoded_elsewhere_is_not_decoded_again(probe_font, monkeypatch):
+    from ooxml_common.fonts import embedded
+
+    monkeypatch.setattr(embedded, "_decode_cache", embedded.OrderedDict())
+    payload = wrap_as_eot(probe_font, family="Handed Face")
+    assert embedded._decode(payload) == probe_font
+    handed = embedded.decoded_faces()
+    assert list(handed.values()) == [probe_font]
+    # Another process: nothing decoded there, and decoding would fail.
+    monkeypatch.setattr(embedded, "_decode_cache", embedded.OrderedDict())
+    monkeypatch.setattr(embedded, "decode_eot", lambda data: pytest.fail("decoded again"))
+    embedded.remember_decoded(handed)
+    assert embedded._decode(payload) == probe_font
+
+
+def test_failures_are_not_handed_on_and_bad_entries_are_ignored(probe_font, monkeypatch):
+    from ooxml_common.fonts import embedded
+
+    monkeypatch.setattr(embedded, "_decode_cache", embedded.OrderedDict())
+    with pytest.raises(EotError):
+        embedded._decode(wrap_as_eot(probe_font, flags=0x00000004))  # claims MTX, is not
+    assert embedded.decoded_faces() == {}
+    embedded.remember_decoded({b"short": probe_font, b"x" * 32: "not bytes"})
+    assert embedded.decoded_faces() == {}

@@ -216,3 +216,24 @@ def test_a_system_face_lacking_a_character_keeps_the_faces_that_have_it(tmp_path
     _font(mine / "other.ttf", "Other", "xyz")
     monkeypatch.setattr(rasterdb, "resvg_system_dirs", lambda: [str(system)])
     assert _needed(SVG.format(_text("Base", "aか")), [mine], system_fonts=True) == ["kana.ttf"]
+
+
+def test_file_stamps_are_the_load_order_with_times_and_sizes(tmp_path):
+    from ooxml_common.fonts.rasterdb import file_stamps, forget, load_order
+
+    folder = tmp_path / "fonts"
+    folder.mkdir()
+    (folder / "a.ttf").write_bytes(b"x" * 10)
+    (folder / "b.otf").write_bytes(b"y" * 20)
+    (folder / "notes.txt").write_bytes(b"z")
+    single = tmp_path / "c.ttf"
+    single.write_bytes(b"w" * 5)
+    forget()
+    stamps = file_stamps([str(single)], [str(folder)])
+    assert [path for path, _, _ in stamps] == load_order([str(single)], [str(folder)])
+    assert sorted(size for _, _, size in stamps) == [5, 10, 20]
+    (folder / "d.ttf").write_bytes(b"v" * 7)              # a face added: a new stamp set
+    # The folder's time as a later change leaves it (Windows' clock may not have moved).
+    stamp = os.stat(folder).st_mtime_ns + 2_000_000_000
+    os.utime(folder, ns=(stamp, stamp))
+    assert len(file_stamps([str(single)], [str(folder)])) == 4
