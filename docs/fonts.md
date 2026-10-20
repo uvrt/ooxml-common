@@ -56,6 +56,18 @@ different folders -- two agent sessions -- never see each other's faces. Office'
 cloud-font cache is listed once and kept while its folder's time stands; the operating
 system's folders elsewhere than macOS are walked and checked as an application's are.
 
+**Keep them on the local disk.** Rasterising opens a face's file again for every run of
+text it shapes. On WSL's mount of a Windows drive (`/mnt/c`: 9p, or WSL 1's drvfs) or a
+network file system (NFS, SMB/CIFS, a FUSE network mount such as an Azure Files or S3
+volume) each open crosses to the Windows host or another machine, and a slide that
+rasterises in a fraction of a second on the local disk takes seconds. So the first time a folder in use is on one (and once for where
+the library itself is installed, and the font bundle), a warning on the
+`ooxml_common.fonts` logger names the folder, the file system and what to do: copy the
+fonts into the machine's, container's or WSL's own file system -- bake them into the image,
+or copy them to a local folder at start -- and point `OOXML_FONT_DIRS` / `font_dirs` there
+(`ooxml_common.fonts.slowfs`; Linux only, from `/proc/self/mountinfo`; once per process
+per folder).
+
 ## What the rasteriser is handed
 
 resvg-py builds a new font database on every call from every file it is handed, so both

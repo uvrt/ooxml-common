@@ -221,10 +221,19 @@ def user_font_dirs(font_dirs=None, *, environ=None) -> tuple[Path, ...]:
     place of them.  The folders are returned as given; :func:`with_subfolders` lists
     what a one-level index must read."""
     if font_dirs is None:
-        return env_font_dirs(environ)
-    if isinstance(font_dirs, (str, os.PathLike)):
-        font_dirs = [font_dirs]
-    return tuple(Path(os.fspath(path)).expanduser() for path in font_dirs)
+        found = env_font_dirs(environ)
+    else:
+        if isinstance(font_dirs, (str, os.PathLike)):
+            font_dirs = [font_dirs]
+        found = tuple(Path(os.fspath(path)).expanduser() for path in font_dirs)
+    # Once per process per folder: said when a folder (or the library) is on WSL's mount of
+    # a Windows drive or a network file system, where every font file opened is slow.
+    from . import slowfs
+
+    slowfs.check_package()
+    if found:
+        slowfs.warn_if_slow(found)
+    return found
 
 
 # --------------------------------------------------------------------------------------

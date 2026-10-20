@@ -4,7 +4,12 @@ DrawingML effects compose in a fixed order -- soft edge, glow, outer shadow, inn
 -- and each one consumes the previous stage's result, so the primitives are chained
 through named ``result`` values rather than each reading ``SourceGraphic``.
 
-The filter region is enlarged to 200% so blurs and offsets are not clipped, and
+The filter region holds every pixel the effects can reach: where the caller knows the
+extent of what the filtered element draws (``bounds``), that extent grown by each
+effect's reach -- three standard deviations of its blur, plus its offset -- in user
+space (:func:`effect_region`); else 200% of the element's bounding box, as before.  A
+rasteriser blurs the whole region, so a full-slide shape's shadow over a region four
+times the slide cost four times the pixels it can show.
 ``color-interpolation-filters="sRGB"`` is set because the SVG default (linearRGB) makes
 shadows visibly lighter than PowerPoint's.
 """
@@ -28,11 +33,15 @@ CLR_CHANGE_SHARPNESS = 64
 
 
 def render_effects(
-    effects: m.EffectList | None, context: SvgDefs, *, dpi: float = DEFAULT_DPI
+    effects: m.EffectList | None, context: SvgDefs, *, dpi: float = DEFAULT_DPI,
+    bounds: "tuple[float, float, float, float] | None" = None,
 ) -> str:
     """Return a ``filter="url(#...)"`` attribute, registering the filter in ``<defs>``.
 
     ``dpi`` is the pixels per inch of the caller's user space (96, pptx2svg's).
+    ``bounds`` is ``(x0, y0, x1, y1)``, in the user space of the element the filter goes
+    on, holding everything that element draws -- strokes included -- or ``None`` where
+    the caller cannot say (the region is then 200% of the element's bounding box).
     """
     if effects is None:
         return ""
@@ -130,12 +139,71 @@ def render_effects(
     if not primitives:
         return ""
 
+    region = 'x="-50%" y="-50%" width="200%" height="200%"'
+    if bounds is not None:
+        x, y, width, height = effect_region(effects, bounds, dpi=dpi)
+        region = (f'filterUnits="userSpaceOnUse" x="{num(x)}" y="{num(y)}" '
+                  f'width="{num(width)}" height="{num(height)}"')
     filter_id = context.new_id("effect")
     context.add_def(
-        f'<filter id="{filter_id}" x="-50%" y="-50%" width="200%" height="200%" '
+        f'<filter id="{filter_id}" {region} '
         f'color-interpolation-filters="sRGB">{"".join(primitives)}</filter>'
     )
     return f'filter="url(#{filter_id})"'
+
+
+#: How far a blur reaches, in standard deviations: resvg draws a deviation above two
+#: pixels as three box blurs, which reach less than three (2.82 and a pixel); a smaller
+#: one with a recursive filter, whose tail past three deviations and :data:`REGION_PAD`
+#: changed no pixel of the corpus' PNGs (round 10).
+BLUR_REACH = 3
+#: An inner shadow's, in standard deviations: it blurs the inverse of the shape's alpha,
+#: which is opaque out to the region's edge, so the edge is read further in (three
+#: deviations changed a level of the PNG at a few pixels of large shapes; four none).
+INNER_REACH = 4
+#: User units added on every side of :func:`effect_region`: the region's rounding to whole
+#: pixels, and a blur's last pixel.
+REGION_PAD = 2
+
+
+def effect_region(
+    effects: m.EffectList, bounds: "tuple[float, float, float, float]", *, dpi: float = DEFAULT_DPI
+) -> "tuple[float, float, float, float]":
+    """``(x, y, width, height)`` of the filter region of ``effects`` over an element drawing
+    within ``bounds`` (:func:`render_effects`): the bounds grown on each side by how far
+    the effects reach past them -- a glow by its blur, a shadow by its blur and its offset
+    -- and :data:`REGION_PAD`.  A shadow's offset counts on every side, whichever way it
+    falls: the blur is drawn in the region before it is moved, an inner shadow blurs the
+    outside of the shape inwards, and resvg moves a shadow along the page's axes, not
+    the element's, so on a turned or flipped shape it falls another way in the user
+    space the region is in.  A soft edge draws nothing outside, but its blur reads the
+    region past the edge it softens (a tighter region changed resvg's pixels), so it
+    counts as a glow does."""
+    left = top = right = bottom = 0.0
+    for blurred in (effects.soft_edge, effects.glow):
+        if blurred is not None:
+            reach = BLUR_REACH * emu_to_px(blurred.radius, dpi)
+            left, top, right, bottom = (max(side, reach) for side in (left, top, right, bottom))
+    for shadow in (effects.outer_shadow, effects.inner_shadow):
+        if shadow is not None:
+            reach, dx, dy = _shadow_reach(shadow, dpi)
+            if shadow is effects.inner_shadow:
+                reach *= INNER_REACH / BLUR_REACH
+            reach += math.hypot(dx, dy)
+            left, top, right, bottom = (max(side, reach) for side in (left, top, right, bottom))
+    x0, y0, x1, y1 = bounds
+    pad = REGION_PAD
+    return (x0 - left - pad, y0 - top - pad, (x1 - x0) + left + right + 2 * pad,
+            (y1 - y0) + top + bottom + 2 * pad)
+
+
+def _shadow_reach(shadow, dpi: float) -> "tuple[float, float, float]":
+    """``(blur reach, dx, dy)`` of a shadow, as :func:`render_effects` draws it."""
+    std_dev = emu_to_px(shadow.blur_radius, dpi) / 2
+    distance = emu_to_px(shadow.distance, dpi)
+    radians = math.radians(shadow.direction)
+    return (BLUR_REACH * std_dev, round(distance * math.cos(radians), 2),
+            round(distance * math.sin(radians), 2))
 
 
 def render_blip_effects(
