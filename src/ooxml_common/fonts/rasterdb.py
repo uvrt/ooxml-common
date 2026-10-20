@@ -52,7 +52,8 @@ from typing import Iterable, Mapping, Sequence
 
 from .office import _cmap_subtable, decode_name
 
-__all__ = ["RESVG_DEFAULT_FAMILIES", "forget", "load_order", "needed_font_files", "resvg_system_dirs"]
+__all__ = ["RESVG_DEFAULT_FAMILIES", "file_stamps", "forget", "load_order", "needed_font_files",
+           "resvg_system_dirs"]
 
 #: The extensions resvg's font database loads from a folder (fontdb's
 #: ``load_fonts_dir``), exactly: no other case is.
@@ -393,6 +394,15 @@ def load_order(font_files: Sequence[str] = (), font_dirs: Sequence[str] = ()) ->
     """Every file resvg loads for ``font_files`` and ``font_dirs`` (after the system's,
     when it reads them), in its order: the files as named, then each folder walked."""
     return [entry[0] for entry in _entries(font_files, font_dirs)]
+
+
+def file_stamps(font_files: Sequence[str] = (), font_dirs: Sequence[str] = ()
+                ) -> "list[tuple[str, int, int]]":
+    """:func:`load_order` with each file's modification time (ns) and size:
+    ``(path, mtime, size)``, what a cache of rasterisations keys on so that a font file
+    changed, added or removed is a new key.  Folders are walked as :func:`load_order`
+    walks them (cached while no folder changes)."""
+    return _entries(font_files, font_dirs)
 
 
 def _entries(font_files: Sequence[str], font_dirs: Sequence[str]) -> "list[tuple[str, int, int]]":

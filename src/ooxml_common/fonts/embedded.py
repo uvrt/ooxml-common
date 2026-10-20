@@ -56,6 +56,8 @@ __all__ = [
     "EmbeddedFace",
     "EmbeddedFonts",
     "NO_EMBEDDED_FONTS",
+    "decoded_faces",
+    "remember_decoded",
     "extract_embedded_fonts",
     "metrics_from_faces",
 ]
@@ -259,6 +261,29 @@ def _decode(payload: bytes) -> bytes:
     if isinstance(result, EotError):
         raise result
     return result
+
+
+def decoded_faces() -> dict[bytes, bytes]:
+    """The faces this process has decoded and still holds, by the SHA-256 digest of the
+    payload each came from -- to hand to another process (:func:`remember_decoded`), so
+    a worker does not decode again what one has decoded: MicroType Express decoding is
+    pure Python, 0.15 s to 1.1 s a face, and a template deck embeds eight.  Failures are
+    left out."""
+    return {digest: font for digest, font in list(_decode_cache.items())
+            if isinstance(font, bytes)}
+
+
+def remember_decoded(faces: "dict[bytes, bytes]") -> None:
+    """Take faces another process decoded (:func:`decoded_faces`), by payload digest,
+    into this process's cache, as though decoded here: a payload whose digest is given is
+    not decoded.  Kept in memory only, and bounded as the decoded faces are."""
+    for digest, font in faces.items():
+        if not isinstance(digest, bytes) or len(digest) != 32 or not isinstance(font, bytes):
+            continue
+        _decode_cache[digest] = font
+        _decode_cache.move_to_end(digest)
+        if len(_decode_cache) > _DECODE_CACHE_SIZE:
+            _decode_cache.popitem(last=False)
 
 
 _SLOT_FIELDS = {
