@@ -78,6 +78,11 @@ class RenderContext:
     #: and this attribute is left alone for it.  Only a uniform scale -- which commutes
     #: with rotation and is therefore exact as a ``scale()`` -- still lands here.
     group_scale: tuple[float, float] = (1.0, 1.0)
+    #: Whether an enclosing group turns its children (a rotation): set by
+    #: :func:`~ooxml_common.drawingml.elements.render_group` while it draws them.  An
+    #: element drawn turned keeps an effect's filter region relative to its bounding box
+    #: (:func:`~ooxml_common.drawingml.effect.render_effects`).
+    turned: bool = False
     _next_id: int = 0
     #: Which application's drawing rules the fills, outlines and text rectangles follow
     #: (:mod:`~ooxml_common.drawingml.rules`).  PowerPoint's is the default, and what

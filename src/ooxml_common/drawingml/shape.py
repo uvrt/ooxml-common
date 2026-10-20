@@ -124,7 +124,11 @@ def render_shape(shape: m.ShapeElement, context: RenderContext) -> str:
 
     fill_attrs = render_fill_attrs(shape.fill, context, (0, 0, width, height), rules=context.rules)
     outline_attrs = render_outline_attrs(shape.outline, context, rules=context.rules)
-    filter_attr = render_effects(shape.effects, context)
+    filter_attr = render_effects(
+        shape.effects, context,
+        bounds=None if _has_text(shape.text_body) or _turned(transform, context)
+        else _drawn_bounds(shape.geometry, width, height, shape.outline),
+    )
 
     parts = [f'<g transform="{build_transform_attr(transform)}"' + (f" {filter_attr}" if filter_attr else "") + ">"]
 
@@ -176,7 +180,8 @@ def render_image(image: m.ImageElement, context: RenderContext) -> str:
     height = emu_to_px(image.transform.extent_height)
     href = f"data:{image.mime_type};base64,{image.image_data}"
 
-    filter_attr = render_effects(image.effects, context)
+    filter_attr = render_effects(image.effects, context, bounds=None if _turned(image.transform, context)
+                                 else _image_bounds(image, width, height))
     blip_attr = render_blip_effects(image.blip_effects, context)
 
     attrs: list[str] = []
@@ -269,6 +274,62 @@ def render_image(image: m.ImageElement, context: RenderContext) -> str:
         + ">"
     )
     return group_open + "".join(inner) + "</g>"
+
+
+#: Presets whose outline stays inside their box at any adjustment (ECMA-376 Part 1,
+#: 20.1.10.56's definitions pin their adjustments within it): a filter region over the box
+#: holds all they draw.  Callouts, arcs and the like are left out, not checked.
+_BOXED_PRESETS = frozenset({
+    "rect", "roundRect", "ellipse", "snip1Rect", "snip2SameRect", "snip2DiagRect", "snipRoundRect",
+    "round1Rect", "round2SameRect", "round2DiagRect", "flowChartProcess", "flowChartAlternateProcess",
+})
+
+
+def _drawn_bounds(geometry: "m.Geometry | None", width: float, height: float,
+                  outline: "m.Outline | None") -> "tuple[float, float, float, float] | None":
+    """What a geometry of the box ``width`` x ``height`` draws within, its stroke included
+    (twice the width: a miter at SVG's default limit of 4 reaches two widths out) -- or
+    ``None`` for a geometry not known to stay in its box.  ``None`` geometry is a
+    rectangle."""
+    if geometry is not None and not (isinstance(geometry, m.PresetGeometry) and geometry.preset in _BOXED_PRESETS):
+        return None
+    reach = 0.0
+    if outline is not None and outline.fill is not None:
+        reach = 2 * emu_to_px(outline.width)
+    return (-reach, -reach, width + reach, height + reach)
+
+
+def _turned(transform: m.Transform, context: RenderContext) -> bool:
+    """Whether the element is drawn turned: its own rotation or an enclosing group's.  Its
+    effects keep their filter region relative to its bounding box then: the rasteriser
+    draws a filter's input at the region's own pixel origin, and a turned edge's
+    antialiasing at another origin can come out a sample different."""
+    return bool(transform.rotation) or getattr(context, "turned", False)
+
+
+def _has_text(body: "m.TextBody | None") -> bool:
+    """Whether ``body`` may draw anything: a run with text, or a bullet."""
+    return body is not None and any(
+        paragraph.properties.bullet is not None or any(run.text for run in paragraph.runs)
+        for paragraph in body.paragraphs
+    )
+
+
+def _image_bounds(image: m.ImageElement, width: float, height: float
+                  ) -> "tuple[float, float, float, float] | None":
+    """What :func:`render_image` draws within: the frame (a crop and a tile are clipped
+    to it), a stretched picture's own rectangle where its insets push it out, and the
+    outline (:func:`_drawn_bounds`)."""
+    bounds = _drawn_bounds(image.geometry, width, height, image.outline)
+    if bounds is None:
+        return None
+    stretch = image.stretch
+    if image.src_rect is None or not _has_crop(image.src_rect):
+        if image.tile is None and stretch is not None and _has_crop(stretch):
+            left, top = stretch.left * width, stretch.top * height
+            right, bottom = width * (1 - stretch.right), height * (1 - stretch.bottom)
+            bounds = (min(bounds[0], left), min(bounds[1], top), max(bounds[2], right), max(bounds[3], bottom))
+    return bounds
 
 
 def _is_plain_rect(geometry: m.Geometry) -> bool:

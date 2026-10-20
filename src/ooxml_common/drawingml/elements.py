@@ -197,6 +197,13 @@ def render_group(group: "m.GroupElement | m.ChartElement", context: RenderContex
     Anything else that turns out to have no transform to fold into keeps it too, rather
     than failing where it used to draw.
     """
+    turned = getattr(context, "turned", False)
+    if group.transform.rotation and not turned:
+        context.turned = True
+        try:
+            return render_group(group, context)
+        finally:
+            context.turned = turned
     x = emu_to_px(group.transform.offset_x)
     y = emu_to_px(group.transform.offset_y)
     w = emu_to_px(group.transform.extent_width)
