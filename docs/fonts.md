@@ -55,3 +55,14 @@ indexed once per process). The cache is keyed by each folder as given, so caller
 different folders -- two agent sessions -- never see each other's faces. Office's
 cloud-font cache is listed once and kept while its folder's time stands; the operating
 system's folders elsewhere than macOS are walked and checked as an application's are.
+
+## What the rasteriser is handed
+
+resvg-py builds a new font database on every call from every file it is handed, so both
+renderers hand it only the files an SVG can use: `ooxml_common.fonts.rasterdb`'s
+`needed_font_files()` -- the faces filed under any name a run can resolve to, and the
+faces that map a character some candidate face lacks, in resvg's load order. It draws
+the same pixels as handing everything over (the module docstring has the reasoning, from
+resvg's own matching and fallback), and answers `None` -- everything, as before -- where
+an SVG could name a face some other way (CSS, `<use>`, a picture by reference) or the
+system's fonts come from fontconfig. Nothing is copied: the files are named where they are.

@@ -333,11 +333,15 @@ def refresh_font_dirs() -> None:
     it: a folder whose modification time changed is walked and indexed again by itself
     (one stat per folder per lookup).  It is for what a folder's time does not show -- a
     file rewritten in place under the same name, a change on a file system with coarse
-    times, a system folder on macOS (indexed once per process, as before)."""
+    times, a system folder on macOS (indexed once per process, as before).  The
+    rasteriser's file index (:mod:`ooxml_common.fonts.rasterdb`) is forgotten too."""
     with _CACHE_LOCK:
         _WALK_CACHE.clear()
         _CLOUD_CACHE.clear()
     _forget_faces()
+    from . import rasterdb
+
+    rasterdb.forget()
 
 
 def with_subfolders(dirs) -> tuple[Path, ...]:
