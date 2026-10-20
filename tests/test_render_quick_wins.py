@@ -63,10 +63,11 @@ def test_glow_and_inner_shadow_reach_every_side():
     assert (x, y, width, height) == (10 - 24 - 2, 10 - 24 - 2, 10 + 48 + 4, 10 + 48 + 4)
     inner = m.EffectList(inner_shadow=m.InnerShadow(25400, 38100, 0, BLACK))
     x, _, width, _ = effect.effect_region(inner, (0, 0, 10, 10))
-    reach = 3 * emu_to_px(25400) / 2 + emu_to_px(38100)
+    reach = 4 * emu_to_px(25400) / 2 + emu_to_px(38100)
     assert (round(x, 9), round(width, 9)) == (round(-reach - 2, 9), round(10 + 2 * reach + 4, 9))
     soft = m.EffectList(soft_edge=m.SoftEdge(50800))
-    assert effect.effect_region(soft, (0, 0, 10, 10)) == (-2, -2, 14, 14)
+    reach = 3 * emu_to_px(50800) + 2
+    assert effect.effect_region(soft, (0, 0, 10, 10)) == (-reach, -reach, 10 + 2 * reach, 10 + 2 * reach)
 
 
 def test_shapes_give_bounds_only_where_all_they_draw_is_in_the_box():

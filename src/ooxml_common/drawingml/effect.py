@@ -157,6 +157,10 @@ def render_effects(
 #: one with a recursive filter, whose tail past three deviations and :data:`REGION_PAD`
 #: changed no pixel of the corpus' PNGs (round 10).
 BLUR_REACH = 3
+#: An inner shadow's, in standard deviations: it blurs the inverse of the shape's alpha,
+#: which is opaque out to the region's edge, so the edge is read further in (three
+#: deviations changed a level of the PNG at a few pixels of large shapes; four none).
+INNER_REACH = 4
 #: User units added on every side of :func:`effect_region`: the region's rounding to whole
 #: pixels, and a blur's last pixel.
 REGION_PAD = 2
@@ -172,14 +176,19 @@ def effect_region(
     falls: the blur is drawn in the region before it is moved, an inner shadow blurs the
     outside of the shape inwards, and resvg moves a shadow along the page's axes, not
     the element's, so on a turned or flipped shape it falls another way in the user
-    space the region is in.  A soft edge reaches nothing outside."""
+    space the region is in.  A soft edge draws nothing outside, but its blur reads the
+    region past the edge it softens (a tighter region changed resvg's pixels), so it
+    counts as a glow does."""
     left = top = right = bottom = 0.0
-    if effects.glow is not None:
-        reach = BLUR_REACH * emu_to_px(effects.glow.radius, dpi)
-        left, top, right, bottom = (max(side, reach) for side in (left, top, right, bottom))
+    for blurred in (effects.soft_edge, effects.glow):
+        if blurred is not None:
+            reach = BLUR_REACH * emu_to_px(blurred.radius, dpi)
+            left, top, right, bottom = (max(side, reach) for side in (left, top, right, bottom))
     for shadow in (effects.outer_shadow, effects.inner_shadow):
         if shadow is not None:
             reach, dx, dy = _shadow_reach(shadow, dpi)
+            if shadow is effects.inner_shadow:
+                reach *= INNER_REACH / BLUR_REACH
             reach += math.hypot(dx, dy)
             left, top, right, bottom = (max(side, reach) for side in (left, top, right, bottom))
     x0, y0, x1, y1 = bounds
