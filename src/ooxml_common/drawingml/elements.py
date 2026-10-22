@@ -54,14 +54,16 @@ def render_element(element: m.SlideElement, context: RenderContext) -> str:
         if element_id:
             attributes["data-pptx-id"] = element_id
         element_path = getattr(element, "element_path", None)
-        if element_path:
+        # The path is the shape's position, which a shape added or removed before it
+        # changes; marked for an editor (`edit_marks`), the id addresses it alone.
+        if element_path and not context.edit_marks:
             attributes["data-pptx-path"] = element_path
 
         if attributes:
             rendered = _add_attrs(rendered, attributes)
 
     hyperlink = getattr(element, "hyperlink", None)
-    if rendered and hyperlink is not None:
+    if rendered and hyperlink is not None and context.hyperlinks:
         rendered = f'<a href="{escape_xml_attr(hyperlink.url)}">{rendered}</a>'
 
     return rendered

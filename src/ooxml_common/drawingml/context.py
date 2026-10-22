@@ -95,14 +95,40 @@ class RenderContext:
     #: letters that encode them.  Measurement is not affected.  Empty by default: a face
     #: is drawn as itself.
     mapped_symbol_faces: frozenset = frozenset()
+    #: Draw a hyperlink as an ``<a href>`` around what it covers -- a shape, a picture, a
+    #: run of text.  Off, the content is drawn alone, as it is drawn anyway: for a preview
+    #: in which a click must not leave the page.
+    hyperlinks: bool = True
+    #: Mark what an editor addresses, as ``data-`` attributes only, so the drawing does not
+    #: change: each table cell's fill and text in a ``<g data-pptx-id="<table id>/cell<row>,<column>">``
+    #: (grid positions from 0, the cell a merge hides left out), and each text body with an
+    #: owning id in an element carrying ``data-pptx-text`` -- ``"shape"`` for a shape's text
+    #: frame, ``"cell"`` for a cell's, ``"diagram"`` for a SmartArt drawing's piece (its id
+    #: has a ``/``) -- whose address is the nearest ``data-pptx-id`` at or above it.  A
+    #: chart's text, which no id owns, is not marked.  And ``data-pptx-path`` is left
+    #: out: it is the element's position, which an element added or removed before it
+    #: changes, so an unchanged shape would draw different bytes.  Off by default.
+    edit_marks: bool = False
 
     def __post_init__(self) -> None:
         if self.measurer is None:
             self.measurer = DefaultTextMeasurer(kerning=self.rules.kerning)
 
+    #: What every id :meth:`new_id` mints carries after its prefix, set by
+    #: :meth:`scope_ids`.  Empty by default: ``grad-1``, ``clip-2``...
+    id_scope: str = ""
+
     def new_id(self, prefix: str) -> str:
         self._next_id += 1
-        return f"{prefix}-{self._next_id}"
+        return f"{prefix}-{self.id_scope}{self._next_id}"
+
+    def scope_ids(self, scope: str) -> None:
+        """Mint the ids that follow as ``<prefix>-<scope><n>``, counting from 1 again: a
+        caller drawing each shape under its own scope gets ids (and so definitions) that
+        depend on that shape alone, the same whatever is drawn before it.  ``scope`` must
+        be unique in the document and end in a character no number does (``"s256_4-"``)."""
+        self.id_scope = scope
+        self._next_id = 0
 
     def add_def(self, definition: str) -> None:
         if definition:
