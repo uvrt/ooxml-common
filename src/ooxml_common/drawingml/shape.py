@@ -11,7 +11,7 @@ from dataclasses import replace
 
 from . import scene as m
 from ..units import emu_to_px
-from .context import RenderContext, num
+from .context import RenderContext, escape_xml_attr, num
 from .effect import render_blip_effects, render_effects
 from .fill import render_fill_attrs, render_markers, render_outline_attrs, tile_pattern
 from .geometry import render_geometry
@@ -139,7 +139,12 @@ def render_shape(shape: m.ShapeElement, context: RenderContext) -> str:
         parts.append(_styled(geometry_svg, f"{fill_attrs} {outline_attrs}"))
 
     if shape.text_body is not None:
-        parts.append(_render_shape_text(shape, transform, context))
+        text_svg = _render_shape_text(shape, transform, context)
+        owner = getattr(shape, "element_id", None)
+        if text_svg and owner and context.edit_marks:
+            kind = "diagram" if "/" in owner else "shape"
+            text_svg = f'<g data-pptx-text="{kind}">{text_svg}</g>'
+        parts.append(text_svg)
 
     parts.append("</g>")
     return "".join(parts)
@@ -352,6 +357,7 @@ def render_table(table: m.TableElement, context: RenderContext) -> str:
     spanning cell is widened/heightened by its ``gridSpan``/``rowSpan``.
     """
     data = table.table
+    table_id = getattr(table, "element_id", None)
     filter_attr = render_effects(data.effects, context)
     parts = [f'<g transform="{build_transform_attr(table.transform)}"'
              + (f" {filter_attr}" if filter_attr else "") + ">"]
@@ -392,11 +398,21 @@ def render_table(table: m.TableElement, context: RenderContext) -> str:
             width = column_offsets[end_column] - x
             height = row_offsets[end_row] - y
 
+            # An editor's cell (RenderContext.edit_marks): its fill and text in a group
+            # named by its grid position, with a box drawn as nothing where it has no fill.
+            marked = context.edit_marks and table_id is not None
+            if marked:
+                parts.append(f'<g data-pptx-id="{escape_xml_attr(table_id)}/cell{row_index},{column_index}">')
             if cell.fill is not None:
                 fill_attrs = render_fill_attrs(cell.fill, context, (x, y, width, height), rules=context.rules)
                 parts.append(
                     f'<rect x="{num(x)}" y="{num(y)}" width="{num(width)}" '
                     f'height="{num(height)}" {fill_attrs}/>'
+                )
+            elif marked:
+                parts.append(
+                    f'<rect x="{num(x)}" y="{num(y)}" width="{num(width)}" '
+                    f'height="{num(height)}" fill="none"/>'
                 )
 
             if cell.borders is not None:
@@ -413,9 +429,12 @@ def render_table(table: m.TableElement, context: RenderContext) -> str:
                 )
                 text_svg = render_text_body(cell.text_body, cell_transform, context)
                 if text_svg:
+                    mark = ' data-pptx-text="cell"' if marked else ""
                     parts.append(
-                        f'<g transform="translate({num(x)}, {num(y)})">{text_svg}</g>'
+                        f'<g transform="translate({num(x)}, {num(y)})"{mark}>{text_svg}</g>'
                     )
+            if marked:
+                parts.append("</g>")
 
     parts.extend(borders)
     parts.append("</g>")

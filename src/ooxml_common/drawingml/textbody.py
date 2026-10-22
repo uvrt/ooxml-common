@@ -936,7 +936,7 @@ def _render_line(
             chunk_width += width
 
         content = "".join(rendered)
-        if content and piece.properties.hyperlink is not None:
+        if content and piece.properties.hyperlink is not None and context.hyperlinks:
             content = (
                 f'<a href="{escape_xml_attr(piece.properties.hyperlink.url)}">{content}</a>'
             )
@@ -1458,7 +1458,7 @@ def _render_segment(
             _segment_tspans(segment, font_scale, context, default_font_size)
         )
     )
-    if segment.properties.hyperlink is not None:
+    if segment.properties.hyperlink is not None and context.hyperlinks:
         return f'<a href="{escape_xml_attr(segment.properties.hyperlink.url)}">{content}</a>'
     return content
 
