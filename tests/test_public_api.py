@@ -43,6 +43,13 @@ USED_BY: dict[str, dict[str, str]] = {
     "ooxml_common.chart.rules": {
         "WORD": "docx2svg",
     },
+    "ooxml_common.dates": {
+        "DateNames": "ooxml-edit",
+        "LANGUAGES": "ooxml-edit",
+        "LCIDS": "ooxml-edit",
+        "NAMES": "ooxml-edit",
+        "names_tag": "ooxml-edit",
+    },
     "ooxml_common.drawingml": {
         "preset_specs": "pptx2svg",
     },
@@ -397,12 +404,18 @@ USED_BY: dict[str, dict[str, str]] = {
         "split_packed_dib": "pptx2svg",
     },
     "ooxml_common.numfmt": {
-        "DATE_KINDS": "xlsx-agent",
-        "MEASURED": "xlsx-agent",
+        "DATE_KINDS": "ooxml-edit, xlsx-agent",
+        "MEASURED": "ooxml-edit, xlsx-agent",
         "classify": "xlsx-agent",
+        "is_date_code": "ooxml-edit",
     },
     "ooxml_common.opc": {
+        "CONTENT_TYPES_PART": "ooxml-edit",
         "OpcPackage": "docx2svg",
+        "REL_CHART": "ooxml-edit",
+        "REL_IMAGE": "ooxml-edit",
+        "REL_OFFICE_DOCUMENT": "ooxml-edit",
+        "normalize_part_path": "ooxml-edit",
     },
     "ooxml_common.svgimage": {
         "natural_size": "pptx2svg",
@@ -443,11 +456,13 @@ USED_BY: dict[str, dict[str, str]] = {
         "translate": "pptx2svg",
     },
     "ooxml_common.units": {
+        "EMU_PER_POINT": "ooxml-edit",
         "PX_PER_PT": "pptx-agent",
         "emu_to_px": "pptx-agent",
         "px_to_emu": "pptx-agent",
     },
     "ooxml_common.xmlutil": {
+        "NS_R": "ooxml-edit",
         "attr": "docx2svg",
         "child": "docx2svg, pptx-agent",
         "children": "docx2svg",

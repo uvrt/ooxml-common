@@ -2,8 +2,8 @@
 
 Back to the [README](../README.md).
 
-pptx2svg, docx2svg, the agents (pptx-agent, docx-agent, xlsx-agent) and ooxml-edit's tests
-import these names from ooxml-common, in their `src`, `tests` and `tools`. They are its
+pptx2svg, docx2svg, the agents (pptx-agent, docx-agent, xlsx-agent) and ooxml-edit (its
+code, from 0.64.0, and its tests) import these names from ooxml-common, in their `src`, `tests` and `tools`. They are its
 surface across repositories: their CI installs ooxml-common from `main`, so renaming or
 removing one breaks a sibling at its next run, not on the pull request that made the
 change. `tests/test_public_api.py` lists the same names, each with the siblings that use
@@ -18,6 +18,7 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.chart.layout` -- docx2svg: `CHART_TEXT_BODY`, `ChartBuilder`, `ChartStyle`, `EMU_PER_POINT`, `accent_colors`, `default_font_size`, `drawable_plots`; pptx-agent: `DEFAULT_CHART_FONT_PT`, `powerpoint_auto_title_size`, `title_states_no_font`
 - `ooxml_common.chart.read` -- docx2svg, pptx-agent: `AXIS_ELEMENTS`, `parse_chart_space`
 - `ooxml_common.chart.rules` -- docx2svg: `WORD`
+- `ooxml_common.dates` -- ooxml-edit: `DateNames`, `LANGUAGES`, `LCIDS`, `NAMES`, `names_tag`
 - `ooxml_common.drawingml` -- pptx2svg: `preset_specs`
 - `ooxml_common.drawingml.color` -- docx2svg, pptx2svg: `WORD`; pptx-agent, pptx2svg: `ColorContext`, `resolve_color`; docx2svg: `apply_transforms`, `apply_transforms_linear`; pptx-agent: `DEFAULT_COLOR_MAP`; pptx2svg: `ColorRules`, `POWERPOINT`, `build_effective_color_map`
 - `ooxml_common.drawingml.context` -- docx2svg, pptx-agent: `RenderContext`
@@ -51,8 +52,8 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.locales` -- docx-agent, docx2svg, ooxml-edit, pptx-agent, pptx2svg, xlsx-agent: `EN_US`, `Locale`; xlsx-agent: `DATE_ORDERS`
 - `ooxml_common.metafile` -- docx2svg, pptx2svg: `inline_metafile_images`, `metafile_to_svg`
 - `ooxml_common.metafile.dib` -- pptx2svg: `BI_ALPHABITFIELDS`, `BI_BITFIELDS`, `BI_JPEG`, `BI_PNG`, `BI_RGB`, `BI_RLE4`, `BI_RLE8`, `DecodedImage`, `DecodedPixels`, `MAX_PIXELS`, `PNG_COMPRESS_LEVEL`, `decode_dib`, `dib_to_image`, `encode_png`, `split_packed_dib`
-- `ooxml_common.numfmt` -- xlsx-agent: `DATE_KINDS`, `MEASURED`, `classify`
-- `ooxml_common.opc` -- docx2svg: `OpcPackage`
+- `ooxml_common.numfmt` -- ooxml-edit, xlsx-agent: `DATE_KINDS`, `MEASURED`; ooxml-edit: `is_date_code`; xlsx-agent: `classify`
+- `ooxml_common.opc` -- docx2svg: `OpcPackage`; ooxml-edit: `CONTENT_TYPES_PART`, `REL_CHART`, `REL_IMAGE`, `REL_OFFICE_DOCUMENT`, `normalize_part_path`
 - `ooxml_common.svgimage` -- pptx-agent: `with_pixel_size`; pptx2svg: `natural_size`, `with_pixel_sized_images`
 - `ooxml_common.text` -- pptx2svg: `kerning`, `metrics`
 - `ooxml_common.text.fontmap` -- docx2svg, pptx2svg: `generic_family`; docx2svg: `SUBSTITUTIONS`, `metrics_for`, `substitution_for`; pptx2svg: `JAPANESE_GOTHIC`, `covers_east_asian`, `family_key`, `japanese_fallback`, `metrics_fallback_font`
@@ -60,5 +61,5 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.text.metrics` -- docx2svg: `METRICS`
 - `ooxml_common.text.recorded_symbol_faces` -- docx2svg: `ADVANCES`, `DECORATIONS`, `METRICS`
 - `ooxml_common.text.symbol_fonts` -- docx2svg: `to_unicode`; pptx2svg: `recorded_font_metrics`, `symbol_face`, `translate`
-- `ooxml_common.units` -- pptx-agent: `PX_PER_PT`, `emu_to_px`, `px_to_emu`
-- `ooxml_common.xmlutil` -- docx2svg, pptx-agent: `child`, `local_name`; docx2svg: `attr`, `children`
+- `ooxml_common.units` -- ooxml-edit: `EMU_PER_POINT`; pptx-agent: `PX_PER_PT`, `emu_to_px`, `px_to_emu`
+- `ooxml_common.xmlutil` -- docx2svg, pptx-agent: `child`, `local_name`; docx2svg: `attr`, `children`; ooxml-edit: `NS_R`
