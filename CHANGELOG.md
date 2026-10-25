@@ -1,8 +1,11 @@
 # Changelog
 
-Versions are set in `pyproject.toml`; there are no release tags or PyPI releases yet.
+Versions are set in `pyproject.toml`; none is on PyPI yet. Each version that reaches `main`
+is tagged `v<version>` on the commit that brought it, from 0.28.0; the earlier ones were
+never tagged.
 
 ## 0.28.0 -- unreleased
+- Each version is tagged (review, N3): a tag workflow (`.github/workflows/tag.yml`) tags the commit that brings a version to `main` `v<version>`, this one first, and never touches another tag; CI's `build` job checks that `pyproject.toml`'s version is the one this file's top section names, and `ooxml_common.__version__` the same (`tools/check_version.py`), so a sibling's floor on this package names a tag. No code change.
 - The names the siblings import are declared and held (review, N2): [docs/used-by.md](docs/used-by.md) lists every name pptx2svg, docx2svg, the agents and ooxml-edit's tests import from here (332 names in 46 modules, from an AST scan of their `src`, `tests` and `tools`), and `tests/test_public_api.py` imports each one, so a rename fails this repository's own CI rather than a sibling's next run; the test also holds the page and its list to the same names, and no listed name may start with an underscore. The three private names siblings imported get public ones: `fonts.sfnt.read_tables` (was `_directory`), `imagemeta.pixels_and_density` (was `_pixels_and_density`) and `text.measure.font_kern_units` (was `_font_kern_units`); the old names stay as aliases for one release. New `fonts.embedded.forget_decoded()`, which empties this process's decoded-face cache, for the pptx-agent test that replaced the private `_decode_cache`. No behaviour change.
 
 ## 0.27.0 -- unreleased
