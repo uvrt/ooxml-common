@@ -33,7 +33,8 @@ charts and the shape tree, with the shape and text body renderers that draw them
   transform, shape-guide formulas, the complete ECMA-376 preset table with geometry as
   SVG path data, and fills, outlines, markers and effects as SVG; and the drawable scene
   -- shapes, text bodies, groups -- with its readers and renderers, and SmartArt's cached
-  drawing;
+  drawing; and Office's built-in data both formats' consumers need -- PowerPoint's
+  built-in table styles and the Office theme of a new file, measured;
 * :mod:`ooxml_common.chart` -- a chart part read, laid out and lowered to that scene.
 
 Standard library only at runtime, like both consumers.  Capability arrives through
@@ -45,4 +46,4 @@ body's paragraphs against Word's own output.  :mod:`ooxml_common.drawingml.wrap`
 DrawingML text body's, which a chart and a SmartArt shape carry in either format.
 """
 
-__version__ = "0.30.0"
+__version__ = "0.31.0"
