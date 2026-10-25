@@ -12,6 +12,27 @@ installed by Microsoft Office skip with a reason when they are absent; CI runs w
 them. The oracle measurements behind the tables (PowerPoint and Word output) are taken on
 a local machine with Office, in pptx2svg and docx2svg, never on CI.
 
+## The goldens
+
+`tests/test_goldens.py` holds what this package produces from the made-up inputs under
+`tests/fixtures/` -- chart layouts, shape trees, scenes, preset geometry, metafiles -- byte
+for byte, in `tests/golden/` (`tests/goldens.py` says how). A golden is a photograph of
+this package's own output, not a statement that it is right. After a change that is meant
+to change the output:
+
+```sh
+python -m pytest tests/test_goldens.py --update-goldens
+```
+
+rewrites the files and skips rather than passes; read the diff before committing it, and
+say in the commit which change the new bytes are. A failed comparison writes the new output
+to `tests/golden-diffs/` (ignored). Every fixture names its source in its manifest
+(`tests/fixtures/*.json`); only made-up inputs go there.
+
+Coverage: `python -m coverage run -m pytest -q && python -m coverage report` (CI fails one
+leg under the floor in `.github/workflows/ci.yml`). Set `COVERAGE_CORE=sysmon` on Python
+3.12 and later; it is several times faster.
+
 ## What never goes in the repository
 
 - Microsoft font files, in any form. Measurements of them are facts; the files are not ours.
