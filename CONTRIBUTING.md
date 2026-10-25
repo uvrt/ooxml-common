@@ -20,6 +20,9 @@ a local machine with Office, in pptx2svg and docx2svg, never on CI.
 
 ## Changes
 
-Open a pull request against `main`; CI must pass. Keep the package standard-library only
-at runtime and free of imports from its consumers (`tests/test_independence.py`). Add a
+Open a pull request against `main`; CI must pass. CI also runs pptx2svg's and docx2svg's
+suites, at their `main`, against the change (the `downstream` job). A change a renderer
+must follow is red there until it is merged with the renderer's matching pull request
+right after it; say so on the pull request. Keep the package standard-library only at
+runtime and free of imports from its consumers (`tests/test_independence.py`). Add a
 line to [CHANGELOG.md](CHANGELOG.md) when you bump the version.

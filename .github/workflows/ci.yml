@@ -4,6 +4,14 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+  # Nightly, so a sibling's change that breaks this repository shows the next morning
+  # rather than at the next push here (and the downstream job below runs against the
+  # siblings' newest main).  The seven repositories' crons are staggered: ooxml-common
+  # 02:07, ooxml-edit 02:17, pptx2svg 02:37, docx2svg 02:47, pptx-agent 03:07, docx-agent
+  # 03:17, xlsx-agent 03:27 (UTC).  The whole matrix, as a push runs it.
+  schedule:
+    - cron: "7 2 * * *"
 
 jobs:
   test:
@@ -30,12 +38,80 @@ jobs:
         # repository and is not on PyPI, so it is installed from there by URL rather than
         # resolved by name.  Only the tests that check the tables against the files need
         # it; they skip without it.
+        #
+        # ooxml-edit is test only, never a dependency: it keeps its own copy of the date
+        # names (ooxml_edit.dates), and with it installed tests/test_dates.py checks that
+        # the two copies agree instead of skipping.
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev]
           python -m pip install "pptx2svg-fonts @ git+https://github.com/uvrt/pptx2svg@main#subdirectory=packages/pptx2svg-fonts"
+          python -m pip install "ooxml-edit @ git+https://github.com/uvrt/ooxml-edit@main"
 
       - name: Test
+        run: python -m pytest -q
+
+  # The renderers' suites against this change.  They exercise ooxml-common far more than
+  # its own tests do, so a change that breaks pptx2svg or docx2svg fails here, on its own
+  # pull request, instead of at the sibling's next push.  Each sibling is its main, with
+  # this checkout installed (editable) before it so its `ooxml-common` requirement is
+  # already met; one Linux leg on one Python, the sibling's default run (docx2svg's
+  # without --run-slow, serial as its CI runs it).  A change a sibling must follow is red
+  # here until the sibling's matching pull request (its CI pointed at this branch, as its
+  # comment says) is merged right after this one.
+  downstream:
+    name: downstream (${{ matrix.sibling }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sibling: [pptx2svg, docx2svg]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ooxml-common
+
+      - uses: actions/checkout@v4
+        with:
+          repository: uvrt/${{ matrix.sibling }}
+          ref: main
+          path: ${{ matrix.sibling }}
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ./ooxml-common
+          python -m pip install -e "./${{ matrix.sibling }}[dev]"
+
+      # As each sibling's own CI installs them: pptx2svg's font bundle from its checkout,
+      # docx2svg's open substitute fonts from the distribution.
+      - name: Install the font bundle (pptx2svg)
+        if: matrix.sibling == 'pptx2svg'
+        run: python -m pip install -e ./pptx2svg/packages/pptx2svg-fonts
+      - name: Install the open substitute fonts (docx2svg)
+        if: matrix.sibling == 'docx2svg'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation
+
+      - name: The ooxml-common under test is this checkout
+        run: |
+          python - <<'PY'
+          import pathlib, sys
+          import ooxml_common
+          here = pathlib.Path("ooxml-common/src").resolve()
+          path = pathlib.Path(ooxml_common.__file__).resolve()
+          print("ooxml-common from", path)
+          sys.exit(0 if here in path.parents else f"expected ooxml-common from {here}")
+          PY
+
+      - name: Test ${{ matrix.sibling }}
+        working-directory: ${{ matrix.sibling }}
         run: python -m pytest -q
 
   build:
