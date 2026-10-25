@@ -1,10 +1,10 @@
 """ooxml_common.numfmt: one reading of a number format code, held to Excel's answers.
 
 The table is :data:`ooxml_common.numfmt.MEASURED` (Excel for Mac 16.106, 2026-10-25);
-xlsx-agent runs the same table through its own ``classify_format``.  ooxml-edit keeps its
-own reading (``ooxml_edit.dates.is_date_code``: it does not depend on this package) until
-it moves onto this one; with it installed, the test below lists where it still differs, so
-a drift either way fails here.
+xlsx-agent runs the same table through its own ``classify_format``.  ooxml-edit reads codes
+with this module (``ooxml_edit.dates.is_date_code`` is :func:`~ooxml_common.numfmt.is_date_code`,
+from ooxml-edit 0.64.0); with it installed, the test below checks that it agrees on every
+code, so a copy creeping back in fails here.
 """
 
 from __future__ import annotations
@@ -40,23 +40,14 @@ def test_ooxml_edits_cases(code, is_date):
     assert is_date_code(code) is is_date
 
 
-#: Where ooxml-edit's reading answers otherwise than Excel today: it reads any section, and
-#: knows no e, g, b, Thai letter, AM/PM marker alone or system format.
-EDIT_DIFFERS = {
-    "0;[Red]d", "0;0;d", "0.00E+00;d", "[$-th-TH]ว/ด/ปปปป", "ว/ด/ปปปป", "[$-41E]ว/ด/ปปปป",
-    "ช:นน", "[ช]:นน:ทท", "[$-th-TH]ช:นน", "bbbb", "[$-ja-JP]ggge", "ggge", "e", "[$-411]e",
-    "上午/下午", "a/p", "[$-x-sysdate]", "[$-x-systime]", "[$-F400]", "[$-F800]0.00",
-    "[$-F800]General",
-}
-
-
-def test_where_ooxml_edits_copy_still_differs():
+def test_ooxml_edit_reads_every_code_as_excel_showed_it():
     edit = pytest.importorskip("ooxml_edit.dates")
     differs = {code for code, kind, _ in numfmt.MEASURED
                if edit.is_date_code(code) is not (kind in numfmt.DATE_KINDS)}
-    assert differs == EDIT_DIFFERS
+    assert differs == set()
     for code, is_date in EDIT_CASES:
         assert edit.is_date_code(code) is is_date
+    assert edit.is_date_code("0;[Red]d", 1)
 
 
 def test_a_section_is_asked_by_its_index():

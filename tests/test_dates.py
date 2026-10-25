@@ -255,13 +255,14 @@ def test_is_date_code():
         assert not dates.is_date_code(code)
 
 
-# -- agreement with ooxml-edit's copy -----------------------------------------------------
+# -- ooxml-edit reads these tables -------------------------------------------------------
 
 
-def test_the_names_agree_with_ooxml_edits():
+def test_ooxml_edits_names_are_these():
+    # ooxml-edit 0.64.0 re-exports the tables instead of keeping a copy.
     edit = pytest.importorskip("ooxml_edit.dates")
     assert dict(dates.LCIDS) == dict(edit.LCIDS)
-    assert dict(dates.LANGUAGES) == dict(getattr(edit, "LANGUAGES", dates.LANGUAGES))
+    assert dict(dates.LANGUAGES) == dict(edit.LANGUAGES)
     assert {tag: tuple(names) for tag, names in dates.NAMES.items()} == \
         {tag: tuple(names) for tag, names in edit.NAMES.items()}
 
@@ -271,7 +272,7 @@ def test_the_names_agree_with_ooxml_edits():
 def test_a_code_ooxml_edit_keeps_prints_what_it_writes(pattern):
     edit = pytest.importorskip("ooxml_edit.dates")
     regions = ["en-BE", "fr-BE", "de-CH", "en-IE", "fr-CH", "it-CH", "nl", "fr", "es", "it"]
-    for tag in [*edit.NAMES, *(regions if hasattr(edit, "LANGUAGES") else ())]:
+    for tag in [*edit.NAMES, *regions]:
         locale = Locale(language=tag)
         for day in (dt.date(2026, 1, 5), dt.date(2026, 3, 2), dt.date(2026, 12, 25)):
             code = edit.format_code(pattern, locale)
