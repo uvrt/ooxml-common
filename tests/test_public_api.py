@@ -396,6 +396,11 @@ USED_BY: dict[str, dict[str, str]] = {
         "encode_png": "pptx2svg",
         "split_packed_dib": "pptx2svg",
     },
+    "ooxml_common.numfmt": {
+        "DATE_KINDS": "xlsx-agent",
+        "MEASURED": "xlsx-agent",
+        "classify": "xlsx-agent",
+    },
     "ooxml_common.opc": {
         "OpcPackage": "docx2svg",
     },

@@ -51,6 +51,7 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.locales` -- docx-agent, docx2svg, ooxml-edit, pptx-agent, pptx2svg, xlsx-agent: `EN_US`, `Locale`; xlsx-agent: `DATE_ORDERS`
 - `ooxml_common.metafile` -- docx2svg, pptx2svg: `inline_metafile_images`, `metafile_to_svg`
 - `ooxml_common.metafile.dib` -- pptx2svg: `BI_ALPHABITFIELDS`, `BI_BITFIELDS`, `BI_JPEG`, `BI_PNG`, `BI_RGB`, `BI_RLE4`, `BI_RLE8`, `DecodedImage`, `DecodedPixels`, `MAX_PIXELS`, `PNG_COMPRESS_LEVEL`, `decode_dib`, `dib_to_image`, `encode_png`, `split_packed_dib`
+- `ooxml_common.numfmt` -- xlsx-agent: `DATE_KINDS`, `MEASURED`, `classify`
 - `ooxml_common.opc` -- docx2svg: `OpcPackage`
 - `ooxml_common.svgimage` -- pptx-agent: `with_pixel_size`; pptx2svg: `natural_size`, `with_pixel_sized_images`
 - `ooxml_common.text` -- pptx2svg: `kerning`, `metrics`
