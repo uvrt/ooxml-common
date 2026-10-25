@@ -112,9 +112,8 @@ def _names(months: str, short_months: str, days: str, short_days: str) -> DateNa
 
 
 # Measured on Excel for Mac, 2026-10-16: each name as Excel showed it under [$-LCID]mmmm,
-# mmm, dddd and ddd.  The same table as ooxml-edit's ``ooxml_edit.dates.NAMES``, which this
-# package may not import; ``tests/test_dates.py`` checks the two agree where both are
-# installed.
+# mmm, dddd and ddd.  ooxml-edit reads this table (``ooxml_edit.dates.NAMES`` re-exports it,
+# from ooxml-edit 0.64.0); this package never imports ooxml-edit.
 _ENGLISH = _names(
     "January February March April May June July August September October November December",
     "Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec",
@@ -166,7 +165,7 @@ NAMES: Mapping[str, DateNames] = MappingProxyType({
 #: fr-BE and fr-CH as fr-FR, de-BE and de-CH as de-DE (and nl-BE as nl-NL, 2026-10-16);
 #: it-CH ([$-810]) and it ([$-10]) as it-IT, 2026-10-17.  Not Spanish: es-MX and es
 #: abbreviate otherwise than es-ES (:data:`NAMES` has each), so another Spanish region is
-#: not guessed.  ooxml-edit's ``ooxml_edit.dates.LANGUAGES``.
+#: not guessed.  Re-exported as ooxml-edit's ``ooxml_edit.dates.LANGUAGES``.
 LANGUAGES: Mapping[str, str] = MappingProxyType({
     "en": "en-US", "nl": "nl-NL", "de": "de-DE", "fr": "fr-FR", "it": "it-IT",
 })

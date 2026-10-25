@@ -4,6 +4,20 @@ Versions are set in `pyproject.toml`; none is on PyPI yet. Each version that rea
 is tagged `v<version>` on the commit that brought it, from 0.28.0; the earlier ones were
 never tagged.
 
+## 0.30.0 -- unreleased
+- ooxml-edit reads this package instead of keeping copies (review, S2): from ooxml-edit
+  0.64.0 it depends on ooxml-common (this package still never imports ooxml-edit,
+  `tests/test_independence.py`), and its `dates.NAMES`, `LANGUAGES`, `LCIDS`,
+  `is_date_code` and `tools.DEFAULT_LOCALE` are this package's `dates` tables,
+  `numfmt.is_date_code` and `locales.EN_US`. `tests/test_numfmt.py` no longer lists the 21
+  codes where ooxml-edit's copy read otherwise than Excel: it checks that ooxml-edit
+  agrees on every measured code. `tests/test_dates.py` checks ooxml-edit's names are
+  these. [docs/used-by.md](docs/used-by.md) and `tests/test_public_api.py` list the names
+  ooxml-edit imports (`dates`: `DateNames`, `LANGUAGES`, `LCIDS`, `NAMES`, `names_tag`;
+  `numfmt`: `is_date_code`, and `DATE_KINDS`, `MEASURED` in its tests; `opc`:
+  `CONTENT_TYPES_PART`, `REL_CHART`, `REL_IMAGE`, `REL_OFFICE_DOCUMENT`,
+  `normalize_part_path`; `units.EMU_PER_POINT`; `xmlutil.NS_R`). No code change.
+
 ## 0.29.0 -- unreleased
 - One reading of a number format code (review, S1): new `ooxml_common.numfmt`. `sections(code)` cuts a code where Excel does (not at a quoted, escaped, `_` or `*` `;`), `tokens(section)` lexes a section into `Token`s (dates, times -- `m` read as minutes after an hour or before a second --, elapsed time, AM/PM, digits, exponent, percent, `General`, `@`, quoted and escaped text, padding, fill, colour, condition, locale, other brackets), `classify(code, section=None)` says what a section shows (`Classification`: `kind` one of `KINDS` -- general, number, percent, date, time, datetime, text --, `elapsed`, `lcid`) and `is_date_code(code, section=None)` whether it is a date or a time. The first section decides unless another is asked for: measured in Excel for Mac 16.106 (2026-10-25), `0;[Red]d` showed a positive serial as `46028` and `CELL("format")` said a number, while its negative serial showed `####`. Dates and times are also `e`, `g`, `b`, the Thai `ว ด ป` and `ช น ท`, `[ช]`, `上午/下午` and `A/P` alone, and a first section with `[$-F800]`/`[$-x-sysdate]` (the system's long date) or `[$-F400]`/`[$-x-systime]` (its time), each measured. `numfmt.MEASURED` is the table: 108 codes with the kind and the text Excel showed, which `tests/test_numfmt.py` holds `classify` to (and lists where ooxml-edit's own copy still differs, with it installed); xlsx-agent runs it through its reading. Standard library only.
 - `dates.is_date_code` is now `numfmt.is_date_code` (the same function), and `dates` and `chart.layout` read codes with `numfmt`: their own date checks and section splitters are gone. What changes: `dates.is_date_code("0;[Red]d")` (and `0;0;d`, `0.00E+00;d`) is `False`, the codes above are `True`; a chart's number category is printed as a date or kept as the cache's text only when the section its value is shown with is a date or time -- `0;[Red]d` prints a positive serial as a number (`46028`, as Excel showed), and `[h]`, `[ss]`, Thai, era and system codes keep the cache's text instead of being printed as a number or as their own letters (`ว/ด/ปปปป`). `format_number` and `format_serial` no longer cut a section at `\;`, `_;` or `*;` (Excel showed `0\;0` as one section). `format_serial` no longer prints a code with Thai elapsed hours (`[ช]`), a time. Every other output is unchanged (60,000 generated codes compared against the old functions).
