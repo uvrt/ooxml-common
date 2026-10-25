@@ -51,7 +51,7 @@ _INCHES_PER_METRE = 0.0254
 
 def natural_size_pt(data: bytes) -> tuple[float, float] | None:
     """``(width, height)`` in points, or ``None`` for a format not read here."""
-    found = _pixels_and_density(data)
+    found = pixels_and_density(data)
     if found is None:
         return None
     width, height, density_x, density_y = found
@@ -60,7 +60,9 @@ def natural_size_pt(data: bytes) -> tuple[float, float] | None:
     return width * 72.0 / density_x, height * 72.0 / density_y
 
 
-def _pixels_and_density(data: bytes) -> tuple[int, int, float, float] | None:
+def pixels_and_density(data: bytes) -> tuple[int, int, float, float] | None:
+    """``(width, height, density_x, density_y)``: pixels, and pixels per inch (the stated
+    density, else :data:`DEFAULT_DENSITY_DPI`); ``None`` for a format not read here."""
     if data.startswith(b"\x89PNG\r\n\x1a\n"):
         return _png(data)
     if data.startswith(b"\xff\xd8"):
@@ -70,6 +72,10 @@ def _pixels_and_density(data: bytes) -> tuple[int, int, float, float] | None:
     if data.startswith(b"BM"):
         return _bmp(data)
     return None
+
+
+#: The old name, kept for docx2svg and docx-agent until they move.
+_pixels_and_density = pixels_and_density
 
 
 def _png(data: bytes) -> tuple[int, int, float, float] | None:

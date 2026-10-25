@@ -20,7 +20,7 @@ from __future__ import annotations
 import struct
 from dataclasses import dataclass
 
-__all__ = ["SfntError", "SfntFace", "read_sfnt", "relabel", "write_sfnt"]
+__all__ = ["SfntError", "SfntFace", "read_sfnt", "read_tables", "relabel", "write_sfnt"]
 
 
 class SfntError(Exception):
@@ -51,7 +51,11 @@ class SfntFace:
 # --------------------------------------------------------------------------------------
 
 
-def _directory(data: bytes) -> dict[bytes, bytes]:
+def read_tables(data: bytes) -> dict[bytes, bytes]:
+    """A font file's tables, by tag, as raw bytes, in the order its directory lists them.
+
+    Raises :class:`SfntError` for a file that is not a single TrueType/OpenType face.
+    """
     if len(data) < 12:
         raise SfntError("font file is too short to hold an offset table")
     tag = data[:4]
@@ -73,9 +77,13 @@ def _directory(data: bytes) -> dict[bytes, bytes]:
     return tables
 
 
+#: The old name, kept for pptx2svg's and docx2svg's tests until they move.
+_directory = read_tables
+
+
 def read_sfnt(data: bytes) -> SfntFace:
     """Parse a TrueType/OpenType file into the pieces measurement and relabelling need."""
-    tables = _directory(data)
+    tables = read_tables(data)
     for required in (b"head", b"hhea", b"maxp", b"hmtx"):
         if required not in tables:
             raise SfntError(f"font has no {required.decode()} table")
@@ -424,7 +432,7 @@ def relabel(data: bytes, family: str, *, bold: bool, italic: bool) -> bytes:
     The measured widths come from this same file, so measure-equals-draw holds whatever
     the label says.
     """
-    tables = dict(_directory(data))
+    tables = dict(read_tables(data))
 
     tables[b"name"] = _rebuild_name(
         tables.get(b"name"), family, _STYLE_NAMES[(bold, italic)]
