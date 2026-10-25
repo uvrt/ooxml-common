@@ -39,7 +39,7 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.drawingml.svg` -- docx2svg: `Defs`, `num`
 - `ooxml_common.drawingml.table_styles` -- pptx-agent, pptx2svg: `BUILTIN_TABLE_STYLES`; pptx-agent: `builtin_text_colors`; pptx2svg: `builtin_regions`, `color_parts`, `themed_style_xml`
 - `ooxml_common.drawingml.text_chain` -- pptx-agent, pptx2svg: `DEFAULT_TEXT_STYLE`, `FONT_REF`, `LAYOUT`, `LIST_STYLE`, `MASTER`, `TABLE_STYLE`, `inherited_layers`; pptx-agent: `NOTHING`, `PARAGRAPH`, `RUN`, `master_text_style`, `source_name`; pptx2svg: `PLACEHOLDER`, `default_paragraph_fallback`, `holder_kind`
-- `ooxml_common.drawingml.theme` -- docx-agent, pptx-agent: `APTOS_PANOSE`, `OFFICE_MAJOR_FONT`, `OFFICE_MINOR_FONT`, `OFFICE_THEME_COLORS`; docx-agent: `WORD_SCRIPT_FONTS`; pptx-agent: `POWERPOINT_SCRIPT_FONTS`
+- `ooxml_common.drawingml.theme` -- docx-agent, pptx-agent: `APTOS_PANOSE`, `OFFICE_BACKGROUND_GRADIENT`, `OFFICE_FILL_GRADIENTS`, `OFFICE_MAJOR_FONT`, `OFFICE_MINOR_FONT`, `OFFICE_THEME_COLORS`; docx-agent: `WORD_LINE_WIDTHS`, `WORD_SCRIPT_FONTS`; pptx-agent: `POWERPOINT_LINE_WIDTHS`, `POWERPOINT_SCRIPT_FONTS`
 - `ooxml_common.drawingml.textmeasure` -- pptx-agent: `MeasuredLine`, `MeasuredParagraph`, `TextBodyMeasure`, `measure_shape_text`, `measure_text_body`
 - `ooxml_common.fonts` -- docx-agent, docx2svg, pptx-agent, pptx2svg: `bundle_dir`; pptx2svg: `BUNDLED_FAMILIES`
 - `ooxml_common.fonts.check` -- pptx2svg: `FaceStatus`, `FontReport`, `VERDICTS`, `check_families`

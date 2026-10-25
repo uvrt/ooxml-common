@@ -88,3 +88,10 @@ def test_word_and_powerpoint_differ_in_the_japanese_body_face_only():
     differ = [(w, p) for w, p in zip(word, powerpoint) if w != p]
     assert differ == [(("Jpan", "游ゴシック Light", "游明朝"),
                        ("Jpan", "游ゴシック Light", "游ゴシック"))]
+
+
+def test_the_format_scheme():
+    assert len(theme.OFFICE_FILL_GRADIENTS) == 2
+    assert [stop[0] for stop in theme.OFFICE_BACKGROUND_GRADIENT] == [0, 50000, 100000]
+    assert theme.POWERPOINT_LINE_WIDTHS[1:] == (19050, 25400)
+    assert theme.WORD_LINE_WIDTHS == (6350, 12700, 19050)

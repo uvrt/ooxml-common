@@ -292,10 +292,14 @@ USED_BY: dict[str, dict[str, str]] = {
     },
     "ooxml_common.drawingml.theme": {
         "APTOS_PANOSE": "docx-agent, pptx-agent",
+        "OFFICE_BACKGROUND_GRADIENT": "docx-agent, pptx-agent",
+        "OFFICE_FILL_GRADIENTS": "docx-agent, pptx-agent",
         "OFFICE_MAJOR_FONT": "docx-agent, pptx-agent",
         "OFFICE_MINOR_FONT": "docx-agent, pptx-agent",
         "OFFICE_THEME_COLORS": "docx-agent, pptx-agent",
+        "POWERPOINT_LINE_WIDTHS": "pptx-agent",
         "POWERPOINT_SCRIPT_FONTS": "pptx-agent",
+        "WORD_LINE_WIDTHS": "docx-agent",
         "WORD_SCRIPT_FONTS": "docx-agent",
     },
     "ooxml_common.drawingml.textmeasure": {

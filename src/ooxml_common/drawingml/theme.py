@@ -1,11 +1,11 @@
-"""The Office theme a new document gets: its colours and its font scheme.
+"""The Office theme a new document gets: its colours, its font scheme and its format scheme.
 
 What PowerPoint and Word write into the theme of a new blank file, which pptx-agent and
 docx-agent write the same way when they make one from nothing.  Measured, not copied from
 a template: PowerPoint for Mac 16 made a new blank presentation through its AppleScript
 (``make new presentation``), Word 16.106 for Mac a new blank document (``make new
 document``); each was saved and its ``theme1.xml`` read back.  The two agree on all of it
-but one face (:data:`WORD_SCRIPT_FONTS`).
+but one face (:data:`WORD_SCRIPT_FONTS`) and the line widths.
 
 Moved here from the two agents' ``edit/blank.py`` (review, S3), which held a copy each.
 Standard library only.
@@ -66,7 +66,30 @@ WORD_SCRIPT_FONTS: tuple[tuple[str, str, str], ...] = tuple(
     for script, major, minor in POWERPOINT_SCRIPT_FONTS
 )
 
+#: The format scheme's two gradient fills (``a:fillStyleLst``, after its solid ``phClr``)
+#: and its gradient background (``a:bgFillStyleLst``, the last of three): each stop's
+#: ``(position, modifiers)``, the stop ``phClr`` with each ``(modifier, value)`` in order.
+OFFICE_FILL_GRADIENTS: tuple[tuple[tuple[int, tuple[tuple[str, int], ...]], ...], ...] = (
+    ((0, (("lumMod", 110000), ("satMod", 105000), ("tint", 67000))),
+     (50000, (("lumMod", 105000), ("satMod", 103000), ("tint", 73000))),
+     (100000, (("lumMod", 105000), ("satMod", 109000), ("tint", 81000)))),
+    ((0, (("satMod", 103000), ("lumMod", 102000), ("tint", 94000))),
+     (50000, (("satMod", 110000), ("lumMod", 100000), ("shade", 100000))),
+     (100000, (("lumMod", 99000), ("satMod", 120000), ("shade", 78000)))),
+)
+OFFICE_BACKGROUND_GRADIENT: tuple[tuple[int, tuple[tuple[str, int], ...]], ...] = (
+    (0, (("tint", 93000), ("satMod", 150000), ("shade", 98000), ("lumMod", 102000))),
+    (50000, (("tint", 98000), ("satMod", 130000), ("shade", 90000), ("lumMod", 103000))),
+    (100000, (("shade", 63000), ("satMod", 120000))),
+)
+
+#: The widths of the format scheme's three line styles (``a:lnStyleLst``), EMU: the two
+#: applications differ here, PowerPoint's a step wider.
+POWERPOINT_LINE_WIDTHS: tuple[int, int, int] = (12700, 19050, 25400)
+WORD_LINE_WIDTHS: tuple[int, int, int] = (6350, 12700, 19050)
+
 __all__ = [
-    "APTOS_PANOSE", "OFFICE_MAJOR_FONT", "OFFICE_MINOR_FONT", "OFFICE_THEME_COLORS",
-    "POWERPOINT_SCRIPT_FONTS", "WORD_SCRIPT_FONTS",
+    "APTOS_PANOSE", "OFFICE_BACKGROUND_GRADIENT", "OFFICE_FILL_GRADIENTS", "OFFICE_MAJOR_FONT",
+    "OFFICE_MINOR_FONT", "OFFICE_THEME_COLORS", "POWERPOINT_LINE_WIDTHS",
+    "POWERPOINT_SCRIPT_FONTS", "WORD_LINE_WIDTHS", "WORD_SCRIPT_FONTS",
 ]
