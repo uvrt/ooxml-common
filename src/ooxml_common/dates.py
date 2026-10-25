@@ -3,7 +3,8 @@
 A chart (or a cell) keeps a date as its serial number in the 1900 date system -- 2026-01-05
 is ``46027`` -- with a number format code that says how it is shown:
 ``[$-413]d\\ mmmm\\ yyyy`` is ``5 januari 2026``.  :func:`format_serial` prints one, for a
-renderer to draw; :func:`is_date_code` says whether a code is a date code at all.
+renderer to draw; :func:`is_date_code` (:func:`ooxml_common.numfmt.is_date_code`, the
+same function) says whether a code is a date code at all.
 
 **What is measured.**  PowerPoint and Word for Mac (2026-10-16) drew a column chart's date
 categories -- serials in a ``c:numCache`` whose ``c:formatCode`` is the code -- as
@@ -87,7 +88,9 @@ import math
 from types import MappingProxyType
 from typing import Mapping, NamedTuple
 
+from . import numfmt
 from .locales import EN_US, Locale, canonical_language
+from .numfmt import is_date_code
 
 __all__ = ["INTERFACE_NAMES", "LANGUAGES", "LCIDS", "NAMES", "DateNames", "date_of_serial", "format_serial",
            "date_names", "is_date_code", "language_of_code", "names_language", "names_tag"]
@@ -222,86 +225,40 @@ _EPOCH_1900_EARLY = _dt.date(1899, 12, 31)
 _EPOCH_1904 = _dt.date(1904, 1, 1)
 _LAST = _dt.date(9999, 12, 31)
 
-#: Letters that make a code a time, which :func:`format_serial` does not print.
-_TIME_LETTERS = frozenset("hs")
-
-
-def _sections(code: str) -> list[str]:
-    """``code`` cut at its unquoted, unescaped ``;``."""
-    out, start, index, quoted = [], 0, 0, False
-    while index < len(code):
-        char = code[index]
-        if char == '"':
-            quoted = not quoted
-        elif char == "\\" and not quoted:
-            index += 1
-        elif char == ";" and not quoted:
-            out.append(code[start:index])
-            start = index + 1
-        index += 1
-    out.append(code[start:])
-    return out
-
-
 def _tokens(section: str) -> list[tuple[str, str]]:
-    """A date section as ``(kind, text)``: ``token`` (``d``, ``mmmm`` ..., lower case),
-    ``literal``, ``locale`` (a bracket's language part: ``413`` or ``nl-NL``), ``time``
-    and ``other`` (a letter that is no date token, or a bracket this does not read)."""
+    """A date section as ``(kind, text)``, read from :func:`ooxml_common.numfmt.tokens`:
+    ``token`` (``d``, ``mmmm`` ..., lower case), ``literal`` (a quoted text, an escaped
+    character, ``_``'s blank as a space, any other character), ``locale`` (a bracket's
+    language part: ``413`` or ``nl-NL``), ``time`` and ``other`` (a letter or placeholder
+    that is no date token, or a bracket this does not read).  A colour and ``*``'s fill
+    are left out."""
     out: list[tuple[str, str]] = []
-    index, length = 0, len(section)
-    while index < length:
-        char = section[index]
-        lower = char.lower()
-        if char == '"':
-            close = section.find('"', index + 1)
-            close = length if close < 0 else close
-            out.append(("literal", section[index + 1:close]))
-            index = close + 1
-        elif char == "\\":
-            out.append(("literal", section[index + 1:index + 2]))
-            index += 2
-        elif char == "_":
+    for token in numfmt.tokens(section):
+        kind, text = token.kind, token.text
+        if kind in ("quoted", "escaped", "literal"):
+            out.append(("literal", text))
+        elif kind == "pad":
             # Padding the width of the next character: a space is the nearest thing.
             out.append(("literal", " "))
-            index += 2
-        elif char == "*":
-            index += 2
-        elif char == "[":
-            close = section.find("]", index)
-            close = length if close < 0 else close
-            inner = section[index + 1:close]
-            if inner.startswith("$"):
-                symbol, _, language = inner[1:].partition("-")
-                if symbol:
-                    out.append(("literal", symbol))
-                if language:
-                    out.append(("locale", language))
-            elif inner and inner.lower() == inner[0].lower() * len(inner) and inner[0].lower() in "hms":
-                # Elapsed time: [h], [mm], [ss].
-                out.append(("time", inner))
-            elif not (inner.isalpha() or inner.lower().startswith("color")):
-                # A condition ([<100]) or a bracket this does not know.
-                out.append(("other", inner))
-            # Else a colour ([Red], [Color10]): the text's own colour, not its words.
-            index = close + 1
-        elif section[index:index + 5].upper() == "AM/PM" or section[index:index + 3].upper() == "A/P":
-            out.append(("time", section[index:index + 5]))
-            index += 5 if section[index:index + 5].upper() == "AM/PM" else 3
-        elif lower in "dmy":
-            end = index
-            while end < length and section[end].lower() == lower:
-                end += 1
-            out.append(("token", section[index:end].lower()))
-            index = end
-        elif lower in _TIME_LETTERS:
-            out.append(("time", char))
-            index += 1
-        elif char.isalpha() or char in "@0#?%":
-            out.append(("other", char))
-            index += 1
-        else:
-            out.append(("literal", char))
-            index += 1
+        elif kind == "locale":
+            symbol, _, language = text.partition("-")
+            if symbol:
+                out.append(("literal", symbol))
+            if language:
+                out.append(("locale", language))
+        elif kind in ("date", "time"):
+            letter = text[0].lower()
+            if letter in "dmy":
+                out.append(("token", text.lower()))
+            else:
+                out.append(("time" if letter in "hs" else "other", text))
+        elif kind in ("elapsed", "ampm"):
+            out.append(("time", text))
+        elif kind == "condition" or (kind == "bracket" and not (
+                text.isalpha() or text.lower().startswith("color"))):
+            out.append(("other", text))
+        elif kind not in ("fill", "color", "bracket"):
+            out.append(("other", text))
     return out
 
 
@@ -309,22 +266,12 @@ def _tokens(section: str) -> list[tuple[str, str]]:
 _PRINTED = frozenset({"d", "dd", "ddd", "dddd", "m", "mm", "mmm", "mmmm", "mmmmm", "yy", "yyyy"})
 
 
-def is_date_code(format_code: str | None) -> bool:
-    """Whether ``format_code`` shows a number as a date or a time: a day, month, year,
-    hour or second token outside quotes in any section.  ``General``, ``@`` and number
-    codes are not."""
-    if not format_code or format_code in ("General", "@"):
-        return False
-    return any(kind in ("token", "time") for section in _sections(format_code)
-               for kind, _ in _tokens(section))
-
-
 def language_of_code(format_code: str | None) -> str | None:
     """The language tag a code's ``[$-LCID]`` (or ``[$-ll-CC]``) prefix names, when its
     names are known: an id :data:`LCIDS` lists (``[$-80C]`` is fr-BE), a tag whose
     language has names (``[$-en-BE]``); ``None`` without a prefix or for one not read.  An
     LCID's upper bits (a calendar, ``[$-10413]``) are ignored."""
-    for section in _sections(format_code or ""):
+    for section in numfmt.sections(format_code or ""):
         for kind, text in _tokens(section):
             if kind != "locale":
                 continue
@@ -400,16 +347,16 @@ def format_serial(value: float, format_code: str | None, locale: Locale = EN_US,
     ``None`` where this does not print it -- a code that is no date, has a time in it, or
     a token not read, and a serial that names no day (see the module's notes) -- for the
     caller to print the number as before."""
-    if not is_date_code(format_code):
-        return None
     day = date_of_serial(value, date1904=date1904)
-    if day is None:
+    if day is None or not format_code:
         return None
-    sections = _sections(format_code)
+    sections = numfmt.sections(format_code)
     # Positive; negative; zero; text.  A day is never negative here, and only 1904's
     # serial 0 is zero.
-    section = sections[2] if value == 0 and len(sections) > 2 else sections[0]
-    tokens = _tokens(section)
+    index = 2 if value == 0 and len(sections) > 2 else 0
+    if not is_date_code(format_code, index):
+        return None
+    tokens = _tokens(sections[index])
     if not tokens or any(kind in ("time", "other") for kind, _ in tokens):
         return None
     if any(kind == "token" and text not in _PRINTED for kind, text in tokens):

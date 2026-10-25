@@ -15,6 +15,8 @@ charts and the shape tree, with the shape and text body renderers that draw them
 * :mod:`ooxml_common.units` -- EMU, point, pixel and angle conversions;
 * :mod:`ooxml_common.locales` -- the regional settings a conversion or an edit is in
   (:class:`~ooxml_common.locales.Locale`), en-US unless the caller says otherwise;
+* :mod:`ooxml_common.numfmt` -- a number format code read once: its sections, its
+  tokens, and whether it shows a date, a time, a percent, a text (measured in Excel);
 * :mod:`ooxml_common.dates` -- a date's serial printed in its number format code, with
   the month and day names measured per locale;
 * :mod:`ooxml_common.fonts` -- the font bundle probe, embedded-font decoding (EOT, MTX,
@@ -43,4 +45,4 @@ body's paragraphs against Word's own output.  :mod:`ooxml_common.drawingml.wrap`
 DrawingML text body's, which a chart and a SmartArt shape carry in either format.
 """
 
-__version__ = "0.28.0"
+__version__ = "0.29.0"

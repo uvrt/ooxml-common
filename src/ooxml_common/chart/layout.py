@@ -53,6 +53,7 @@ from dataclasses import dataclass, field, replace
 
 from ..drawingml import scene as m
 from ..drawingml import source_tree as s
+from .. import numfmt
 from ..dates import format_serial
 from ..locales import EN_US, Locale
 from . import read as c
@@ -1855,7 +1856,7 @@ def format_number(value: float, format_code: str | None, locale: Locale = EN_US)
     if format_code is None or format_code in ("General", "@"):
         return locale.number_text(_general(value))
 
-    sections = _sections(format_code)
+    sections = numfmt.sections(format_code)
     # Excel's sections are positive; negative; zero; text.  A negative value uses the
     # second only when there *is* one -- with a single section it is formatted by that
     # one and keeps its own minus sign, in front of everything the section adds.
@@ -1955,12 +1956,15 @@ def _format_tokens(section: str) -> list[tuple[str, str]]:
     return tokens
 
 
-def _is_date_code(format_code: str | None) -> bool:
-    """Whether ``format_code`` prints a date or a time rather than a number."""
-    if not format_code or format_code in ("General", "@"):
+def _shows_date(format_code: str | None, value: float) -> bool:
+    """Whether the section of ``format_code`` that ``value`` is shown with -- as
+    :func:`format_number` picks it: zero's, negative's, else the first -- shows a date or
+    a time (:func:`ooxml_common.numfmt.is_date_code`)."""
+    if not format_code:
         return False
-    return any(kind == "date" for section in _sections(format_code)
-               for kind, _ in _format_tokens(section))
+    count = len(numfmt.sections(format_code))
+    index = 2 if value == 0 and count > 2 else 1 if value < 0 and count > 1 else 0
+    return numfmt.is_date_code(format_code, index)
 
 
 def _placeholder_near(section: str, index: int) -> bool:
@@ -2019,23 +2023,6 @@ def _general(value: float) -> str:
     if value == int(value):
         return str(int(value))
     return f"{round(value, 10):g}"
-
-
-def _sections(format_code: str) -> list[str]:
-    """Split on ``;`` outside quotes -- positive, negative, zero, text."""
-    sections: list[str] = []
-    current: list[str] = []
-    quoted = False
-    for char in format_code:
-        if char == '"':
-            quoted = not quoted
-        if char == ";" and not quoted:
-            sections.append("".join(current))
-            current = []
-            continue
-        current.append(char)
-    sections.append("".join(current))
-    return sections
 
 
 # --------------------------------------------------------------------------------------
@@ -5432,7 +5419,10 @@ class ChartBuilder:
         language prefix takes the locale's language for its names (a date axis took
         its month names from the interface language, in that language's unprefixed
         set: :data:`ooxml_common.dates.INTERFACE_NAMES`); ``c:date1904`` counts from 1904.
-        A time code, or a serial that names no day, keeps the invariant text.
+        A time code, or a serial that names no day, keeps the invariant text.  Whether a
+        code is a date or a time code is asked of the section the value is shown with
+        (:func:`ooxml_common.numfmt.is_date_code`): under ``0;[Red]d`` a positive
+        serial is a number, as Excel shows it.
         """
         names = list(source.categories)
         values = source.category_values
@@ -5443,7 +5433,7 @@ class ChartBuilder:
             if value is None or index >= len(names):
                 continue
             code = (own[index] if index < len(own) else None) or source.category_format_code
-            if _is_date_code(code):
+            if _shows_date(code, value):
                 text = format_serial(value, code, self.locale, date1904=self.chart.date1904)
                 if text is not None:
                     names[index] = text

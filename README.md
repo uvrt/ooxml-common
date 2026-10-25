@@ -82,6 +82,11 @@ printed as `/` -- Office shows the viewer's own date separator there, which `Loc
 not hold. Likewise a chart's `m/d/yy` (the built-in short date) is printed as written,
 where Office shows the viewer's short date (a known limit; see `ooxml_common.dates`).
 
+Whether a code shows a date at all is `ooxml_common.numfmt`'s answer, the one reading of a
+format code the libraries share: `classify("[$-th-TH]ว/ด/ปปปป").kind` is `"date"`,
+`classify("0;[Red]d").kind` is `"number"` (the first section decides; `section=1` asks the
+negative one's), each held to what Excel showed (`numfmt.MEASURED`).
+
 ## Font files
 
 The `[fonts]` extra is the **`pptx2svg-fonts`** distribution, the OFL-licensed font files
