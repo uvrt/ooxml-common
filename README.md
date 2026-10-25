@@ -98,7 +98,9 @@ python -m pytest -q
 
 `tests/test_independence.py` holds the two promises that make the package shareable:
 nothing here imports a consumer, and nothing here needs more than the standard library
-at runtime. See [CONTRIBUTING.md](CONTRIBUTING.md).
+at runtime. `tests/test_public_api.py` holds the names the siblings import from here
+([docs/used-by.md](docs/used-by.md)), so a rename fails here first. See
+[CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Status
 

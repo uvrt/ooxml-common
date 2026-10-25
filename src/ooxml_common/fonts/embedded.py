@@ -57,6 +57,7 @@ __all__ = [
     "EmbeddedFonts",
     "NO_EMBEDDED_FONTS",
     "decoded_faces",
+    "forget_decoded",
     "remember_decoded",
     "extract_embedded_fonts",
     "metrics_from_faces",
@@ -284,6 +285,12 @@ def remember_decoded(faces: "dict[bytes, bytes]") -> None:
         _decode_cache.move_to_end(digest)
         if len(_decode_cache) > _DECODE_CACHE_SIZE:
             _decode_cache.popitem(last=False)
+
+
+def forget_decoded() -> None:
+    """Forget every face this process has decoded (and every failure), as a new process
+    starts: what a test of handing faces between processes runs in one process with."""
+    _decode_cache.clear()
 
 
 _SLOT_FIELDS = {

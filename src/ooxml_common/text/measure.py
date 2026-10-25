@@ -464,7 +464,7 @@ class FontToolsTextMeasurer:
         key = first + second
         units = pairs.get(key)
         if units is None:
-            units = _font_kern_units(font, first, second, self.kerning)
+            units = font_kern_units(font, first, second, self.kerning)
             pairs[key] = units
         if not units:
             return 0.0
@@ -487,7 +487,7 @@ class FontToolsTextMeasurer:
         return _first_baseline_ratio(abs(hhea.descender) / units_per_em)
 
 
-def _font_kern_units(font, first: str, second: str, source: KerningSource = FEATURE) -> int:
+def font_kern_units(font, first: str, second: str, source: KerningSource = FEATURE) -> int:
     """One pair's ``kern`` adjustment, in the file's own units, from the table ``source``
     names for the face.
 
@@ -521,6 +521,10 @@ def _font_kern_units(font, first: str, second: str, source: KerningSource = FEAT
         return _legacy_units(font, left, right)
     except Exception:  # a font whose tables will not parse simply does not kern
         return 0
+
+
+#: The old name, kept for docx2svg's tools/probe_advances.py until it moves.
+_font_kern_units = font_kern_units
 
 
 def _legacy_units(font, left: str, right: str) -> int:
