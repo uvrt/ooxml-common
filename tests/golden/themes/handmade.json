@@ -1,0 +1,264 @@
+{
+ "colors": {
+  "dk1": {
+   "@": "SystemColor",
+   "value": "windowText",
+   "last_color": "101010"
+  },
+  "lt1": {
+   "@": "SystemColor",
+   "value": "window",
+   "last_color": "FAFAFA"
+  },
+  "dk2": {
+   "@": "SrgbColor",
+   "hex": "23395B"
+  },
+  "lt2": {
+   "@": "SrgbColor",
+   "hex": "EDE7D9"
+  },
+  "accent1": {
+   "@": "SrgbColor",
+   "hex": "2E86AB"
+  },
+  "accent2": {
+   "@": "SrgbColor",
+   "hex": "F18F01"
+  },
+  "accent3": {
+   "@": "SrgbColor",
+   "hex": "C73E1D"
+  },
+  "accent4": {
+   "@": "SrgbColor",
+   "hex": "008080"
+  },
+  "accent5": {
+   "@": "SrgbColor",
+   "hex": "7339AC"
+  },
+  "hlink": {
+   "@": "SrgbColor",
+   "hex": "3B1F2B"
+  },
+  "folHlink": {
+   "@": "SrgbColor",
+   "hex": "7D5BA6"
+  }
+ },
+ "formats": {
+  "@": "SourceFormatScheme",
+  "fill_styles": [
+   {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SchemeColor",
+     "scheme": "phClr"
+    }
+   },
+   {
+    "@": "SourceGradientFill",
+    "stops": [
+     {
+      "@": "SourceGradientStop",
+      "position": 0.0,
+      "color": {
+       "@": "SchemeColor",
+       "scheme": "phClr",
+       "transforms": [
+        {
+         "@": "ColorTransform",
+         "kind": "lumMod",
+         "value": 110000.0
+        },
+        {
+         "@": "ColorTransform",
+         "kind": "satMod",
+         "value": 105000.0
+        },
+        {
+         "@": "ColorTransform",
+         "kind": "tint",
+         "value": 67000.0
+        }
+       ]
+      }
+     },
+     {
+      "@": "SourceGradientStop",
+      "position": 1.0,
+      "color": {
+       "@": "SchemeColor",
+       "scheme": "phClr",
+       "transforms": [
+        {
+         "@": "ColorTransform",
+         "kind": "shade",
+         "value": 78000.0
+        }
+       ]
+      }
+     }
+    ],
+    "angle": 5400000.0,
+    "scaled": false,
+    "rotate_with_shape": true
+   },
+   {
+    "@": "SourcePatternFill",
+    "preset": "pct20",
+    "foreground_color": {
+     "@": "SchemeColor",
+     "scheme": "phClr"
+    },
+    "background_color": {
+     "@": "SchemeColor",
+     "scheme": "bg1"
+    }
+   },
+   {
+    "@": "SourceNoFill"
+   }
+  ],
+  "line_styles": [
+   {
+    "@": "SourceOutline",
+    "width": 6350.0,
+    "fill": {
+     "@": "SourceSolidFill",
+     "color": {
+      "@": "SchemeColor",
+      "scheme": "phClr"
+     }
+    },
+    "dash_style": "solid",
+    "line_cap": "butt",
+    "line_join": "miter",
+    "compound": "sng"
+   },
+   {
+    "@": "SourceOutline",
+    "width": 12700.0,
+    "fill": {
+     "@": "SourceSolidFill",
+     "color": {
+      "@": "SchemeColor",
+      "scheme": "phClr"
+     }
+    },
+    "dash_style": "sysDot",
+    "line_join": "round",
+    "compound": "dbl"
+   },
+   {
+    "@": "SourceOutline",
+    "width": 19050.0,
+    "fill": {
+     "@": "SourceGradientFill",
+     "stops": [
+      {
+       "@": "SourceGradientStop",
+       "position": 0.0,
+       "color": {
+        "@": "SchemeColor",
+        "scheme": "phClr"
+       }
+      }
+     ],
+     "angle": 0
+    },
+    "line_cap": "square"
+   }
+  ],
+  "effect_styles": [
+   null,
+   {
+    "@": "SourceEffectList",
+    "outer_shadow": {
+     "@": "SourceOuterShadow",
+     "blur_radius": 57150.0,
+     "distance": 19050.0,
+     "direction": 5400000.0,
+     "color": {
+      "@": "SrgbColor",
+      "hex": "000000",
+      "transforms": [
+       {
+        "@": "ColorTransform",
+        "kind": "alpha",
+        "value": 63000.0
+       }
+      ]
+     },
+     "alignment": "ctr",
+     "rotate_with_shape": false
+    }
+   },
+   null
+  ],
+  "bg_fill_styles": [
+   {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SchemeColor",
+     "scheme": "phClr"
+    }
+   },
+   {
+    "@": "SourceGradientFill",
+    "stops": [
+     {
+      "@": "SourceGradientStop",
+      "position": 0.0,
+      "color": {
+       "@": "SchemeColor",
+       "scheme": "phClr",
+       "transforms": [
+        {
+         "@": "ColorTransform",
+         "kind": "tint",
+         "value": 93000.0
+        }
+       ]
+      }
+     },
+     {
+      "@": "SourceGradientStop",
+      "position": 1.0,
+      "color": {
+       "@": "SchemeColor",
+       "scheme": "phClr",
+       "transforms": [
+        {
+         "@": "ColorTransform",
+         "kind": "shade",
+         "value": 98000.0
+        }
+       ]
+      }
+     }
+    ],
+    "gradient_type": "radial",
+    "center_x": 0.5,
+    "center_y": 0.5,
+    "path": "circle",
+    "focus": [
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ]
+   },
+   {
+    "@": "SourceImageFill",
+    "blip_relationship_id": "rIdBackground",
+    "tile": {
+     "@": "SourceImageFillTile",
+     "tx": 0,
+     "ty": 0
+    }
+   }
+  ]
+ }
+}

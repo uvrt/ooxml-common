@@ -1,0 +1,223 @@
+[
+ {
+  "@": "SourceShape",
+  "name": "Caption",
+  "shape_id": "14",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 177800.0,
+   "width": 8229600.0,
+   "height": 279400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "5  a:buSzPts - a bullet sized in points rather than in percent",
+       "properties": {
+        "@": "SourceRunProperties",
+        "bold": true,
+        "font_size": 11.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "0F172A"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 11.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Bullet sizes",
+  "shape_id": "218",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 660400.0,
+   "width": 7874000.0,
+   "height": 2286000.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "no size given: the bullet takes the run's 32 pt",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 32.0,
+        "lang": "en-US"
+       }
+      }
+     ],
+     "properties": {
+      "@": "SourceParagraphProperties",
+      "margin_left": 457200.0,
+      "indent": -457200.0,
+      "bullet": {
+       "@": "CharBullet",
+       "char": "•"
+      }
+     }
+    },
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "a:buSzPct 50%: half the run",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 32.0,
+        "lang": "en-US"
+       }
+      }
+     ],
+     "properties": {
+      "@": "SourceParagraphProperties",
+      "margin_left": 457200.0,
+      "indent": -457200.0,
+      "bullet": {
+       "@": "CharBullet",
+       "char": "•"
+      },
+      "bullet_size_pct": 50000.0
+     }
+    },
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "a:buSzPts 10 pt: absolute",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 32.0,
+        "lang": "en-US"
+       }
+      }
+     ],
+     "properties": {
+      "@": "SourceParagraphProperties",
+      "margin_left": 457200.0,
+      "indent": -457200.0,
+      "bullet": {
+       "@": "CharBullet",
+       "char": "•"
+      },
+      "bullet_size_points": 10.0
+     }
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "219",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 3200400.0,
+   "width": 7874000.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "Only a:buSzPct was read, so every a:buSzPts bullet silently took the run's size. Decks usually author the two equal, which is why the gap never showed.",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ }
+]

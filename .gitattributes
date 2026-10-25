@@ -1,0 +1,6 @@
+# The goldens are compared byte for byte (tests/goldens.py), so the bytes in the working
+# tree must be the bytes that were written.  Git on Windows rewrites LF to CRLF on
+# checkout by default; `eol=lf` pins the checkout on every platform.  The comparison reads
+# with universal newlines as well, so a checkout that ignores this file still passes.
+tests/golden/** text eol=lf
+tests/fixtures/** text eol=lf

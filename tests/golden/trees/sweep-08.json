@@ -1,0 +1,939 @@
+[
+ {
+  "@": "SourceShape",
+  "name": "Caption",
+  "shape_id": "17",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 177800.0,
+   "width": 8229600.0,
+   "height": 279400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "8  a:lnL/R/T/B@cmpd - compound cell borders (NOT RENDERED; warns once)",
+       "properties": {
+        "@": "SourceRunProperties",
+        "bold": true,
+        "font_size": 11.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "0F172A"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 11.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceTable",
+  "name": "Compound table",
+  "shape_id": "239",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 660400.0,
+   "width": 6096000.0,
+   "height": 1371600.0,
+   "rotation": 0
+  },
+  "columns": [
+   2032000.0,
+   2032000.0,
+   2032000.0
+  ],
+  "rows": [
+   {
+    "@": "SourceTableRow",
+    "height": 457200.0,
+    "cells": [
+     {
+      "@": "SourceTableCell",
+      "text_body": {
+       "@": "SourceTextBody",
+       "paragraphs": [
+        {
+         "@": "SourceParagraph",
+         "runs": [
+          {
+           "@": "SourceTextRun",
+           "text": "Region",
+           "properties": {
+            "@": "SourceRunProperties",
+            "font_size": 14.0,
+            "lang": "en-US"
+           }
+          }
+         ],
+         "properties": {
+          "@": "SourceParagraphProperties",
+          "align": "ctr"
+         }
+        }
+       ]
+      },
+      "fill": {
+       "@": "SourceSolidFill",
+       "color": {
+        "@": "SrgbColor",
+        "hex": "FFFFFF"
+       }
+      },
+      "border_top": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_bottom": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_left": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_right": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "margin_left": 45720.0,
+      "margin_right": 45720.0,
+      "margin_top": 45720.0,
+      "margin_bottom": 45720.0,
+      "anchor": "t"
+     },
+     {
+      "@": "SourceTableCell",
+      "text_body": {
+       "@": "SourceTextBody",
+       "paragraphs": [
+        {
+         "@": "SourceParagraph",
+         "runs": [
+          {
+           "@": "SourceTextRun",
+           "text": "Q1",
+           "properties": {
+            "@": "SourceRunProperties",
+            "font_size": 14.0,
+            "lang": "en-US"
+           }
+          }
+         ],
+         "properties": {
+          "@": "SourceParagraphProperties",
+          "align": "ctr"
+         }
+        }
+       ]
+      },
+      "fill": {
+       "@": "SourceSolidFill",
+       "color": {
+        "@": "SrgbColor",
+        "hex": "FFFFFF"
+       }
+      },
+      "border_top": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_bottom": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_left": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_right": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "margin_left": 45720.0,
+      "margin_right": 45720.0,
+      "margin_top": 45720.0,
+      "margin_bottom": 45720.0,
+      "anchor": "t"
+     },
+     {
+      "@": "SourceTableCell",
+      "text_body": {
+       "@": "SourceTextBody",
+       "paragraphs": [
+        {
+         "@": "SourceParagraph",
+         "runs": [
+          {
+           "@": "SourceTextRun",
+           "text": "Q2",
+           "properties": {
+            "@": "SourceRunProperties",
+            "font_size": 14.0,
+            "lang": "en-US"
+           }
+          }
+         ],
+         "properties": {
+          "@": "SourceParagraphProperties",
+          "align": "ctr"
+         }
+        }
+       ]
+      },
+      "fill": {
+       "@": "SourceSolidFill",
+       "color": {
+        "@": "SrgbColor",
+        "hex": "FFFFFF"
+       }
+      },
+      "border_top": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_bottom": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_left": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_right": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "margin_left": 45720.0,
+      "margin_right": 45720.0,
+      "margin_top": 45720.0,
+      "margin_bottom": 45720.0,
+      "anchor": "t"
+     }
+    ]
+   },
+   {
+    "@": "SourceTableRow",
+    "height": 457200.0,
+    "cells": [
+     {
+      "@": "SourceTableCell",
+      "text_body": {
+       "@": "SourceTextBody",
+       "paragraphs": [
+        {
+         "@": "SourceParagraph",
+         "runs": [
+          {
+           "@": "SourceTextRun",
+           "text": "North",
+           "properties": {
+            "@": "SourceRunProperties",
+            "font_size": 14.0,
+            "lang": "en-US"
+           }
+          }
+         ],
+         "properties": {
+          "@": "SourceParagraphProperties",
+          "align": "ctr"
+         }
+        }
+       ]
+      },
+      "fill": {
+       "@": "SourceSolidFill",
+       "color": {
+        "@": "SrgbColor",
+        "hex": "FFFFFF"
+       }
+      },
+      "border_top": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_bottom": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_left": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_right": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "margin_left": 45720.0,
+      "margin_right": 45720.0,
+      "margin_top": 45720.0,
+      "margin_bottom": 45720.0,
+      "anchor": "t"
+     },
+     {
+      "@": "SourceTableCell",
+      "text_body": {
+       "@": "SourceTextBody",
+       "paragraphs": [
+        {
+         "@": "SourceParagraph",
+         "runs": [
+          {
+           "@": "SourceTextRun",
+           "text": "184",
+           "properties": {
+            "@": "SourceRunProperties",
+            "font_size": 14.0,
+            "lang": "en-US"
+           }
+          }
+         ],
+         "properties": {
+          "@": "SourceParagraphProperties",
+          "align": "ctr"
+         }
+        }
+       ]
+      },
+      "fill": {
+       "@": "SourceSolidFill",
+       "color": {
+        "@": "SrgbColor",
+        "hex": "FFFFFF"
+       }
+      },
+      "border_top": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_bottom": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_left": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_right": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "margin_left": 45720.0,
+      "margin_right": 45720.0,
+      "margin_top": 45720.0,
+      "margin_bottom": 45720.0,
+      "anchor": "t"
+     },
+     {
+      "@": "SourceTableCell",
+      "text_body": {
+       "@": "SourceTextBody",
+       "paragraphs": [
+        {
+         "@": "SourceParagraph",
+         "runs": [
+          {
+           "@": "SourceTextRun",
+           "text": "211",
+           "properties": {
+            "@": "SourceRunProperties",
+            "font_size": 14.0,
+            "lang": "en-US"
+           }
+          }
+         ],
+         "properties": {
+          "@": "SourceParagraphProperties",
+          "align": "ctr"
+         }
+        }
+       ]
+      },
+      "fill": {
+       "@": "SourceSolidFill",
+       "color": {
+        "@": "SrgbColor",
+        "hex": "FFFFFF"
+       }
+      },
+      "border_top": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_bottom": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_left": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_right": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "margin_left": 45720.0,
+      "margin_right": 45720.0,
+      "margin_top": 45720.0,
+      "margin_bottom": 45720.0,
+      "anchor": "t"
+     }
+    ]
+   },
+   {
+    "@": "SourceTableRow",
+    "height": 457200.0,
+    "cells": [
+     {
+      "@": "SourceTableCell",
+      "text_body": {
+       "@": "SourceTextBody",
+       "paragraphs": [
+        {
+         "@": "SourceParagraph",
+         "runs": [
+          {
+           "@": "SourceTextRun",
+           "text": "South",
+           "properties": {
+            "@": "SourceRunProperties",
+            "font_size": 14.0,
+            "lang": "en-US"
+           }
+          }
+         ],
+         "properties": {
+          "@": "SourceParagraphProperties",
+          "align": "ctr"
+         }
+        }
+       ]
+      },
+      "fill": {
+       "@": "SourceSolidFill",
+       "color": {
+        "@": "SrgbColor",
+        "hex": "FFFFFF"
+       }
+      },
+      "border_top": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_bottom": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_left": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_right": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "margin_left": 45720.0,
+      "margin_right": 45720.0,
+      "margin_top": 45720.0,
+      "margin_bottom": 45720.0,
+      "anchor": "t"
+     },
+     {
+      "@": "SourceTableCell",
+      "text_body": {
+       "@": "SourceTextBody",
+       "paragraphs": [
+        {
+         "@": "SourceParagraph",
+         "runs": [
+          {
+           "@": "SourceTextRun",
+           "text": "142",
+           "properties": {
+            "@": "SourceRunProperties",
+            "font_size": 14.0,
+            "lang": "en-US"
+           }
+          }
+         ],
+         "properties": {
+          "@": "SourceParagraphProperties",
+          "align": "ctr"
+         }
+        }
+       ]
+      },
+      "fill": {
+       "@": "SourceSolidFill",
+       "color": {
+        "@": "SrgbColor",
+        "hex": "FFFFFF"
+       }
+      },
+      "border_top": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_bottom": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_left": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_right": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "margin_left": 45720.0,
+      "margin_right": 45720.0,
+      "margin_top": 45720.0,
+      "margin_bottom": 45720.0,
+      "anchor": "t"
+     },
+     {
+      "@": "SourceTableCell",
+      "text_body": {
+       "@": "SourceTextBody",
+       "paragraphs": [
+        {
+         "@": "SourceParagraph",
+         "runs": [
+          {
+           "@": "SourceTextRun",
+           "text": "168",
+           "properties": {
+            "@": "SourceRunProperties",
+            "font_size": 14.0,
+            "lang": "en-US"
+           }
+          }
+         ],
+         "properties": {
+          "@": "SourceParagraphProperties",
+          "align": "ctr"
+         }
+        }
+       ]
+      },
+      "fill": {
+       "@": "SourceSolidFill",
+       "color": {
+        "@": "SrgbColor",
+        "hex": "FFFFFF"
+       }
+      },
+      "border_top": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_bottom": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_left": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "border_right": {
+       "@": "SourceOutline",
+       "width": 38100.0,
+       "fill": {
+        "@": "SourceSolidFill",
+        "color": {
+         "@": "SrgbColor",
+         "hex": "1F4E79"
+        }
+       },
+       "compound": "dbl"
+      },
+      "margin_left": 45720.0,
+      "margin_right": 45720.0,
+      "margin_top": 45720.0,
+      "margin_bottom": 45720.0,
+      "anchor": "t"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "240",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 2311400.0,
+   "width": 7874000.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "NOT RENDERED. Every cell border is cmpd='dbl'; all twelve are drawn as one 3 pt stroke, and line-compound-flattened fires once for the slide, not once per border.",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ }
+]

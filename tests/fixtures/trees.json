@@ -1,0 +1,95 @@
+{
+ "gallery-01": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 1's p:spTree"
+ },
+ "gallery-02": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 2's p:spTree"
+ },
+ "gallery-03": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 3's p:spTree"
+ },
+ "gallery-04": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 4's p:spTree"
+ },
+ "gallery-05": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 5's p:spTree"
+ },
+ "gallery-06": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 6's p:spTree"
+ },
+ "gallery-07": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 7's p:spTree"
+ },
+ "gallery-08": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 8's p:spTree"
+ },
+ "gallery-09": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 9's p:spTree"
+ },
+ "gallery-10": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 10's p:spTree"
+ },
+ "gallery-11": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 11's p:spTree"
+ },
+ "gallery-12": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 12's p:spTree"
+ },
+ "gallery-13": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 13's p:spTree"
+ },
+ "gallery-14": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 14's p:spTree"
+ },
+ "gallery-15": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 15's p:spTree"
+ },
+ "gallery-16": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 16's p:spTree"
+ },
+ "gallery-17": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 17's p:spTree"
+ },
+ "sweep-01": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 1's p:spTree"
+ },
+ "sweep-02": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 2's p:spTree"
+ },
+ "sweep-03": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 3's p:spTree"
+ },
+ "sweep-04": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 4's p:spTree"
+ },
+ "sweep-05": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 5's p:spTree"
+ },
+ "sweep-06": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 6's p:spTree"
+ },
+ "sweep-07": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 7's p:spTree"
+ },
+ "sweep-08": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 8's p:spTree"
+ },
+ "sweep-09": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 9's p:spTree"
+ },
+ "sweep-10": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 10's p:spTree"
+ },
+ "sweep-11": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 11's p:spTree"
+ },
+ "sweep-12": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 12's p:spTree"
+ },
+ "sweep-13": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 13's p:spTree"
+ },
+ "handmade-reader": {
+  "source": "written by hand for this suite: every node, fill, line, effect, picture adjustment, geometry command, graphic frame and markup-compatibility branch the reader knows, and malformed spellings of each"
+ }
+}

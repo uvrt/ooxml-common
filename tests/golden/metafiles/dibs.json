@@ -1,0 +1,234 @@
+{
+ "1bpp": {
+  "image": [
+   "image/png",
+   "9x3:8:2:19e77d6707ec5e43"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 9,
+   "height": 3,
+   "rgba": {
+    "bytes": 108,
+    "sha256": "fc8822d95731fff1"
+   },
+   "has_alpha": false
+  }
+ },
+ "4bpp": {
+  "image": [
+   "image/png",
+   "5x4:8:2:b48c4a38bdaf2780"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 5,
+   "height": 4,
+   "rgba": {
+    "bytes": 80,
+    "sha256": "680b277446cc48b8"
+   },
+   "has_alpha": false
+  }
+ },
+ "4bpp-short-palette": {
+  "image": [
+   "image/png",
+   "5x2:8:2:63d7855f840c6410"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 5,
+   "height": 2,
+   "rgba": {
+    "bytes": 40,
+    "sha256": "675a1b125c6739f3"
+   },
+   "has_alpha": false
+  }
+ },
+ "8bpp-top-down": {
+  "image": [
+   "image/png",
+   "4x3:8:2:a70a49d088fe2d1c"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 4,
+   "height": 3,
+   "rgba": {
+    "bytes": 48,
+    "sha256": "34cd0da17c8353ab"
+   },
+   "has_alpha": false
+  }
+ },
+ "16bpp-555": {
+  "image": [
+   "image/png",
+   "3x2:8:2:46188b98ff390c39"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 3,
+   "height": 2,
+   "rgba": {
+    "bytes": 24,
+    "sha256": "f40b0158b7e8c336"
+   },
+   "has_alpha": false
+  }
+ },
+ "16bpp-565": {
+  "image": [
+   "image/png",
+   "3x2:8:2:96db9100fd0e0460"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 3,
+   "height": 2,
+   "rgba": {
+    "bytes": 24,
+    "sha256": "761e028672599135"
+   },
+   "has_alpha": false
+  }
+ },
+ "24bpp": {
+  "image": [
+   "image/png",
+   "3x3:8:2:24ea11634c8230fa"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 3,
+   "height": 3,
+   "rgba": {
+    "bytes": 36,
+    "sha256": "35417c8526732443"
+   },
+   "has_alpha": false
+  }
+ },
+ "32bpp-no-alpha": {
+  "image": [
+   "image/png",
+   "2x2:8:2:6c33c086858c65b1"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 2,
+   "height": 2,
+   "rgba": {
+    "bytes": 16,
+    "sha256": "8c4b5650c1e64acb"
+   },
+   "has_alpha": false
+  }
+ },
+ "32bpp-alpha": {
+  "image": [
+   "image/png",
+   "2x2:8:6:1ea875c9545b4512"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 2,
+   "height": 2,
+   "rgba": {
+    "bytes": 16,
+    "sha256": "2b7644c1bf7884f4"
+   },
+   "has_alpha": true
+  }
+ },
+ "32bpp-bitfields": {
+  "image": [
+   "image/png",
+   "2x2:8:6:f63493dba36fa1d8"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 2,
+   "height": 2,
+   "rgba": {
+    "bytes": 16,
+    "sha256": "6f3b6d520ef5fc8a"
+   },
+   "has_alpha": true
+  }
+ },
+ "32bpp-alpha-bitfields": {
+  "image": [
+   "image/png",
+   "2x2:8:6:39dcb4ccf06eba80"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 2,
+   "height": 2,
+   "rgba": {
+    "bytes": 16,
+    "sha256": "e55da2cdd3e0c6cf"
+   },
+   "has_alpha": true
+  }
+ },
+ "32bpp-v5": {
+  "image": [
+   "image/png",
+   "2x2:8:6:0681dc0ff78e259f"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 2,
+   "height": 2,
+   "rgba": {
+    "bytes": 16,
+    "sha256": "683cb3f853525b1a"
+   },
+   "has_alpha": true
+  }
+ },
+ "rle8": {
+  "image": null,
+  "pixels": null
+ },
+ "jpeg": {
+  "image": null,
+  "pixels": null
+ },
+ "png": {
+  "image": null,
+  "pixels": null
+ },
+ "short-bits": {
+  "image": [
+   "image/png",
+   "8x8:8:2:6d9c54dee5660c46"
+  ],
+  "pixels": {
+   "@": "DecodedPixels",
+   "width": 8,
+   "height": 8,
+   "rgba": {
+    "bytes": 256,
+    "sha256": "2c893cd47b675713"
+   },
+   "has_alpha": false
+  }
+ },
+ "no-palette": {
+  "image": null,
+  "pixels": null
+ },
+ "bad-depth": {
+  "image": null,
+  "pixels": null
+ },
+ "zero-width": {
+  "image": null,
+  "pixels": null
+ }
+}
