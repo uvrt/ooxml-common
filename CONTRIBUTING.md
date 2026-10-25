@@ -25,7 +25,10 @@ suites, at their `main`, against the change (the `downstream` job). A change a r
 must follow is red there until it is merged with the renderer's matching pull request
 right after it; say so on the pull request. Keep the package standard-library only at
 runtime and free of imports from its consumers (`tests/test_independence.py`). Add a
-line to [CHANGELOG.md](CHANGELOG.md) when you bump the version.
+line to [CHANGELOG.md](CHANGELOG.md) when you bump the version: CI's `build` job checks
+that `pyproject.toml`'s version is the one its top section names, and `__version__` the
+same (`tools/check_version.py`). Each version that reaches `main` is tagged `v<version>`
+on that commit by the tag workflow (`.github/workflows/tag.yml`).
 
 ## Names the siblings import
 
