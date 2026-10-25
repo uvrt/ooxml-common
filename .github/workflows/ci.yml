@@ -47,8 +47,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .[dev]
           python -m pip install "pptx2svg-fonts @ git+https://github.com/uvrt/pptx2svg@main#subdirectory=packages/pptx2svg-fonts"
-          # TEMPORARY (s2): ooxml-edit 0.64.0 from its branch until uvrt/ooxml-edit#77 is merged; back to @main then
-          python -m pip install "ooxml-edit @ git+https://github.com/uvrt/ooxml-edit@common-dep-s2"
+          python -m pip install "ooxml-edit @ git+https://github.com/uvrt/ooxml-edit@main"
 
       - name: Test
         run: python -m pytest -q
