@@ -429,12 +429,16 @@ USED_BY: dict[str, dict[str, str]] = {
         "is_date_code": "ooxml-edit",
     },
     "ooxml_common.opc": {
-        "CONTENT_TYPES_PART": "ooxml-edit",
+        "CONTENT_TYPES_PART": "docx2svg, ooxml-edit",
         "OpcPackage": "docx2svg",
         "REL_CHART": "ooxml-edit",
-        "REL_IMAGE": "ooxml-edit",
-        "REL_OFFICE_DOCUMENT": "ooxml-edit",
-        "normalize_part_path": "ooxml-edit",
+        "REL_HYPERLINK": "docx2svg",
+        "REL_IMAGE": "docx2svg, ooxml-edit",
+        "REL_OFFICE_DOCUMENT": "docx2svg, ooxml-edit",
+        "REL_THEME": "docx2svg",
+        "Relationship": "docx2svg",
+        "normalize_part_path": "docx2svg, ooxml-edit",
+        "rels_path_for": "docx2svg",
     },
     "ooxml_common.svgimage": {
         "natural_size": "pptx2svg",
@@ -485,7 +489,11 @@ USED_BY: dict[str, dict[str, str]] = {
         "attr": "docx2svg",
         "child": "docx2svg, pptx-agent",
         "children": "docx2svg",
+        "descendants": "docx2svg",
+        "element_child": "docx2svg",
+        "element_children": "docx2svg",
         "local_name": "docx2svg, pptx-agent",
+        "parse_xml": "docx2svg",
     },
 }
 
