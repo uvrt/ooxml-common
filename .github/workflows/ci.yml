@@ -39,14 +39,16 @@ jobs:
         # resolved by name.  Only the tests that check the tables against the files need
         # it; they skip without it.
         #
-        # ooxml-edit is test only, never a dependency: it keeps its own copy of the date
-        # names (ooxml_edit.dates), and with it installed tests/test_dates.py checks that
-        # the two copies agree instead of skipping.
+        # ooxml-edit is test only, never a dependency (ooxml-common never imports it; it
+        # depends on this package, from 0.64.0): with it installed, tests/test_dates.py and
+        # tests/test_numfmt.py check that it reads this package's tables and codes instead
+        # of skipping.  This checkout is installed first, so its requirement is met.
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e .[dev]
           python -m pip install "pptx2svg-fonts @ git+https://github.com/uvrt/pptx2svg@main#subdirectory=packages/pptx2svg-fonts"
-          python -m pip install "ooxml-edit @ git+https://github.com/uvrt/ooxml-edit@main"
+          # TEMPORARY (s2): ooxml-edit 0.64.0 from its branch until uvrt/ooxml-edit#77 is merged; back to @main then
+          python -m pip install "ooxml-edit @ git+https://github.com/uvrt/ooxml-edit@common-dep-s2"
 
       - name: Test
         run: python -m pytest -q
