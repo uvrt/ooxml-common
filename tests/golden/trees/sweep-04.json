@@ -1,0 +1,221 @@
+[
+ {
+  "@": "SourceShape",
+  "name": "Caption",
+  "shape_id": "13",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 177800.0,
+   "width": 8229600.0,
+   "height": 279400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "4  a:buBlip - picture bullets",
+       "properties": {
+        "@": "SourceRunProperties",
+        "bold": true,
+        "font_size": 11.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "0F172A"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 11.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Picture bullets",
+  "shape_id": "216",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 660400.0,
+   "width": 5080000.0,
+   "height": 1524000.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "Picture bullets come from a:buBlip",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 16.0,
+        "lang": "en-US"
+       }
+      }
+     ],
+     "properties": {
+      "@": "SourceParagraphProperties",
+      "margin_left": 457200.0,
+      "indent": -457200.0,
+      "bullet": {
+       "@": "SourceBlipBullet",
+       "relationship_id": "rIdBullet"
+      }
+     }
+    },
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "They are not a character in any face",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 16.0,
+        "lang": "en-US"
+       }
+      }
+     ],
+     "properties": {
+      "@": "SourceParagraphProperties",
+      "margin_left": 457200.0,
+      "indent": -457200.0,
+      "bullet": {
+       "@": "SourceBlipBullet",
+       "relationship_id": "rIdBullet"
+      }
+     }
+    },
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "So they cannot be a tspan the way buChar is",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 16.0,
+        "lang": "en-US"
+       }
+      }
+     ],
+     "properties": {
+      "@": "SourceParagraphProperties",
+      "margin_left": 457200.0,
+      "indent": -457200.0,
+      "bullet": {
+       "@": "SourceBlipBullet",
+       "relationship_id": "rIdBullet"
+      }
+     }
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "217",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 2311400.0,
+   "width": 7874000.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "a:buBlip -- a 32 px diamond with real alpha, drawn as <image> beside the <text> because <image> is not a text content element.",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ }
+]

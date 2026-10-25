@@ -1,4 +1,7 @@
 # The sdist carries the tests so a packager can run them; no fonts, ever.
 include LICENSE README.md
 recursive-include tests *.py
+# The golden suite's made-up inputs and the outputs it holds them to (tests/goldens.py).
+recursive-include tests/fixtures *.xml *.json
+recursive-include tests/golden *.svg *.json
 global-exclude __pycache__ *.py[cod] .DS_Store *.ttf *.ttc *.otf

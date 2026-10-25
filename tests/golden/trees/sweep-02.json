@@ -1,0 +1,300 @@
+[
+ {
+  "@": "SourceShape",
+  "name": "Caption",
+  "shape_id": "11",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 177800.0,
+   "width": 8229600.0,
+   "height": 279400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "2  asvg:svgBlip - the vector a picture was rasterised from",
+       "properties": {
+        "@": "SourceRunProperties",
+        "bold": true,
+        "font_size": 11.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "0F172A"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 11.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceImage",
+  "blip_relationship_id": "rIdSwatch",
+  "name": "Raster only",
+  "shape_id": "205",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 660400.0,
+   "width": 3048000.0,
+   "height": 762000.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "stretch": [
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "206",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 1524000.0,
+   "width": 3810000.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "a:blip alone -- the PNG is drawn",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceImage",
+  "blip_relationship_id": "rIdSwatch",
+  "svg_relationship_id": "rIdMark",
+  "name": "Vector preferred",
+  "shape_id": "207",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 1930400.0,
+   "width": 3048000.0,
+   "height": 762000.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "stretch": [
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "208",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 2794000.0,
+   "width": 5842000.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "same a:blip plus an asvg:svgBlip extension -- the SVG is drawn",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "209",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 3327400.0,
+   "width": 7874000.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "Both draw the same artwork, deliberately: PowerPoint's own PDF export rasterises from the PNG on both, so a vector drawn differently would score as a defect for ever with none behind it. Which source we used is pinned by the VRT snapshot, which holds data:image/svg+xml here.",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ }
+]

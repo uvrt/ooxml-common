@@ -1,0 +1,657 @@
+[
+ {
+  "@": "SourceShape",
+  "name": "Caption",
+  "shape_id": "16",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 177800.0,
+   "width": 8229600.0,
+   "height": 279400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "7  a:ln@cmpd - compound lines (NOT RENDERED; warns)",
+       "properties": {
+        "@": "SourceRunProperties",
+        "bold": true,
+        "font_size": 11.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "0F172A"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 11.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "cmpd sng",
+  "shape_id": "228",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 660400.0,
+   "width": 1371600.0,
+   "height": 914400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceSolidFill",
+   "color": {
+    "@": "SrgbColor",
+    "hex": "F8FAFC"
+   }
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "width": 76200.0,
+   "fill": {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SrgbColor",
+     "hex": "1F4E79"
+    }
+   },
+   "compound": "sng"
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph"
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "229",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 1676400.0,
+   "width": 1371600.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "cmpd='sng'",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "cmpd dbl",
+  "shape_id": "230",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 2032000.0,
+   "offset_y": 660400.0,
+   "width": 1371600.0,
+   "height": 914400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceSolidFill",
+   "color": {
+    "@": "SrgbColor",
+    "hex": "F8FAFC"
+   }
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "width": 76200.0,
+   "fill": {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SrgbColor",
+     "hex": "1F4E79"
+    }
+   },
+   "compound": "dbl"
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph"
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "231",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 2032000.0,
+   "offset_y": 1676400.0,
+   "width": 1371600.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "cmpd='dbl'",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "cmpd thickThin",
+  "shape_id": "232",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 3606800.0,
+   "offset_y": 660400.0,
+   "width": 1371600.0,
+   "height": 914400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceSolidFill",
+   "color": {
+    "@": "SrgbColor",
+    "hex": "F8FAFC"
+   }
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "width": 76200.0,
+   "fill": {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SrgbColor",
+     "hex": "1F4E79"
+    }
+   },
+   "compound": "thickThin"
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph"
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "233",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 3606800.0,
+   "offset_y": 1676400.0,
+   "width": 1371600.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "cmpd='thickThin'",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "cmpd thinThick",
+  "shape_id": "234",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 5181600.0,
+   "offset_y": 660400.0,
+   "width": 1371600.0,
+   "height": 914400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceSolidFill",
+   "color": {
+    "@": "SrgbColor",
+    "hex": "F8FAFC"
+   }
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "width": 76200.0,
+   "fill": {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SrgbColor",
+     "hex": "1F4E79"
+    }
+   },
+   "compound": "thinThick"
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph"
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "235",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 5181600.0,
+   "offset_y": 1676400.0,
+   "width": 1371600.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "cmpd='thinThick'",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "cmpd tri",
+  "shape_id": "236",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 6756400.0,
+   "offset_y": 660400.0,
+   "width": 1371600.0,
+   "height": 914400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceSolidFill",
+   "color": {
+    "@": "SrgbColor",
+    "hex": "F8FAFC"
+   }
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "width": 76200.0,
+   "fill": {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SrgbColor",
+     "hex": "1F4E79"
+    }
+   },
+   "compound": "tri"
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph"
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "237",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 6756400.0,
+   "offset_y": 1676400.0,
+   "width": 1371600.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "cmpd='tri'",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "238",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 2184400.0,
+   "width": 7874000.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "NOT RENDERED. All five are drawn as one 6 pt stroke: right colour, right weight, right place, missing split. Warns line-compound-flattened.",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ }
+]

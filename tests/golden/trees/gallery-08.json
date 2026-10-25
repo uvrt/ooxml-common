@@ -1,0 +1,80 @@
+[
+ {
+  "@": "SourceShape",
+  "name": "Caption",
+  "shape_id": "17",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 177800.0,
+   "width": 8229600.0,
+   "height": 279400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "8  doughnutChart - holeSize 55, legend at the left",
+       "properties": {
+        "@": "SourceRunProperties",
+        "bold": false,
+        "font_size": 10.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "334155"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 10.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceUnsupported",
+  "what": "chart",
+  "name": "doughnutChart",
+  "shape_id": "107",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 584200.0,
+   "width": 5080000.0,
+   "height": 4267200.0,
+   "rotation": 0
+  },
+  "fallback_rel_id": "rIdChart"
+ }
+]

@@ -1,0 +1,44 @@
+{
+ "sweep-01": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 1 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-02": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 2 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-03": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 3 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-04": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 4 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-05": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 5 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-06": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 6 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-07": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 7 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-08": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 8 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-09": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 9 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-10": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 10 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-11": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 11 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-12": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 12 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "sweep-13": {
+  "source": "pptx2svg tools/make_feature_sweep.py (tests/fixtures/feature-sweep.pptx), slide 13 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ },
+ "gallery-01": {
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), slide 1 as pptx2svg resolves it (convert_pptx_to_model), charts left out, each picture's PNG bytes replaced by a 2x2 flat-colour PNG written here"
+ }
+}

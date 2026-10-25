@@ -1,0 +1,425 @@
+[
+ {
+  "@": "SourceShape",
+  "name": "Caption",
+  "shape_id": "15",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 177800.0,
+   "width": 8229600.0,
+   "height": 279400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "6  a:alphaModFix - picture opacity",
+       "properties": {
+        "@": "SourceRunProperties",
+        "bold": true,
+        "font_size": 11.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "0F172A"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 11.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Backdrop",
+  "shape_id": "220",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 355600.0,
+   "offset_y": 558800.0,
+   "width": 7620000.0,
+   "height": 1219200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceSolidFill",
+   "color": {
+    "@": "SrgbColor",
+    "hex": "0F172A"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph"
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceImage",
+  "blip_relationship_id": "rIdSwatch",
+  "name": "Opaque",
+  "shape_id": "221",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 660400.0,
+   "width": 2235200.0,
+   "height": 558800.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "stretch": [
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ {
+  "@": "SourceImage",
+  "blip_relationship_id": "rIdSwatch",
+  "name": "Half",
+  "shape_id": "222",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 2997200.0,
+   "offset_y": 660400.0,
+   "width": 2235200.0,
+   "height": 558800.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "blip_effects": {
+   "@": "SourceBlipEffects",
+   "alpha": 0.5
+  },
+  "stretch": [
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ {
+  "@": "SourceImage",
+  "blip_relationship_id": "rIdSwatch",
+  "name": "Faint",
+  "shape_id": "223",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 5537200.0,
+   "offset_y": 660400.0,
+   "width": 2235200.0,
+   "height": 558800.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "blip_effects": {
+   "@": "SourceBlipEffects",
+   "alpha": 0.2
+  },
+  "stretch": [
+   0.0,
+   0.0,
+   0.0,
+   0.0
+  ]
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "224",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 1320800.0,
+   "width": 2235200.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "100%",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "225",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 2997200.0,
+   "offset_y": 1320800.0,
+   "width": 2235200.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "a:alphaModFix 50%",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "226",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 5537200.0,
+   "offset_y": 1320800.0,
+   "width": 2235200.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "a:alphaModFix 20%",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "227",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 2184400.0,
+   "width": 7874000.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "A bare <a:alphaModFix/> means 100% and is dropped rather than emitting a no-op filter -- Google Slides writes one on every exported picture.",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ }
+]

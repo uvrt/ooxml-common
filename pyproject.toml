@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ooxml-common"
-version = "0.31.0"
+version = "0.31.1"
 description = "Format-neutral OOXML pieces shared by pptx2svg and docx2svg: OPC, units, DrawingML data, fonts and measured text metrics"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -60,3 +60,14 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+# `python -m coverage run -m pytest` then `python -m coverage report` (CI's test job, one
+# leg).  text/kerning.py is a generated table of 55 statements, every one run on import;
+# tracing that import line by line costs about 40 s, so it is not traced.
+[tool.coverage.run]
+source = ["ooxml_common"]
+omit = ["*/ooxml_common/text/kerning.py"]
+
+[tool.coverage.report]
+show_missing = false
+skip_covered = false

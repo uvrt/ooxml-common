@@ -1,0 +1,566 @@
+[
+ {
+  "@": "SourceShape",
+  "name": "Caption",
+  "shape_id": "19",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 177800.0,
+   "width": 8229600.0,
+   "height": 279400.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "10  a:tile@flip and @algn - mirrored tiles (NOT RENDERED)",
+       "properties": {
+        "@": "SourceRunProperties",
+        "bold": true,
+        "font_size": 11.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "0F172A"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 11.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "tile none tl",
+  "shape_id": "250",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 660400.0,
+   "width": 1727200.0,
+   "height": 1219200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceImageFill",
+   "blip_relationship_id": "rIdTile",
+   "tile": {
+    "@": "SourceImageFillTile",
+    "tx": 0,
+    "ty": 0,
+    "sx": 0.6,
+    "sy": 0.6
+   }
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "width": 9525.0,
+   "fill": {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SrgbColor",
+     "hex": "94A3B8"
+    }
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph"
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "251",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 1981200.0,
+   "width": 1727200.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "flip='none' algn='tl'",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "tile x tl",
+  "shape_id": "252",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 2438400.0,
+   "offset_y": 660400.0,
+   "width": 1727200.0,
+   "height": 1219200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceImageFill",
+   "blip_relationship_id": "rIdTile",
+   "tile": {
+    "@": "SourceImageFillTile",
+    "tx": 0,
+    "ty": 0,
+    "sx": 0.6,
+    "sy": 0.6,
+    "flip": "x"
+   }
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "width": 9525.0,
+   "fill": {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SrgbColor",
+     "hex": "94A3B8"
+    }
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph"
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "253",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 2438400.0,
+   "offset_y": 1981200.0,
+   "width": 1727200.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "flip='x' algn='tl'",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "tile xy tl",
+  "shape_id": "254",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 4419600.0,
+   "offset_y": 660400.0,
+   "width": 1727200.0,
+   "height": 1219200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceImageFill",
+   "blip_relationship_id": "rIdTile",
+   "tile": {
+    "@": "SourceImageFillTile",
+    "tx": 0,
+    "ty": 0,
+    "sx": 0.6,
+    "sy": 0.6,
+    "flip": "xy"
+   }
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "width": 9525.0,
+   "fill": {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SrgbColor",
+     "hex": "94A3B8"
+    }
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph"
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "255",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 4419600.0,
+   "offset_y": 1981200.0,
+   "width": 1727200.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "flip='xy' algn='tl'",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "tile none ctr",
+  "shape_id": "256",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 6400800.0,
+   "offset_y": 660400.0,
+   "width": 1727200.0,
+   "height": 1219200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceImageFill",
+   "blip_relationship_id": "rIdTile",
+   "tile": {
+    "@": "SourceImageFillTile",
+    "tx": 0,
+    "ty": 0,
+    "sx": 0.6,
+    "sy": 0.6,
+    "align": "ctr"
+   }
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "width": 9525.0,
+   "fill": {
+    "@": "SourceSolidFill",
+    "color": {
+     "@": "SrgbColor",
+     "hex": "94A3B8"
+    }
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph"
+    }
+   ]
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "257",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 6400800.0,
+   "offset_y": 1981200.0,
+   "width": 1727200.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "flip='none' algn='ctr'",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ },
+ {
+  "@": "SourceShape",
+  "name": "Label",
+  "shape_id": "258",
+  "transform": {
+   "@": "SourceTransform",
+   "offset_x": 457200.0,
+   "offset_y": 2438400.0,
+   "width": 7874000.0,
+   "height": 203200.0,
+   "rotation": 0
+  },
+  "geometry": {
+   "@": "SourcePresetGeometry",
+   "preset": "rect"
+  },
+  "fill": {
+   "@": "SourceNoFill"
+  },
+  "outline": {
+   "@": "SourceOutline",
+   "fill": {
+    "@": "SourceNoFill"
+   }
+  },
+  "text_body": {
+   "@": "SourceTextBody",
+   "paragraphs": [
+    {
+     "@": "SourceParagraph",
+     "runs": [
+      {
+       "@": "SourceTextRun",
+       "text": "NOT RENDERED. An SVG <pattern> repeats one tile unchanged, so flip and algn are both dropped and all four tile identically.",
+       "properties": {
+        "@": "SourceRunProperties",
+        "font_size": 9.0,
+        "color": {
+         "@": "SrgbColor",
+         "hex": "475569"
+        },
+        "lang": "en-US"
+       }
+      }
+     ],
+     "end_para_run_properties": {
+      "@": "SourceRunProperties",
+      "font_size": 9.0,
+      "lang": "en-US"
+     }
+    }
+   ],
+   "properties": {
+    "@": "SourceTextBodyProperties",
+    "margin_left": 0.0,
+    "margin_right": 0.0,
+    "margin_top": 0.0,
+    "margin_bottom": 0.0,
+    "wrap": "square"
+   }
+  }
+ }
+]

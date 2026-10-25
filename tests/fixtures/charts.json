@@ -1,0 +1,393 @@
+{
+ "gallery-01-barChart": {
+  "width_pt": 288.0,
+  "height_pt": 288.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart1.xml"
+ },
+ "gallery-02-barChart-bar": {
+  "width_pt": 648.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart2.xml"
+ },
+ "gallery-03-lineChart": {
+  "width_pt": 648.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart3.xml"
+ },
+ "gallery-04-areaChart": {
+  "width_pt": 648.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart4.xml"
+ },
+ "gallery-05-scatterChart": {
+  "width_pt": 520.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart5.xml"
+ },
+ "gallery-06-bubbleChart": {
+  "width_pt": 520.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart6.xml"
+ },
+ "gallery-07-pieChart": {
+  "width_pt": 400.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart7.xml"
+ },
+ "gallery-08-doughnutChart": {
+  "width_pt": 400.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart8.xml"
+ },
+ "gallery-09-ofPieChart": {
+  "width_pt": 520.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart9.xml"
+ },
+ "gallery-10-radarChart": {
+  "width_pt": 400.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart10.xml"
+ },
+ "gallery-11-stockChart": {
+  "width_pt": 648.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart11.xml"
+ },
+ "gallery-12-surfaceChart": {
+  "width_pt": 520.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart12.xml"
+ },
+ "gallery-13-bar3DChart": {
+  "width_pt": 520.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart13.xml"
+ },
+ "gallery-14-line3DChart": {
+  "width_pt": 520.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart14.xml"
+ },
+ "gallery-15-pie3DChart": {
+  "width_pt": 400.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart15.xml"
+ },
+ "gallery-16-area3DChart": {
+  "width_pt": 520.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart16.xml"
+ },
+ "gallery-17-combo": {
+  "width_pt": 648.0,
+  "height_pt": 336.0,
+  "rules": [
+   "powerpoint",
+   "word"
+  ],
+  "source": "pptx2svg tools/make_chart_gallery.py (tests/fixtures/chart-gallery.pptx), ppt/charts/chart17.xml"
+ },
+ "case-01-a-wrapped-side-legend-sits-where": {
+  "width_pt": 300.0,
+  "height_pt": 260.0,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_wrapped_side_legend_sits_where_powerpoint_puts_it[sw-left], the chart part it writes and lays out",
+  "locale": {
+   "decimal_separator": ".",
+   "thousands_separator": ",",
+   "date_order": "mdy",
+   "language": "en-US",
+   "list_separator": ","
+  }
+ },
+ "case-02-the-four-stated-split-rules": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_the_four_stated_split_rules, the chart part it writes and lays out"
+ },
+ "case-03-an-of-pie-that-moves-nothing": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_an_of_pie_that_moves_nothing_or_everything_still_draws, the chart part it writes and lays out"
+ },
+ "case-04-a-file-controlled-number-does-not": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_file_controlled_number_does_not_crash_the_new_types[size0-of pie custom split out of range], the chart part it writes and lays out"
+ },
+ "case-05-a-file-controlled-number-does-not": {
+  "width_pt": 1.0,
+  "height_pt": 1.0,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_file_controlled_number_does_not_crash_the_new_types[size1-of pie gap -500], the chart part it writes and lays out"
+ },
+ "case-06-a-file-controlled-number-does-not": {
+  "width_pt": 1.0,
+  "height_pt": 1.0,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_file_controlled_number_does_not_crash_the_new_types[size1-stock gap -100], the chart part it writes and lays out"
+ },
+ "case-07-a-horizontal-legend-past-the-cap": {
+  "width_pt": 480.0,
+  "height_pt": 260.0,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_horizontal_legend_past_the_cap_wraps_into_powerpoints_grid[rw6-08], the chart part it writes and lays out",
+  "locale": {
+   "decimal_separator": ".",
+   "thousands_separator": ",",
+   "date_order": "mdy",
+   "language": "en-US",
+   "list_separator": ","
+  }
+ },
+ "case-08-each-scatter-label-position-matches-powerpoints": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_each_scatter_label_position_matches_powerpoints[l], the chart part it writes and lays out"
+ },
+ "case-09-band-formats-override-the-ramp-and": {
+  "width_pt": 684.0,
+  "height_pt": 250.0,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_band_formats_override_the_ramp_and_the_legend_with_it, the chart part it writes and lays out"
+ },
+ "case-10-vary-colors-does-not-suppress-the": {
+  "width_pt": 200.0,
+  "height_pt": 150.0,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_vary_colors_does_not_suppress_the_negative_bar_inversion, the chart part it writes and lays out"
+ },
+ "case-11-explosion-shrinks-the-radius-and-pushes": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_explosion_shrinks_the_radius_and_pushes_each_slice_out, the chart part it writes and lays out"
+ },
+ "case-12-the-radar-radius-matches-powerpoints": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_the_radar_radius_matches_powerpoints[long-labels], the chart part it writes and lays out"
+ },
+ "case-13-a-deleted-secondary-axis-reserves-nothing": {
+  "width_pt": 480.0,
+  "height_pt": 260.0,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_deleted_secondary_axis_reserves_nothing_and_still_scales_its_series, the chart part it writes and lays out"
+ },
+ "case-14-a-pie-beside-a-bar-falls": {
+  "width_pt": 480.0,
+  "height_pt": 260.0,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_pie_beside_a_bar_falls_back_to_one_group, the chart part it writes and lays out"
+ },
+ "case-15-malformed-charts-lay-out-rather-than": {
+  "width_pt": 200.0,
+  "height_pt": 150.0,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_malformed_charts_lay_out_rather_than_raise[percent stacked whose totals are zero], the chart part it writes and lays out"
+ },
+ "case-16-malformed-charts-lay-out-rather-than": {
+  "width_pt": 200.0,
+  "height_pt": 150.0,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_malformed_charts_lay_out_rather_than_raise[area whose only value is blank], the chart part it writes and lays out"
+ },
+ "case-17-malformed-charts-lay-out-rather-than": {
+  "width_pt": 200.0,
+  "height_pt": 150.0,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_malformed_charts_lay_out_rather_than_raise[scatter whose x values are NaN and infinite], the chart part it writes and lays out"
+ },
+ "case-18-a-hostile-major-unit-cannot-generate": {
+  "width_pt": 200.0,
+  "height_pt": 150.0,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_hostile_major_unit_cannot_generate_unbounded_ticks, the chart part it writes and lays out"
+ },
+ "case-19-a-deleted-legend-entry-reserves-no": {
+  "width_pt": 200.0,
+  "height_pt": 150.0,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_deleted_legend_entry_reserves_no_band_width, the chart part it writes and lays out"
+ },
+ "case-20-the-region-a-bubble-is-sized": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_the_region_a_bubble_is_sized_against_is_not_the_plot, the chart part it writes and lays out"
+ },
+ "case-21-a-radar-ticks-to-the-left": {
+  "width_pt": 400.0,
+  "height_pt": 250.0,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_radar_ticks_to_the_left_of_each_spoke_turned_with_it, the chart part it writes and lays out"
+ },
+ "case-22-a-slice-label-sits-at-the": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_slice_label_sits_at_the_measured_fraction_of_the_radius, the chart part it writes and lays out"
+ },
+ "case-23-spokes-go-over-a-filled-radar": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "word"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_spokes_go_over_a_filled_radar_and_under_every_other[filled-True], the chart part it writes and lays out"
+ },
+ "case-24-a-blank-leaves-the-radar-ring": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_blank_leaves_the_radar_ring_open, the chart part it writes and lays out"
+ },
+ "case-25-a-zero-size-draws-nothing-and": {
+  "width_pt": 220.4724,
+  "height_pt": 181.1024,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_zero_size_draws_nothing_and_a_negative_one_draws_hollow, the chart part it writes and lays out"
+ },
+ "case-26-a-file-controlled-number-does-not": {
+  "width_pt": 1.0,
+  "height_pt": 1.0,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_file_controlled_number_does_not_crash_the_new_types[size1-bubble scale 0], the chart part it writes and lays out"
+ },
+ "case-27-two-value-axes-on-one-side": {
+  "width_pt": 480.0,
+  "height_pt": 260.0,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_two_value_axes_on_one_side_fall_back_to_one_group, the chart part it writes and lays out"
+ },
+ "case-28-a-wireframe-replaces-the-fill": {
+  "width_pt": 684.0,
+  "height_pt": 250.0,
+  "rules": [
+   "powerpoint"
+  ],
+  "source": "pptx2svg tests/test_chart.py::test_a_wireframe_replaces_the_fill, the chart part it writes and lays out"
+ }
+}
