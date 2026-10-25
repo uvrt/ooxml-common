@@ -42,6 +42,8 @@ Back to the [README](../README.md).
 | `ooxml_common.drawingml.source_tree` | A shape tree and its text as the XML states them, before inheritance |
 | `ooxml_common.drawingml.read_tree` | The shape tree reader (`p:spTree`, a group, SmartArt's `dsp:spTree`) |
 | `ooxml_common.drawingml.read_text` | The text body reader (`a:txBody`, `c:rich`, `c:txPr`) |
+| `ooxml_common.drawingml.table_styles` | PowerPoint's 74 built-in table styles by GUID, measured from PowerPoint 16 (moved from pptx2svg): names, regions with their fills, text colours, bold and borders, the two themed families as `a:tblStyle` XML, and each region's text colour (`builtin_text_colors`) |
+| `ooxml_common.drawingml.theme` | The Office theme a new file gets, measured from new blank files: its colours, Aptos Display / Aptos and the per-script faces, the format scheme's gradients and line widths, PowerPoint's and Word's |
 | `ooxml_common.drawingml.text_chain` | Where a run's inherited colour, size and face come from: the layers PowerPoint walks for a shape, a placeholder and a table cell (measured), and their short source names |
 | `ooxml_common.drawingml.context` | `RenderContext`: the text measurer, font map, definitions, ids and `DrawingRules` of one render |
 | `ooxml_common.drawingml.elements` | An element or a group as SVG, through a group's child space |

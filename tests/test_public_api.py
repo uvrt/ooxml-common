@@ -266,6 +266,13 @@ USED_BY: dict[str, dict[str, str]] = {
         "Defs": "docx2svg",
         "num": "docx2svg",
     },
+    "ooxml_common.drawingml.table_styles": {
+        "BUILTIN_TABLE_STYLES": "pptx-agent, pptx2svg",
+        "builtin_regions": "pptx2svg",
+        "builtin_text_colors": "pptx-agent",
+        "color_parts": "pptx2svg",
+        "themed_style_xml": "pptx2svg",
+    },
     "ooxml_common.drawingml.text_chain": {
         "DEFAULT_TEXT_STYLE": "pptx-agent, pptx2svg",
         "FONT_REF": "pptx-agent, pptx2svg",
@@ -282,6 +289,18 @@ USED_BY: dict[str, dict[str, str]] = {
         "inherited_layers": "pptx-agent, pptx2svg",
         "master_text_style": "pptx-agent",
         "source_name": "pptx-agent",
+    },
+    "ooxml_common.drawingml.theme": {
+        "APTOS_PANOSE": "docx-agent, pptx-agent",
+        "OFFICE_BACKGROUND_GRADIENT": "docx-agent, pptx-agent",
+        "OFFICE_FILL_GRADIENTS": "docx-agent, pptx-agent",
+        "OFFICE_MAJOR_FONT": "docx-agent, pptx-agent",
+        "OFFICE_MINOR_FONT": "docx-agent, pptx-agent",
+        "OFFICE_THEME_COLORS": "docx-agent, pptx-agent",
+        "POWERPOINT_LINE_WIDTHS": "pptx-agent",
+        "POWERPOINT_SCRIPT_FONTS": "pptx-agent",
+        "WORD_LINE_WIDTHS": "docx-agent",
+        "WORD_SCRIPT_FONTS": "docx-agent",
     },
     "ooxml_common.drawingml.textmeasure": {
         "MeasuredLine": "pptx-agent",

@@ -4,6 +4,9 @@ Versions are set in `pyproject.toml`; none is on PyPI yet. Each version that rea
 is tagged `v<version>` on the commit that brought it, from 0.28.0; the earlier ones were
 never tagged.
 
+## 0.31.0 -- unreleased
+- Office's built-in data lives once, here (review, S3). New `drawingml.table_styles`: PowerPoint's 74 built-in table styles by GUID, moved from pptx2svg's `parse/table_styles_builtin.py` with their provenance (measured from PowerPoint 16 by pptx2svg's `tools/derive_table_styles.py` and `tools/derive_themed_table_styles.py`) -- `BUILTIN_TABLE_STYLES`, `MEASURED_BORDERS` (the Light Style 2 lines), `THEMED_STYLE_XML` and `THEMED_STYLES` -- and what both consumers read from it: `REGIONS` (in the order pptx2svg lays them), `color_parts` (a compact `slot/transform` expression), `builtin_name`, `builtin_regions` (a style's regions with the measured borders in), `themed_style_xml` (a themed style's `a:tblStyle`) and `builtin_text_colors` (each region's text colour, either kind of style). pptx2svg draws from it and pptx-agent derives its names and text colours from it instead of keeping copies. New `drawingml.theme`: the Office theme a new file gets, from pptx-agent's and docx-agent's `edit/blank.py` -- `OFFICE_THEME_COLORS`, `OFFICE_MAJOR_FONT`, `OFFICE_MINOR_FONT`, `APTOS_PANOSE`, and the per-script faces, `POWERPOINT_SCRIPT_FONTS` and `WORD_SCRIPT_FONTS` (Word's Japanese body face is 游明朝 where PowerPoint's is 游ゴシック; the rest agree), the format scheme's `OFFICE_FILL_GRADIENTS` and `OFFICE_BACKGROUND_GRADIENT`, and its line widths, `POWERPOINT_LINE_WIDTHS` and `WORD_LINE_WIDTHS` (PowerPoint's a step wider). [docs/used-by.md](docs/used-by.md) and `tests/test_public_api.py` list the names the three import. Standard library only; no behaviour change.
+
 ## 0.30.0 -- unreleased
 - ooxml-edit reads this package instead of keeping copies (review, S2): from ooxml-edit
   0.64.0 it depends on ooxml-common (this package still never imports ooxml-edit,

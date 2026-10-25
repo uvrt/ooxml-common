@@ -1,0 +1,1017 @@
+"""PowerPoint's built-in table styles, keyed by the GUID a deck refers to them with.
+
+**Why this table has to exist.**  A table's ``a:tableStyleId`` is a GUID, and the obvious
+place to look it up is ``ppt/tableStyles.xml``.  For a built-in style that lookup always
+fails: PowerPoint does not write built-in definitions into the file, not even for the
+style a table in the deck is actually using.  A PowerPoint-authored deck typically ships
+a ``tableStyles.xml`` containing nothing but ``def="{5C22544A-...}"`` -- the id of
+"Medium Style 2 - Accent 1", the default applied to any table whose ``a:tblPr`` names no
+style at all -- and the definition lives inside the application.  pptx2svg draws a table
+in such a deck from this catalogue; pptx-agent lists the styles by name and reports a
+cell's inherited text colour from it.  One copy, here, so a re-measurement reaches both.
+
+**Where the numbers come from.**  They were measured from PowerPoint 16.x itself, not
+transcribed from a specification.  pptx2svg's ``tools/derive_table_styles.py`` builds a
+deck with one slide per candidate GUID, each slide carrying three tables that between
+them expose every conditional region, exports it through PowerPoint twice -- once over a
+white slide background and once over black, so a colour's alpha can be solved for rather
+than guessed -- and reads the fills, stroke colours, stroke widths, text colours and bold
+back out of the render.  Colours are named by matching them against a sheet of 546
+swatches whose OOXML expressions are known, which is what turns a sampled ``#cfd5ea``
+into ``accent1 tint 40%``.
+
+A GUID PowerPoint does not recognise renders exactly like "No Style, Table Grid", which
+is how three candidates that turned out to be wrong were detected and dropped rather
+than shipped as plausible-looking guesses.
+
+**All 74 built-in styles are here.**  The last two to arrive were "Light Style 1 -
+Accent 4" (``{D27102A9-...}``) and "Medium Style 1" (``{793D81CF-...}``), which were
+missing only because their GUIDs were unknown, not because measuring them failed.
+``{793D81CF-...}`` was read out of PowerPoint's own executable: the binary carries
+fifteen brace-delimited GUIDs, fourteen of which are table styles already catalogued
+here, and that was the fifteenth.  ``{D27102A9-...}`` came from a published list
+(``aiden0z/pptx-renderer``) and so was only ever a candidate.  Both were then confirmed
+the same way any other entry is -- by measurement.  Neither rendered like the
+unrecognised-GUID fallback, and each came out with its family's exact shape carrying the
+colour a reader would predict but the tool was never told to expect: accent 4 in the
+Light Style 1 shape, and ``dk1`` where the accents sit in the Medium Style 1 shape,
+which is what the accent-less base of a family looks like elsewhere (compare "Dark Style
+2" against "Dark Style 2 - Accent 1/Accent 2").  Re-deriving the whole catalogue in the
+same run reproduced the other 72 entries byte for byte.
+
+*Refuted:* the fourth accent of "Dark Style 2" was once thought missing too.  It is not
+-- PowerPoint genuinely pairs that family's accents as "Accent 1/Accent 2", "Accent
+3/Accent 4" and "Accent 5/Accent 6", and all three pairs are present.
+
+*Exception:* "Themed Style 1" and "Themed Style 2" draw on the theme's format scheme --
+fill, effect and line styles by index -- so a colour measured under one theme is wrong
+under the next.  pptx2svg's ``tools/derive_themed_table_styles.py`` measures which index
+and which colour each region uses instead, and :data:`THEMED_STYLE_XML` is written from
+that; their entries in :data:`BUILTIN_TABLE_STYLES` stay for the GUID and the name.
+
+Colour expressions are written compactly as ``slot`` or ``slot/transform`` --
+``accent1``, ``accent1/tint40``, ``dk1/alpha20`` -- and borders as
+``(width_in_points, colour)``; :func:`color_parts` reads an expression.  Each consumer
+builds its own model from these: :func:`builtin_regions` gives a style's regions with the
+measured borders in, :func:`themed_style_xml` a themed style's ``a:tblStyle``, and
+:func:`builtin_text_colors` each region's text colour, whichever of the two a style is.
+
+Moved here from pptx2svg's ``parse/table_styles_builtin.py`` (review, S3), which keeps
+its expansion into its own model; pptx-agent's copies of the names and the text colours
+are derived from this.  Standard library only.
+"""
+
+from __future__ import annotations
+
+import re
+import xml.etree.ElementTree as ET
+
+#: The regions of a table style (``CT_TableStyle``'s children, ECMA-376 Part 1, 20.1.4.2),
+#: lowest precedence first: the order pptx2svg lays them over one another.
+REGIONS: tuple[str, ...] = (
+    "wholeTbl", "band2V", "band1V", "band2H", "band1H", "lastCol", "firstCol",
+    "lastRow", "firstRow", "swCell", "seCell", "nwCell", "neCell",
+)
+
+_TRANSFORM = re.compile(r"^([a-zA-Z]+)(\d+)$")
+
+
+def _light_style_2(color: str) -> dict:
+    """Light Style 2's lines in ``color``: the table's outline, and the edges of the banded
+    rows and columns -- 1 pt each."""
+    line = (1.0, color)
+    return {"wholeTbl": {"left": line, "right": line, "top": line, "bottom": line},
+            "band1H": {"top": line, "bottom": line},
+            "band1V": {"left": line, "right": line}}
+
+
+#: Borders the generated catalogue lacks, measured in PowerPoint 16 (production feedback
+#: round 3): every "Light Style 2" style draws a 1 pt line in its colour around the table,
+#: along the top and bottom of each odd banded row (``band1H``) and down both sides of each
+#: odd banded column (``band1V``) -- seven styles, each with the header row and banded rows
+#: on, and Accent 1 with banded columns only, with no flags and with every flag but banded
+#: columns.  The swatch measurement that generated the catalogue read fills and the header
+#: and total-row rules, not these 1 pt lines.  Kept apart so a re-run of
+#: pptx2svg's ``tools/derive_table_styles.py`` does not drop them.
+MEASURED_BORDERS: dict[str, dict] = {
+    "{7E9639D4-E3E2-4D34-9284-5A2195B3D0D7}": _light_style_2("dk1"),
+    "{69012ECD-51FC-41F1-AA8D-1B2483CD663E}": _light_style_2("accent1"),
+    "{72833802-FEF1-4C79-8D5D-14CF1EAF98D9}": _light_style_2("accent2"),
+    "{F2DE63D5-997A-4646-A377-4702673A728D}": _light_style_2("accent3"),
+    "{17292A2E-F333-43FB-9621-5CBBE7FDCDCB}": _light_style_2("accent4"),
+    "{5A111915-BE36-4E01-A7E5-04B1672EAD32}": _light_style_2("accent5"),
+    "{912C8C85-51F0-491E-9774-3900AFEF0FD7}": _light_style_2("accent6"),
+}
+
+
+#: Built-in styles carried as definitions rather than as measured colours: "Themed Style 1"
+#: and "Themed Style 2".  They draw on the theme's format scheme -- the table on a fill
+#: style (``a:tblBg/a:fillRef``) with an effect style under it (``a:effectRef``), their
+#: lines line styles (``a:lnRef``) -- so a colour measured under one theme is wrong under
+#: the next.  pptx2svg's ``tools/derive_themed_table_styles.py`` measured what each region
+#: draws in PowerPoint 16 for Mac's PDF export under five themes built to tell the indices
+#: and the ``phClr`` colour apart, on six tables per style that expose every region, and these
+#: templates are written from that and nothing else:
+#:
+#: * Themed Style 1: the table on fill style 2 and effect style 1 in the accent; text
+#:   ``dk1`` in the theme's minor font; every line line style 1 in the accent; banded rows
+#:   and columns the accent at 40 % alpha; the header filled with the accent, white bold
+#:   text, line style 2 in ``lt1`` under it and no line between its cells; the total row
+#:   unfilled and bold with line style 2 in the accent above and below it and no line
+#:   between its cells; the first and last columns bold with line style 2 in the accent on
+#:   their inner side.
+#: * Themed Style 2: the table on fill style 3 and effect style 3 in the accent; text
+#:   ``lt1`` in the minor font; line style 1 in the accent tinted 50 % round the outside
+#:   and no gridlines; banded rows and columns ``lt1`` at 20 % alpha; the header and the
+#:   total row unfilled and bold, line style 3 in ``lt1`` under the header and line style
+#:   2 in ``lt1`` above the total row; the first and last columns bold with line style 2 in
+#:   ``lt1`` on their inner side; and no line under the header's last cell or into or along
+#:   either corner of the total row.
+#:
+#: All six accents of each family measured alike but for the accent, written ``{accent}``
+#: here; neither family has an accent-less member.  An edge or fill no measurement could
+#: tell from "not stated" is left unstated.  Under the themes' bevelled effect styles
+#: PowerPoint drew no bevel on a table, so none is drawn here either.
+THEMED_STYLE_XML = {
+    "Themed Style 1": (
+        '<a:tblBg><a:fillRef idx="2"><a:schemeClr val="{accent}"/></a:fillRef>'
+        '<a:effectRef idx="1"><a:schemeClr val="{accent}"/></a:effectRef></a:tblBg>'
+        '<a:wholeTbl><a:tcTxStyle><a:fontRef idx="minor"/><a:schemeClr val="dk1"/>'
+        '</a:tcTxStyle><a:tcStyle><a:tcBdr><a:left><a:lnRef idx="1">'
+        '<a:schemeClr val="{accent}"/></a:lnRef></a:left><a:right><a:lnRef idx="1">'
+        '<a:schemeClr val="{accent}"/></a:lnRef></a:right><a:top><a:lnRef idx="1">'
+        '<a:schemeClr val="{accent}"/></a:lnRef></a:top><a:bottom><a:lnRef idx="1">'
+        '<a:schemeClr val="{accent}"/></a:lnRef></a:bottom><a:insideH><a:lnRef idx="1">'
+        '<a:schemeClr val="{accent}"/></a:lnRef></a:insideH><a:insideV><a:lnRef idx="1">'
+        '<a:schemeClr val="{accent}"/></a:lnRef></a:insideV></a:tcBdr></a:tcStyle>'
+        '</a:wholeTbl><a:band1H><a:tcStyle><a:fill><a:solidFill><a:schemeClr val="{accent}">'
+        '<a:alpha val="40000"/></a:schemeClr></a:solidFill></a:fill></a:tcStyle></a:band1H>'
+        '<a:band1V><a:tcStyle><a:fill><a:solidFill><a:schemeClr val="{accent}">'
+        '<a:alpha val="40000"/></a:schemeClr></a:solidFill></a:fill></a:tcStyle></a:band1V>'
+        '<a:lastCol><a:tcTxStyle b="on"/><a:tcStyle><a:tcBdr><a:left><a:lnRef idx="2">'
+        '<a:schemeClr val="{accent}"/></a:lnRef></a:left></a:tcBdr></a:tcStyle></a:lastCol>'
+        '<a:firstCol><a:tcTxStyle b="on"/><a:tcStyle><a:tcBdr><a:right><a:lnRef idx="2">'
+        '<a:schemeClr val="{accent}"/></a:lnRef></a:right></a:tcBdr></a:tcStyle></a:firstCol>'
+        '<a:lastRow><a:tcTxStyle b="on"/><a:tcStyle><a:tcBdr><a:top><a:lnRef idx="2">'
+        '<a:schemeClr val="{accent}"/></a:lnRef></a:top><a:bottom><a:lnRef idx="2">'
+        '<a:schemeClr val="{accent}"/></a:lnRef></a:bottom><a:insideV><a:ln><a:noFill/>'
+        '</a:ln></a:insideV></a:tcBdr><a:fill><a:noFill/></a:fill></a:tcStyle></a:lastRow>'
+        '<a:firstRow><a:tcTxStyle b="on"><a:schemeClr val="lt1"/></a:tcTxStyle><a:tcStyle>'
+        '<a:tcBdr><a:bottom><a:lnRef idx="2"><a:schemeClr val="lt1"/></a:lnRef></a:bottom>'
+        '<a:insideV><a:ln><a:noFill/></a:ln></a:insideV></a:tcBdr><a:fill><a:solidFill>'
+        '<a:schemeClr val="{accent}"/></a:solidFill></a:fill></a:tcStyle></a:firstRow>'
+    ),
+    "Themed Style 2": (
+        '<a:tblBg><a:fillRef idx="3"><a:schemeClr val="{accent}"/></a:fillRef>'
+        '<a:effectRef idx="3"><a:schemeClr val="{accent}"/></a:effectRef></a:tblBg>'
+        '<a:wholeTbl><a:tcTxStyle><a:fontRef idx="minor"/><a:schemeClr val="lt1"/>'
+        '</a:tcTxStyle><a:tcStyle><a:tcBdr><a:left><a:lnRef idx="1">'
+        '<a:schemeClr val="{accent}"><a:tint val="50000"/></a:schemeClr></a:lnRef></a:left>'
+        '<a:right><a:lnRef idx="1"><a:schemeClr val="{accent}"><a:tint val="50000"/>'
+        '</a:schemeClr></a:lnRef></a:right><a:top><a:lnRef idx="1">'
+        '<a:schemeClr val="{accent}"><a:tint val="50000"/></a:schemeClr></a:lnRef></a:top>'
+        '<a:bottom><a:lnRef idx="1"><a:schemeClr val="{accent}"><a:tint val="50000"/>'
+        '</a:schemeClr></a:lnRef></a:bottom></a:tcBdr></a:tcStyle></a:wholeTbl><a:band1H>'
+        '<a:tcStyle><a:fill><a:solidFill><a:schemeClr val="lt1"><a:alpha val="20000"/>'
+        '</a:schemeClr></a:solidFill></a:fill></a:tcStyle></a:band1H><a:band1V><a:tcStyle>'
+        '<a:fill><a:solidFill><a:schemeClr val="lt1"><a:alpha val="20000"/></a:schemeClr>'
+        '</a:solidFill></a:fill></a:tcStyle></a:band1V><a:lastCol><a:tcTxStyle b="on"/>'
+        '<a:tcStyle><a:tcBdr><a:left><a:lnRef idx="2"><a:schemeClr val="lt1"/></a:lnRef>'
+        '</a:left></a:tcBdr></a:tcStyle></a:lastCol><a:firstCol><a:tcTxStyle b="on"/>'
+        '<a:tcStyle><a:tcBdr><a:right><a:lnRef idx="2"><a:schemeClr val="lt1"/></a:lnRef>'
+        '</a:right></a:tcBdr></a:tcStyle></a:firstCol><a:lastRow><a:tcTxStyle b="on"/>'
+        '<a:tcStyle><a:tcBdr><a:top><a:lnRef idx="2"><a:schemeClr val="lt1"/></a:lnRef>'
+        '</a:top></a:tcBdr><a:fill><a:noFill/></a:fill></a:tcStyle></a:lastRow><a:firstRow>'
+        '<a:tcTxStyle b="on"/><a:tcStyle><a:tcBdr><a:bottom><a:lnRef idx="3">'
+        '<a:schemeClr val="lt1"/></a:lnRef></a:bottom></a:tcBdr><a:fill><a:noFill/></a:fill>'
+        '</a:tcStyle></a:firstRow><a:neCell><a:tcStyle><a:tcBdr><a:bottom><a:ln><a:noFill/>'
+        '</a:ln></a:bottom></a:tcBdr></a:tcStyle></a:neCell><a:seCell><a:tcStyle><a:tcBdr>'
+        '<a:left><a:ln><a:noFill/></a:ln></a:left><a:top><a:ln><a:noFill/></a:ln></a:top>'
+        '</a:tcBdr></a:tcStyle></a:seCell><a:swCell><a:tcStyle><a:tcBdr><a:right><a:ln>'
+        '<a:noFill/></a:ln></a:right><a:top><a:ln><a:noFill/></a:ln></a:top></a:tcBdr>'
+        '</a:tcStyle></a:swCell>'
+    ),
+}
+
+#: GUID -> (family, accent) of each style :data:`THEMED_STYLE_XML` defines.
+THEMED_STYLES: dict[str, tuple[str, str]] = {
+    "{3C2FFA5D-87B4-456A-9821-1D502468CF0F}": ("Themed Style 1", "accent1"),
+    "{284E427A-3D55-4303-BF80-6455036E1DE7}": ("Themed Style 1", "accent2"),
+    "{69C7853C-536D-4A76-A0AE-DD22124D55A5}": ("Themed Style 1", "accent3"),
+    "{775DCB02-9BB8-47FD-8907-85C794F793BA}": ("Themed Style 1", "accent4"),
+    "{35758FB7-9AC5-4552-8A53-C91805E547FA}": ("Themed Style 1", "accent5"),
+    "{08FB837D-C827-4EFA-A057-4D05807E0F7C}": ("Themed Style 1", "accent6"),
+    "{D113A9D2-9D6B-4929-AA2D-F23B5EE8CBE7}": ("Themed Style 2", "accent1"),
+    "{18603FDC-E32A-4AB5-989C-0864C3EAD2B8}": ("Themed Style 2", "accent2"),
+    "{306799F8-075E-4A3A-A7F6-7FBC6576F1A4}": ("Themed Style 2", "accent3"),
+    "{E269D01E-BC32-4049-B463-5C60D7B0CCD2}": ("Themed Style 2", "accent4"),
+    "{327F97BB-C833-4FB7-BDE5-3F7075034690}": ("Themed Style 2", "accent5"),
+    "{638B1855-1B75-4FBE-930C-398BA8C253C6}": ("Themed Style 2", "accent6"),
+}
+
+
+#: GUID -> style definition.  Generated by pptx2svg's ``tools/derive_table_styles.py``,
+#: which prints the table to paste here; edit that and re-run it rather than editing the
+#: table by hand.
+BUILTIN_TABLE_STYLES: dict[str, dict] = {
+    "{2D5ABB26-0587-4C30-8999-92F81FD0307C}": {
+        "name": "No Style, No Grid",
+        "wholeTbl": {"text": "dk1"},
+    },
+    "{5940675A-B579-460E-94D1-54222C63F5DA}": {
+        "name": "No Style, Table Grid",
+        "wholeTbl": {"text": "dk1", "borders": {"left": (1.0, "dk1"), "right": (1.0, "dk1"), "top": (1.0, "dk1"), "bottom": (1.0, "dk1"), "insideH": (1.0, "dk1"), "insideV": (1.0, "dk1")}},
+    },
+    "{3C2FFA5D-87B4-456A-9821-1D502468CF0F}": {
+        "name": "Themed Style 1 - Accent 1",
+        "wholeTbl": {"fill": "accent1", "text": "dk1"},
+        "firstRow": {"text": "lt1", "bold": True, "borders": {"bottom": (1.0, "lt1")}},
+        "lastRow": {"bold": True},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{284E427A-3D55-4303-BF80-6455036E1DE7}": {
+        "name": "Themed Style 1 - Accent 2",
+        "wholeTbl": {"fill": "accent2", "text": "dk1"},
+        "firstRow": {"text": "lt1", "bold": True, "borders": {"bottom": (1.0, "lt1")}},
+        "lastRow": {"bold": True},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{69C7853C-536D-4A76-A0AE-DD22124D55A5}": {
+        "name": "Themed Style 1 - Accent 3",
+        "wholeTbl": {"fill": "accent3", "text": "dk1"},
+        "firstRow": {"text": "lt1", "bold": True, "borders": {"bottom": (1.0, "lt1")}},
+        "lastRow": {"bold": True},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{775DCB02-9BB8-47FD-8907-85C794F793BA}": {
+        "name": "Themed Style 1 - Accent 4",
+        "wholeTbl": {"fill": "accent4", "text": "dk1"},
+        "firstRow": {"text": "lt1", "bold": True, "borders": {"bottom": (1.0, "lt1")}},
+        "lastRow": {"bold": True},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{35758FB7-9AC5-4552-8A53-C91805E547FA}": {
+        "name": "Themed Style 1 - Accent 5",
+        "wholeTbl": {"fill": "accent5", "text": "dk1"},
+        "firstRow": {"text": "lt1", "bold": True, "borders": {"bottom": (1.0, "lt1")}},
+        "lastRow": {"bold": True},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{08FB837D-C827-4EFA-A057-4D05807E0F7C}": {
+        "name": "Themed Style 1 - Accent 6",
+        "wholeTbl": {"fill": "accent6", "text": "dk1"},
+        "firstRow": {"text": "lt1", "bold": True, "borders": {"bottom": (1.0, "lt1")}},
+        "lastRow": {"bold": True},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{D113A9D2-9D6B-4929-AA2D-F23B5EE8CBE7}": {
+        "name": "Themed Style 2 - Accent 1",
+        "wholeTbl": {"fill": "accent1", "text": "lt1"},
+        "band1H": {"fill": "accent1/tint90"},
+        "band1V": {"fill": "accent1/tint90"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.5, "lt1")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "lt1")}},
+        "firstCol": {"bold": True, "borders": {"right": (1.0, "lt1")}},
+        "lastCol": {"bold": True, "borders": {"left": (1.0, "lt1")}},
+    },
+    "{18603FDC-E32A-4AB5-989C-0864C3EAD2B8}": {
+        "name": "Themed Style 2 - Accent 2",
+        "wholeTbl": {"fill": "accent2", "text": "lt1"},
+        "band1H": {"fill": "accent2/tint90"},
+        "band1V": {"fill": "accent2/tint90"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.5, "lt1")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "lt1")}},
+        "firstCol": {"bold": True, "borders": {"right": (1.0, "lt1")}},
+        "lastCol": {"bold": True, "borders": {"left": (1.0, "lt1")}},
+    },
+    "{306799F8-075E-4A3A-A7F6-7FBC6576F1A4}": {
+        "name": "Themed Style 2 - Accent 3",
+        "wholeTbl": {"fill": "accent3", "text": "lt1"},
+        "band1H": {"fill": "accent3/tint90"},
+        "band1V": {"fill": "accent3/tint90"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.5, "lt1")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "lt1")}},
+        "firstCol": {"bold": True, "borders": {"right": (1.0, "lt1")}},
+        "lastCol": {"bold": True, "borders": {"left": (1.0, "lt1")}},
+    },
+    "{E269D01E-BC32-4049-B463-5C60D7B0CCD2}": {
+        "name": "Themed Style 2 - Accent 4",
+        "wholeTbl": {"fill": "accent4", "text": "lt1"},
+        "band1H": {"fill": "accent4/tint90"},
+        "band1V": {"fill": "accent4/tint90"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.5, "lt1")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "lt1")}},
+        "firstCol": {"bold": True, "borders": {"right": (1.0, "lt1")}},
+        "lastCol": {"bold": True, "borders": {"left": (1.0, "lt1")}},
+    },
+    "{327F97BB-C833-4FB7-BDE5-3F7075034690}": {
+        "name": "Themed Style 2 - Accent 5",
+        "wholeTbl": {"fill": "accent5", "text": "lt1"},
+        "band1H": {"fill": "accent5/tint90"},
+        "band1V": {"fill": "accent5/tint90"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.5, "lt1")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "lt1")}},
+        "firstCol": {"bold": True, "borders": {"right": (1.0, "lt1")}},
+        "lastCol": {"bold": True, "borders": {"left": (1.0, "lt1")}},
+    },
+    "{638B1855-1B75-4FBE-930C-398BA8C253C6}": {
+        "name": "Themed Style 2 - Accent 6",
+        "wholeTbl": {"fill": "accent6", "text": "lt1"},
+        "band1H": {"fill": "accent6/tint90"},
+        "band1V": {"fill": "accent6/tint90"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.5, "lt1")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "lt1")}},
+        "firstCol": {"bold": True, "borders": {"right": (1.0, "lt1")}},
+        "lastCol": {"bold": True, "borders": {"left": (1.0, "lt1")}},
+    },
+    "{9D7B26C5-4107-4FEC-AEDC-1716B250A1EF}": {
+        "name": "Light Style 1",
+        "wholeTbl": {"text": "dk1", "borders": {"top": (1.0, "dk1"), "bottom": (1.0, "dk1")}},
+        "band1H": {"fill": "dk1/alpha20"},
+        "band1V": {"fill": "dk1/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.0, "dk1")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "dk1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{3B4B98B0-60AC-42C2-AFA5-B58CD77FA1E5}": {
+        "name": "Light Style 1 - Accent 1",
+        "wholeTbl": {"text": "dk1", "borders": {"top": (1.0, "accent1"), "bottom": (1.0, "accent1")}},
+        "band1H": {"fill": "accent1/alpha20"},
+        "band1V": {"fill": "accent1/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.0, "accent1")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "accent1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{0E3FDE45-AF77-4B5C-9715-49D594BDF05E}": {
+        "name": "Light Style 1 - Accent 2",
+        "wholeTbl": {"text": "dk1", "borders": {"top": (1.0, "accent2"), "bottom": (1.0, "accent2")}},
+        "band1H": {"fill": "accent2/alpha20"},
+        "band1V": {"fill": "accent2/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.0, "accent2")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "accent2")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{C083E6E3-FA7D-4D7B-A595-EF9225AFEA82}": {
+        "name": "Light Style 1 - Accent 3",
+        "wholeTbl": {"text": "dk1", "borders": {"top": (1.0, "accent3"), "bottom": (1.0, "accent3")}},
+        "band1H": {"fill": "accent3/alpha20"},
+        "band1V": {"fill": "accent3/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.0, "accent3")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "accent3")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{D27102A9-8310-4765-A935-A1911B00CA55}": {
+        "name": "Light Style 1 - Accent 4",
+        "wholeTbl": {"text": "dk1", "borders": {"top": (1.0, "accent4"), "bottom": (1.0, "accent4")}},
+        "band1H": {"fill": "accent4/alpha20"},
+        "band1V": {"fill": "accent4/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.0, "accent4")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "accent4")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{5FD0F851-EC5A-4D38-B0AD-8093EC10F338}": {
+        "name": "Light Style 1 - Accent 5",
+        "wholeTbl": {"text": "dk1", "borders": {"top": (1.0, "accent5"), "bottom": (1.0, "accent5")}},
+        "band1H": {"fill": "accent5/alpha20"},
+        "band1V": {"fill": "accent5/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.0, "accent5")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "accent5")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{68D230F3-CF80-4859-8CE7-A43EE81993B5}": {
+        "name": "Light Style 1 - Accent 6",
+        "wholeTbl": {"text": "dk1", "borders": {"top": (1.0, "accent6"), "bottom": (1.0, "accent6")}},
+        "band1H": {"fill": "accent6/alpha20"},
+        "band1V": {"fill": "accent6/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (1.0, "accent6")}},
+        "lastRow": {"bold": True, "borders": {"top": (1.0, "accent6")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{7E9639D4-E3E2-4D34-9284-5A2195B3D0D7}": {
+        "name": "Light Style 2",
+        "wholeTbl": {"text": "dk1"},
+        "firstRow": {"fill": "dk1", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{69012ECD-51FC-41F1-AA8D-1B2483CD663E}": {
+        "name": "Light Style 2 - Accent 1",
+        "wholeTbl": {"text": "dk1"},
+        "firstRow": {"fill": "accent1", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{72833802-FEF1-4C79-8D5D-14CF1EAF98D9}": {
+        "name": "Light Style 2 - Accent 2",
+        "wholeTbl": {"text": "dk1"},
+        "firstRow": {"fill": "accent2", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent2")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{F2DE63D5-997A-4646-A377-4702673A728D}": {
+        "name": "Light Style 2 - Accent 3",
+        "wholeTbl": {"text": "dk1"},
+        "firstRow": {"fill": "accent3", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent3")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{17292A2E-F333-43FB-9621-5CBBE7FDCDCB}": {
+        "name": "Light Style 2 - Accent 4",
+        "wholeTbl": {"text": "dk1"},
+        "firstRow": {"fill": "accent4", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent4")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{5A111915-BE36-4E01-A7E5-04B1672EAD32}": {
+        "name": "Light Style 2 - Accent 5",
+        "wholeTbl": {"text": "dk1"},
+        "firstRow": {"fill": "accent5", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent5")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{912C8C85-51F0-491E-9774-3900AFEF0FD7}": {
+        "name": "Light Style 2 - Accent 6",
+        "wholeTbl": {"text": "dk1"},
+        "firstRow": {"fill": "accent6", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent6")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{616DA210-FB5B-4158-B5E0-FEB733F419BA}": {
+        "name": "Light Style 3",
+        "wholeTbl": {"text": "dk1", "borders": {"left": (1.0, "dk1"), "right": (1.0, "dk1"), "top": (1.0, "dk1"), "bottom": (1.0, "dk1"), "insideH": (1.0, "dk1"), "insideV": (1.0, "dk1")}},
+        "band1H": {"fill": "dk1/alpha20"},
+        "band1V": {"fill": "dk1/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (2.0, "dk1")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{BC89EF96-8CEA-46FF-86C4-4CE0E7609802}": {
+        "name": "Light Style 3 - Accent 1",
+        "wholeTbl": {"text": "dk1", "borders": {"left": (1.0, "accent1"), "right": (1.0, "accent1"), "top": (1.0, "accent1"), "bottom": (1.0, "accent1"), "insideH": (1.0, "accent1"), "insideV": (1.0, "accent1")}},
+        "band1H": {"fill": "accent1/alpha20"},
+        "band1V": {"fill": "accent1/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (2.0, "accent1")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{5DA37D80-6434-44D0-A028-1B22A696006F}": {
+        "name": "Light Style 3 - Accent 2",
+        "wholeTbl": {"text": "dk1", "borders": {"left": (1.0, "accent2"), "right": (1.0, "accent2"), "top": (1.0, "accent2"), "bottom": (1.0, "accent2"), "insideH": (1.0, "accent2"), "insideV": (1.0, "accent2")}},
+        "band1H": {"fill": "accent2/alpha20"},
+        "band1V": {"fill": "accent2/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (2.0, "accent2")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent2")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{8799B23B-EC83-4686-B30A-512413B5E67A}": {
+        "name": "Light Style 3 - Accent 3",
+        "wholeTbl": {"text": "dk1", "borders": {"left": (1.0, "accent3"), "right": (1.0, "accent3"), "top": (1.0, "accent3"), "bottom": (1.0, "accent3"), "insideH": (1.0, "accent3"), "insideV": (1.0, "accent3")}},
+        "band1H": {"fill": "accent3/alpha20"},
+        "band1V": {"fill": "accent3/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (2.0, "accent3")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent3")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{ED083AE6-46FA-4A59-8FB0-9F97EB10719F}": {
+        "name": "Light Style 3 - Accent 4",
+        "wholeTbl": {"text": "dk1", "borders": {"left": (1.0, "accent4"), "right": (1.0, "accent4"), "top": (1.0, "accent4"), "bottom": (1.0, "accent4"), "insideH": (1.0, "accent4"), "insideV": (1.0, "accent4")}},
+        "band1H": {"fill": "accent4/alpha20"},
+        "band1V": {"fill": "accent4/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (2.0, "accent4")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent4")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{BDBED569-4797-4DF1-A0F4-6AAB3CD982D8}": {
+        "name": "Light Style 3 - Accent 5",
+        "wholeTbl": {"text": "dk1", "borders": {"left": (1.0, "accent5"), "right": (1.0, "accent5"), "top": (1.0, "accent5"), "bottom": (1.0, "accent5"), "insideH": (1.0, "accent5"), "insideV": (1.0, "accent5")}},
+        "band1H": {"fill": "accent5/alpha20"},
+        "band1V": {"fill": "accent5/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (2.0, "accent5")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent5")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{E8B1032C-EA38-4F05-BA0D-38AFFFC7BED3}": {
+        "name": "Light Style 3 - Accent 6",
+        "wholeTbl": {"text": "dk1", "borders": {"left": (1.0, "accent6"), "right": (1.0, "accent6"), "top": (1.0, "accent6"), "bottom": (1.0, "accent6"), "insideH": (1.0, "accent6"), "insideV": (1.0, "accent6")}},
+        "band1H": {"fill": "accent6/alpha20"},
+        "band1V": {"fill": "accent6/alpha20"},
+        "firstRow": {"bold": True, "borders": {"bottom": (2.0, "accent6")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent6")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{793D81CF-94F2-401A-BA57-92F5A7B2D0C5}": {
+        "name": "Medium Style 1",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"left": (1.0, "dk1"), "right": (1.0, "dk1"), "top": (1.0, "dk1"), "bottom": (1.0, "dk1"), "insideH": (1.0, "dk1")}},
+        "band1H": {"fill": "dk1/tint20"},
+        "band1V": {"fill": "dk1/tint20"},
+        "firstRow": {"fill": "dk1", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{B301B821-A1FF-4177-AEE7-76D212191A09}": {
+        "name": "Medium Style 1 - Accent 1",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"left": (1.0, "accent1"), "right": (1.0, "accent1"), "top": (1.0, "accent1"), "bottom": (1.0, "accent1"), "insideH": (1.0, "accent1")}},
+        "band1H": {"fill": "accent1/tint20"},
+        "band1V": {"fill": "accent1/tint20"},
+        "firstRow": {"fill": "accent1", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{9DCAF9ED-07DC-4A11-8D7F-57B35C25682E}": {
+        "name": "Medium Style 1 - Accent 2",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"left": (1.0, "accent2"), "right": (1.0, "accent2"), "top": (1.0, "accent2"), "bottom": (1.0, "accent2"), "insideH": (1.0, "accent2")}},
+        "band1H": {"fill": "accent2/tint20"},
+        "band1V": {"fill": "accent2/tint20"},
+        "firstRow": {"fill": "accent2", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent2")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{1FECB4D8-DB02-4DC6-A0A2-4F2EBAE1DC90}": {
+        "name": "Medium Style 1 - Accent 3",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"left": (1.0, "accent3"), "right": (1.0, "accent3"), "top": (1.0, "accent3"), "bottom": (1.0, "accent3"), "insideH": (1.0, "accent3")}},
+        "band1H": {"fill": "accent3/tint20"},
+        "band1V": {"fill": "accent3/tint20"},
+        "firstRow": {"fill": "accent3", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent3")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{1E171933-4619-4E11-9A3F-F7608DF75F80}": {
+        "name": "Medium Style 1 - Accent 4",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"left": (1.0, "accent4"), "right": (1.0, "accent4"), "top": (1.0, "accent4"), "bottom": (1.0, "accent4"), "insideH": (1.0, "accent4")}},
+        "band1H": {"fill": "accent4/tint20"},
+        "band1V": {"fill": "accent4/tint20"},
+        "firstRow": {"fill": "accent4", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent4")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{FABFCF23-3B69-468F-B69F-88F6DE6A72F2}": {
+        "name": "Medium Style 1 - Accent 5",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"left": (1.0, "accent5"), "right": (1.0, "accent5"), "top": (1.0, "accent5"), "bottom": (1.0, "accent5"), "insideH": (1.0, "accent5")}},
+        "band1H": {"fill": "accent5/tint20"},
+        "band1V": {"fill": "accent5/tint20"},
+        "firstRow": {"fill": "accent5", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent5")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{10A1B5D5-9B99-4C35-A422-299274C87663}": {
+        "name": "Medium Style 1 - Accent 6",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"left": (1.0, "accent6"), "right": (1.0, "accent6"), "top": (1.0, "accent6"), "bottom": (1.0, "accent6"), "insideH": (1.0, "accent6")}},
+        "band1H": {"fill": "accent6/tint20"},
+        "band1V": {"fill": "accent6/tint20"},
+        "firstRow": {"fill": "accent6", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "accent6")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{073A0DAA-6AF3-43AB-8588-CEC1D06C72B9}": {
+        "name": "Medium Style 2",
+        "wholeTbl": {"fill": "dk1/tint20", "text": "dk1", "borders": {"left": (1.0, "lt1"), "right": (1.0, "lt1"), "top": (1.0, "lt1"), "bottom": (1.0, "lt1"), "insideH": (1.0, "lt1"), "insideV": (1.0, "lt1")}},
+        "band1H": {"fill": "dk1/tint40"},
+        "band1V": {"fill": "dk1/tint40"},
+        "firstRow": {"fill": "dk1", "text": "lt1", "bold": True, "borders": {"bottom": (3.0, "lt1")}},
+        "lastRow": {"fill": "dk1", "text": "lt1", "bold": True, "borders": {"top": (3.0, "lt1")}},
+        "firstCol": {"fill": "dk1", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "dk1", "text": "lt1", "bold": True},
+    },
+    "{5C22544A-7EE6-4342-B048-85BDC9FD1C3A}": {
+        "name": "Medium Style 2 - Accent 1",
+        "wholeTbl": {"fill": "accent1/tint20", "text": "dk1", "borders": {"left": (1.0, "lt1"), "right": (1.0, "lt1"), "top": (1.0, "lt1"), "bottom": (1.0, "lt1"), "insideH": (1.0, "lt1"), "insideV": (1.0, "lt1")}},
+        "band1H": {"fill": "accent1/tint40"},
+        "band1V": {"fill": "accent1/tint40"},
+        "firstRow": {"fill": "accent1", "text": "lt1", "bold": True, "borders": {"bottom": (3.0, "lt1")}},
+        "lastRow": {"fill": "accent1", "text": "lt1", "bold": True, "borders": {"top": (3.0, "lt1")}},
+        "firstCol": {"fill": "accent1", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent1", "text": "lt1", "bold": True},
+    },
+    "{21E4AEA4-8DFA-4A89-87EB-49C32662AFE0}": {
+        "name": "Medium Style 2 - Accent 2",
+        "wholeTbl": {"fill": "accent2/tint20", "text": "dk1", "borders": {"left": (1.0, "lt1"), "right": (1.0, "lt1"), "top": (1.0, "lt1"), "bottom": (1.0, "lt1"), "insideH": (1.0, "lt1"), "insideV": (1.0, "lt1")}},
+        "band1H": {"fill": "accent2/tint40"},
+        "band1V": {"fill": "accent2/tint40"},
+        "firstRow": {"fill": "accent2", "text": "lt1", "bold": True, "borders": {"bottom": (3.0, "lt1")}},
+        "lastRow": {"fill": "accent2", "text": "lt1", "bold": True, "borders": {"top": (3.0, "lt1")}},
+        "firstCol": {"fill": "accent2", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent2", "text": "lt1", "bold": True},
+    },
+    "{F5AB1C69-6EDB-4FF4-983F-18BD219EF322}": {
+        "name": "Medium Style 2 - Accent 3",
+        "wholeTbl": {"fill": "accent3/tint20", "text": "dk1", "borders": {"left": (1.0, "lt1"), "right": (1.0, "lt1"), "top": (1.0, "lt1"), "bottom": (1.0, "lt1"), "insideH": (1.0, "lt1"), "insideV": (1.0, "lt1")}},
+        "band1H": {"fill": "accent3/tint40"},
+        "band1V": {"fill": "accent3/tint40"},
+        "firstRow": {"fill": "accent3", "text": "lt1", "bold": True, "borders": {"bottom": (3.0, "lt1")}},
+        "lastRow": {"fill": "accent3", "text": "lt1", "bold": True, "borders": {"top": (3.0, "lt1")}},
+        "firstCol": {"fill": "accent3", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent3", "text": "lt1", "bold": True},
+    },
+    "{00A15C55-8517-42AA-B614-E9B94910E393}": {
+        "name": "Medium Style 2 - Accent 4",
+        "wholeTbl": {"fill": "accent4/tint20", "text": "dk1", "borders": {"left": (1.0, "lt1"), "right": (1.0, "lt1"), "top": (1.0, "lt1"), "bottom": (1.0, "lt1"), "insideH": (1.0, "lt1"), "insideV": (1.0, "lt1")}},
+        "band1H": {"fill": "accent4/tint40"},
+        "band1V": {"fill": "accent4/tint40"},
+        "firstRow": {"fill": "accent4", "text": "lt1", "bold": True, "borders": {"bottom": (3.0, "lt1")}},
+        "lastRow": {"fill": "accent4", "text": "lt1", "bold": True, "borders": {"top": (3.0, "lt1")}},
+        "firstCol": {"fill": "accent4", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent4", "text": "lt1", "bold": True},
+    },
+    "{7DF18680-E054-41AD-8BC1-D1AEF772440D}": {
+        "name": "Medium Style 2 - Accent 5",
+        "wholeTbl": {"fill": "accent5/tint20", "text": "dk1", "borders": {"left": (1.0, "lt1"), "right": (1.0, "lt1"), "top": (1.0, "lt1"), "bottom": (1.0, "lt1"), "insideH": (1.0, "lt1"), "insideV": (1.0, "lt1")}},
+        "band1H": {"fill": "accent5/tint40"},
+        "band1V": {"fill": "accent5/tint40"},
+        "firstRow": {"fill": "accent5", "text": "lt1", "bold": True, "borders": {"bottom": (3.0, "lt1")}},
+        "lastRow": {"fill": "accent5", "text": "lt1", "bold": True, "borders": {"top": (3.0, "lt1")}},
+        "firstCol": {"fill": "accent5", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent5", "text": "lt1", "bold": True},
+    },
+    "{93296810-A885-4BE3-A3E7-6D5BEEA58F35}": {
+        "name": "Medium Style 2 - Accent 6",
+        "wholeTbl": {"fill": "accent6/tint20", "text": "dk1", "borders": {"left": (1.0, "lt1"), "right": (1.0, "lt1"), "top": (1.0, "lt1"), "bottom": (1.0, "lt1"), "insideH": (1.0, "lt1"), "insideV": (1.0, "lt1")}},
+        "band1H": {"fill": "accent6/tint40"},
+        "band1V": {"fill": "accent6/tint40"},
+        "firstRow": {"fill": "accent6", "text": "lt1", "bold": True, "borders": {"bottom": (3.0, "lt1")}},
+        "lastRow": {"fill": "accent6", "text": "lt1", "bold": True, "borders": {"top": (3.0, "lt1")}},
+        "firstCol": {"fill": "accent6", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent6", "text": "lt1", "bold": True},
+    },
+    "{8EC20E35-A176-4012-BC5E-935CFFF8708E}": {
+        "name": "Medium Style 3",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"top": (2.0, "dk1"), "bottom": (2.0, "dk1")}},
+        "band1H": {"fill": "dk1/tint20"},
+        "band1V": {"fill": "dk1/tint20"},
+        "firstRow": {"fill": "dk1", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"fill": "dk1", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "dk1", "text": "lt1", "bold": True},
+    },
+    "{6E25E649-3F16-4E02-A733-19D2CDBF48F0}": {
+        "name": "Medium Style 3 - Accent 1",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"top": (2.0, "dk1"), "bottom": (2.0, "dk1")}},
+        "band1H": {"fill": "dk1/tint20"},
+        "band1V": {"fill": "dk1/tint20"},
+        "firstRow": {"fill": "accent1", "text": "lt1", "bold": True, "borders": {"bottom": (2.0, "dk1")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"fill": "accent1", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent1", "text": "lt1", "bold": True},
+    },
+    "{85BE263C-DBD7-4A20-BB59-AAB30ACAA65A}": {
+        "name": "Medium Style 3 - Accent 2",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"top": (2.0, "dk1"), "bottom": (2.0, "dk1")}},
+        "band1H": {"fill": "dk1/tint20"},
+        "band1V": {"fill": "dk1/tint20"},
+        "firstRow": {"fill": "accent2", "text": "lt1", "bold": True, "borders": {"bottom": (2.0, "dk1")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"fill": "accent2", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent2", "text": "lt1", "bold": True},
+    },
+    "{EB344D84-9AFB-497E-A393-DC336BA19D2E}": {
+        "name": "Medium Style 3 - Accent 3",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"top": (2.0, "dk1"), "bottom": (2.0, "dk1")}},
+        "band1H": {"fill": "dk1/tint20"},
+        "band1V": {"fill": "dk1/tint20"},
+        "firstRow": {"fill": "accent3", "text": "lt1", "bold": True, "borders": {"bottom": (2.0, "dk1")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"fill": "accent3", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent3", "text": "lt1", "bold": True},
+    },
+    "{EB9631B5-78F2-41C9-869B-9F39066F8104}": {
+        "name": "Medium Style 3 - Accent 4",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"top": (2.0, "dk1"), "bottom": (2.0, "dk1")}},
+        "band1H": {"fill": "dk1/tint20"},
+        "band1V": {"fill": "dk1/tint20"},
+        "firstRow": {"fill": "accent4", "text": "lt1", "bold": True, "borders": {"bottom": (2.0, "dk1")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"fill": "accent4", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent4", "text": "lt1", "bold": True},
+    },
+    "{74C1A8A3-306A-4EB7-A6B1-4F7E0EB9C5D6}": {
+        "name": "Medium Style 3 - Accent 5",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"top": (2.0, "dk1"), "bottom": (2.0, "dk1")}},
+        "band1H": {"fill": "dk1/tint20"},
+        "band1V": {"fill": "dk1/tint20"},
+        "firstRow": {"fill": "accent5", "text": "lt1", "bold": True, "borders": {"bottom": (2.0, "dk1")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"fill": "accent5", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent5", "text": "lt1", "bold": True},
+    },
+    "{2A488322-F2BA-4B5B-9748-0D474271808F}": {
+        "name": "Medium Style 3 - Accent 6",
+        "wholeTbl": {"fill": "lt1", "text": "dk1", "borders": {"top": (2.0, "dk1"), "bottom": (2.0, "dk1")}},
+        "band1H": {"fill": "dk1/tint20"},
+        "band1V": {"fill": "dk1/tint20"},
+        "firstRow": {"fill": "accent6", "text": "lt1", "bold": True, "borders": {"bottom": (2.0, "dk1")}},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"fill": "accent6", "text": "lt1", "bold": True},
+        "lastCol": {"fill": "accent6", "text": "lt1", "bold": True},
+    },
+    "{D7AC3CCA-C797-4891-BE02-D94E43425B78}": {
+        "name": "Medium Style 4",
+        "wholeTbl": {"fill": "dk1/tint20", "text": "dk1", "borders": {"left": (1.0, "dk1/alpha80"), "right": (1.0, "dk1"), "top": (1.0, "dk1"), "bottom": (1.0, "dk1"), "insideH": (1.0, "dk1"), "insideV": (1.0, "dk1")}},
+        "band1H": {"fill": "dk1/tint40"},
+        "band1V": {"fill": "dk1/tint40"},
+        "firstRow": {"bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (2.0, "dk1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{69CF1AB2-1976-4502-BF36-3FF5EA218861}": {
+        "name": "Medium Style 4 - Accent 1",
+        "wholeTbl": {"fill": "accent1/tint20", "text": "dk1", "borders": {"left": (1.0, "accent1"), "right": (1.0, "accent1"), "top": (1.0, "accent1"), "bottom": (1.0, "accent1"), "insideH": (1.0, "accent1"), "insideV": (1.0, "accent1")}},
+        "band1H": {"fill": "accent1/tint40"},
+        "band1V": {"fill": "accent1/tint40"},
+        "firstRow": {"bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (2.0, "accent1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{8A107856-5554-42FB-B03E-39F5DBC370BA}": {
+        "name": "Medium Style 4 - Accent 2",
+        "wholeTbl": {"fill": "accent2/tint20", "text": "dk1", "borders": {"left": (1.0, "accent2"), "right": (1.0, "accent2"), "top": (1.0, "accent2"), "bottom": (1.0, "accent2"), "insideH": (1.0, "accent2"), "insideV": (1.0, "accent2")}},
+        "band1H": {"fill": "accent2/tint40"},
+        "band1V": {"fill": "accent2/tint40"},
+        "firstRow": {"bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (2.0, "accent2")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{0505E3EF-67EA-436B-97B2-0124C06EBD24}": {
+        "name": "Medium Style 4 - Accent 3",
+        "wholeTbl": {"fill": "accent3/tint20", "text": "dk1", "borders": {"left": (1.0, "accent3"), "right": (1.0, "accent3"), "top": (1.0, "accent3"), "bottom": (1.0, "accent3"), "insideH": (1.0, "accent3"), "insideV": (1.0, "accent3")}},
+        "band1H": {"fill": "accent3/tint40"},
+        "band1V": {"fill": "accent3/tint40"},
+        "firstRow": {"bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (2.0, "accent3")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{C4B1156A-380E-4F78-BDF5-A606A8083BF9}": {
+        "name": "Medium Style 4 - Accent 4",
+        "wholeTbl": {"fill": "accent4/tint20", "text": "dk1", "borders": {"left": (1.0, "accent4"), "right": (1.0, "accent4"), "top": (1.0, "accent4"), "bottom": (1.0, "accent4"), "insideH": (1.0, "accent4"), "insideV": (1.0, "accent4")}},
+        "band1H": {"fill": "accent4/tint40"},
+        "band1V": {"fill": "accent4/tint40"},
+        "firstRow": {"bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (2.0, "accent4")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{22838BEF-8BB2-4498-84A7-C5851F593DF1}": {
+        "name": "Medium Style 4 - Accent 5",
+        "wholeTbl": {"fill": "accent5/tint20", "text": "dk1", "borders": {"left": (1.0, "accent5"), "right": (1.0, "accent5"), "top": (1.0, "accent5"), "bottom": (1.0, "accent5"), "insideH": (1.0, "accent5"), "insideV": (1.0, "accent5")}},
+        "band1H": {"fill": "accent5/tint40"},
+        "band1V": {"fill": "accent5/tint40"},
+        "firstRow": {"bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (2.0, "accent5")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{16D9F66E-5EB9-4882-86FB-DCBF35E3C3E4}": {
+        "name": "Medium Style 4 - Accent 6",
+        "wholeTbl": {"fill": "accent6/tint20", "text": "dk1", "borders": {"left": (1.0, "accent6"), "right": (1.0, "accent6"), "top": (1.0, "accent6"), "bottom": (1.0, "accent6"), "insideH": (1.0, "accent6"), "insideV": (1.0, "accent6")}},
+        "band1H": {"fill": "accent6/tint40"},
+        "band1V": {"fill": "accent6/tint40"},
+        "firstRow": {"bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (2.0, "accent6")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{E8034E78-7F5D-4C2E-B375-FC64B27BC917}": {
+        "name": "Dark Style 1",
+        "wholeTbl": {"fill": "dk1/tint20", "text": "dk1/tint20"},
+        "band1H": {"fill": "dk1/tint40"},
+        "band1V": {"fill": "dk1/tint40"},
+        "firstRow": {"fill": "dk1", "text": "lt1", "bold": True, "borders": {"bottom": (2.0, "lt1")}},
+        "lastRow": {"fill": "accent3/tint95", "text": "lt1", "bold": True, "borders": {"top": (2.0, "lt1")}},
+        "firstCol": {"fill": "accent3/tint95", "text": "lt1", "bold": True, "borders": {"right": (2.0, "lt1")}},
+        "lastCol": {"fill": "accent3/tint95", "text": "lt1", "bold": True, "borders": {"left": (2.0, "lt1")}},
+    },
+    "{125E5076-3810-47DD-B79F-674D7AD40C01}": {
+        "name": "Dark Style 1 - Accent 1",
+        "wholeTbl": {"fill": "accent1", "text": "lt1"},
+        "band1H": {"fill": "accent1/shade60"},
+        "band1V": {"fill": "accent1/shade60"},
+        "firstRow": {"fill": "dk1", "bold": True, "borders": {"bottom": (2.0, "lt1")}},
+        "lastRow": {"fill": "accent1/shade40", "bold": True, "borders": {"top": (2.0, "lt1")}},
+        "firstCol": {"fill": "accent1/shade60", "bold": True, "borders": {"right": (2.0, "lt1")}},
+        "lastCol": {"fill": "accent1/shade60", "bold": True, "borders": {"left": (2.0, "lt1")}},
+    },
+    "{37CE84F3-28C3-443E-9E96-99CF82512B78}": {
+        "name": "Dark Style 1 - Accent 2",
+        "wholeTbl": {"fill": "accent2", "text": "lt1"},
+        "band1H": {"fill": "accent2/shade60"},
+        "band1V": {"fill": "accent2/shade60"},
+        "firstRow": {"fill": "dk1", "bold": True, "borders": {"bottom": (2.0, "lt1")}},
+        "lastRow": {"fill": "accent2/shade40", "bold": True, "borders": {"top": (2.0, "lt1")}},
+        "firstCol": {"fill": "accent2/shade60", "bold": True, "borders": {"right": (2.0, "lt1")}},
+        "lastCol": {"fill": "accent2/shade60", "bold": True, "borders": {"left": (2.0, "lt1")}},
+    },
+    "{D03447BB-5D67-496B-8E87-E561075AD55C}": {
+        "name": "Dark Style 1 - Accent 3",
+        "wholeTbl": {"fill": "accent3", "text": "lt1"},
+        "band1H": {"fill": "accent3/shade60"},
+        "band1V": {"fill": "accent3/shade60"},
+        "firstRow": {"fill": "dk1", "bold": True, "borders": {"bottom": (2.0, "lt1")}},
+        "lastRow": {"fill": "accent3/shade40", "bold": True, "borders": {"top": (2.0, "lt1")}},
+        "firstCol": {"fill": "accent3/shade60", "bold": True, "borders": {"right": (2.0, "lt1")}},
+        "lastCol": {"fill": "accent3/shade60", "bold": True, "borders": {"left": (2.0, "lt1")}},
+    },
+    "{E929F9F4-4A8F-4326-A1B4-22849713DDAB}": {
+        "name": "Dark Style 1 - Accent 4",
+        "wholeTbl": {"fill": "accent4", "text": "lt1"},
+        "band1H": {"fill": "accent4/shade60"},
+        "band1V": {"fill": "accent4/shade60"},
+        "firstRow": {"fill": "dk1", "bold": True, "borders": {"bottom": (2.0, "lt1")}},
+        "lastRow": {"fill": "accent4/shade40", "bold": True, "borders": {"top": (2.0, "lt1")}},
+        "firstCol": {"fill": "accent4/shade60", "bold": True, "borders": {"right": (2.0, "lt1")}},
+        "lastCol": {"fill": "accent4/shade60", "bold": True, "borders": {"left": (2.0, "lt1")}},
+    },
+    "{8FD4443E-F989-4FC4-A0C8-D5A2AF1F390B}": {
+        "name": "Dark Style 1 - Accent 5",
+        "wholeTbl": {"fill": "accent5", "text": "lt1"},
+        "band1H": {"fill": "accent5/shade60"},
+        "band1V": {"fill": "accent5/shade60"},
+        "firstRow": {"fill": "dk1", "bold": True, "borders": {"bottom": (2.0, "lt1")}},
+        "lastRow": {"fill": "accent5/shade40", "bold": True, "borders": {"top": (2.0, "lt1")}},
+        "firstCol": {"fill": "accent5/shade60", "bold": True, "borders": {"right": (2.0, "lt1")}},
+        "lastCol": {"fill": "accent5/shade60", "bold": True, "borders": {"left": (2.0, "lt1")}},
+    },
+    "{AF606853-7671-496A-8E4F-DF71F8EC918B}": {
+        "name": "Dark Style 1 - Accent 6",
+        "wholeTbl": {"fill": "accent6", "text": "lt1"},
+        "band1H": {"fill": "accent6/shade60"},
+        "band1V": {"fill": "accent6/shade60"},
+        "firstRow": {"fill": "dk1", "bold": True, "borders": {"bottom": (2.0, "lt1")}},
+        "lastRow": {"fill": "accent6/shade40", "bold": True, "borders": {"top": (2.0, "lt1")}},
+        "firstCol": {"fill": "accent6/shade60", "bold": True, "borders": {"right": (2.0, "lt1")}},
+        "lastCol": {"fill": "accent6/shade60", "bold": True, "borders": {"left": (2.0, "lt1")}},
+    },
+    "{5202B0CA-FC54-4496-8BCA-5EF66A818D29}": {
+        "name": "Dark Style 2",
+        "wholeTbl": {"fill": "dk1/tint20", "text": "dk1"},
+        "band1H": {"fill": "dk1/tint40"},
+        "band1V": {"fill": "dk1/tint40"},
+        "firstRow": {"fill": "dk1", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{0660B408-B3CF-4A94-85FC-2B1E0A45F4A2}": {
+        "name": "Dark Style 2 - Accent 1/Accent 2",
+        "wholeTbl": {"fill": "accent1/tint20", "text": "dk1"},
+        "band1H": {"fill": "accent1/tint40"},
+        "band1V": {"fill": "accent1/tint40"},
+        "firstRow": {"fill": "accent2", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{91EBBBCC-DAD2-459C-BE2E-F6DE35CF9A28}": {
+        "name": "Dark Style 2 - Accent 3/Accent 4",
+        "wholeTbl": {"fill": "accent3/tint20", "text": "dk1"},
+        "band1H": {"fill": "accent3/tint40"},
+        "band1V": {"fill": "accent3/tint40"},
+        "firstRow": {"fill": "accent4", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+    "{46F890A9-2807-4EBB-B81D-B2AA78EC7F39}": {
+        "name": "Dark Style 2 - Accent 5/Accent 6",
+        "wholeTbl": {"fill": "accent5/tint20", "text": "dk1"},
+        "band1H": {"fill": "accent5/tint40"},
+        "band1V": {"fill": "accent5/tint40"},
+        "firstRow": {"fill": "accent6", "text": "lt1", "bold": True},
+        "lastRow": {"bold": True, "borders": {"top": (3.0, "dk1")}},
+        "firstCol": {"bold": True},
+        "lastCol": {"bold": True},
+    },
+}
+
+
+_DRAWINGML = "http://schemas.openxmlformats.org/drawingml/2006/main"
+
+
+def color_parts(spec: str) -> tuple[str, tuple[tuple[str, int], ...]]:
+    """``"accent1/tint40"`` -> ``("accent1", (("tint", 40000),))``: the slot and each
+    transform with its ECMA-376 value (thousandths of a percent).  A part that is not a
+    name and a number is skipped."""
+    slot, *rest = spec.split("/")
+    transforms = []
+    for part in rest:
+        match = _TRANSFORM.match(part)
+        if match is None:
+            continue
+        transforms.append((match.group(1), int(match.group(2)) * 1000))
+    return slot, tuple(transforms)
+
+
+def _key(style_id: str | None) -> str | None:
+    return style_id.upper() if style_id else None
+
+
+def builtin_name(style_id: str | None) -> str | None:
+    """The built-in style's name as PowerPoint's Table Design gallery shows it, or ``None``
+    for a GUID that is not one (any case)."""
+    spec = BUILTIN_TABLE_STYLES.get(_key(style_id) or "")
+    return spec["name"] if spec is not None else None
+
+
+def _with_borders(spec: dict | None, borders: dict | None) -> dict | None:
+    """A region's spec with measured borders added to (not over) the ones it has."""
+    if not borders:
+        return spec
+    merged = dict(spec or {})
+    merged["borders"] = {**borders, **merged.get("borders", {})}
+    return merged
+
+
+def builtin_regions(style_id: str | None) -> dict[str, dict] | None:
+    """The built-in style's regions, ``{region: spec}`` in :data:`REGIONS` order, each spec
+    as :data:`BUILTIN_TABLE_STYLES` writes it (``fill``, ``text``, ``bold``, ``borders``)
+    with :data:`MEASURED_BORDERS` added; ``None`` for a GUID that is not built in.  A themed
+    style's are its measured colours under one theme: :func:`themed_style_xml` is what
+    it draws."""
+    key = _key(style_id)
+    spec = BUILTIN_TABLE_STYLES.get(key or "")
+    if spec is None:
+        return None
+    measured = MEASURED_BORDERS.get(key, {})
+    out = {}
+    for region in REGIONS:
+        merged = _with_borders(spec.get(region), measured.get(region))
+        if merged is not None:
+            out[region] = merged
+    return out
+
+
+def themed_style_xml(style_id: str | None) -> str | None:
+    """A "Themed Style 1" or "Themed Style 2" style as an ``a:tblStyle`` element (with its
+    ``xmlns:a``, ``styleId`` as given and ``styleName``), or ``None`` for any other GUID."""
+    key = _key(style_id)
+    if key not in THEMED_STYLES:
+        return None
+    family, accent = THEMED_STYLES[key]
+    return (f'<a:tblStyle xmlns:a="{_DRAWINGML}" styleId="{style_id}" '
+            f'styleName="{BUILTIN_TABLE_STYLES[key]["name"]}">'
+            + THEMED_STYLE_XML[family].replace("{accent}", accent) + "</a:tblStyle>")
+
+
+def builtin_text_colors(style_id: str | None
+                        ) -> dict[str, tuple[str, tuple[tuple[str, int], ...]]] | None:
+    """Each region's text colour in the built-in style, ``{region: (slot, transforms)}``
+    as :func:`color_parts` gives them, in :data:`REGIONS` order and only for the regions
+    that state one: a themed style's from its ``a:tcTxStyle``\\ s, any other's from its
+    measured ``text``.  ``None`` for a GUID that is not built in."""
+    xml = themed_style_xml(style_id)
+    if xml is None:
+        regions = builtin_regions(style_id)
+        if regions is None:
+            return None
+        return {region: color_parts(spec["text"]) for region, spec in regions.items()
+                if "text" in spec}
+    root = ET.fromstring(xml)
+    out = {}
+    for region in REGIONS:
+        color = root.find(f"{{{_DRAWINGML}}}{region}/{{{_DRAWINGML}}}tcTxStyle/"
+                          f"{{{_DRAWINGML}}}schemeClr")
+        if color is not None:
+            out[region] = (color.get("val"), tuple(
+                (child.tag.rpartition("}")[2], int(child.get("val"))) for child in color))
+    return out
+
+
+__all__ = [
+    "BUILTIN_TABLE_STYLES", "MEASURED_BORDERS", "REGIONS", "THEMED_STYLES", "THEMED_STYLE_XML",
+    "builtin_name", "builtin_regions", "builtin_text_colors", "color_parts", "themed_style_xml",
+]
