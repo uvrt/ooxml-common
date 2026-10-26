@@ -110,10 +110,10 @@ def render_effects(
         last_result = "outerShadowMerge"
 
     if effects.inner_shadow is not None:
-        shadow = effects.inner_shadow
-        std_dev = emu_to_px(shadow.blur_radius, dpi) / 2
-        distance = emu_to_px(shadow.distance, dpi)
-        radians = math.radians(shadow.direction)
+        inner = effects.inner_shadow
+        std_dev = emu_to_px(inner.blur_radius, dpi) / 2
+        distance = emu_to_px(inner.distance, dpi)
+        radians = math.radians(inner.direction)
         dx = round(distance * math.cos(radians), 2)
         dy = round(distance * math.sin(radians), 2)
         primitives.extend(
@@ -126,8 +126,8 @@ def render_effects(
                 'result="innerShdwBlur"/>',
                 f'<feOffset in="innerShdwBlur" dx="{num(dx)}" dy="{num(dy)}" '
                 'result="innerShdwOffset"/>',
-                f'<feFlood flood-color="{shadow.color.hex}" '
-                f'flood-opacity="{num(shadow.color.alpha)}" result="innerShdwFill"/>',
+                f'<feFlood flood-color="{inner.color.hex}" '
+                f'flood-opacity="{num(inner.color.alpha)}" result="innerShdwFill"/>',
                 '<feComposite in="innerShdwFill" in2="innerShdwOffset" operator="in" '
                 'result="innerShdwColored"/>',
                 '<feComposite in="innerShdwColored" in2="SourceAlpha" operator="in" '

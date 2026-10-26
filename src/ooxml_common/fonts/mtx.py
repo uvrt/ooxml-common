@@ -874,9 +874,9 @@ def _parse_ctf(streams: list[bytes]) -> bytes:
         if tag == b"head":
             if len(buf) < 54:
                 raise MtxDecodeError("malformed head table")
-            buf = bytearray(buf)
-            buf[8:12] = b"\0\0\0\0"  # checkSumAdjustment, recomputed in _dump_sfnt
-            buf = bytes(buf)
+            patched = bytearray(buf)
+            patched[8:12] = b"\0\0\0\0"  # checkSumAdjustment, recomputed in _dump_sfnt
+            buf = bytes(patched)
         table["buf"] = buf
 
     if head is None:

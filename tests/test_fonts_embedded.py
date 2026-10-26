@@ -22,7 +22,6 @@ pptx2svg's copy of this file, together with the fixtures it reads.
 
 from __future__ import annotations
 
-import io
 import struct
 
 import pytest
@@ -39,7 +38,7 @@ from ooxml_common.fonts.eot import (
     read_eot_header,
 )
 from ooxml_common.fonts.mtx import MtxDecodeError, decode_mtx
-from ooxml_common.fonts.sfnt import SfntError, read_sfnt, relabel, write_sfnt
+from ooxml_common.fonts.sfnt import read_sfnt, relabel, write_sfnt
 
 
 

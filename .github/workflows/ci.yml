@@ -141,6 +141,16 @@ jobs:
       # version section names: the tag workflow tags that version when it reaches main.
       - name: The version agrees with CHANGELOG.md
         run: python tools/check_version.py
+      # The linter and the type checker, at the versions pyproject.toml's dev extra pins
+      # (bump both together).  ruff's rules and mypy's settings are in pyproject.toml.
+      - name: Lint (ruff)
+        run: |
+          python -m pip install "ruff==0.17.2"
+          ruff check .
+      - name: Type check (mypy)
+        run: |
+          python -m pip install "mypy==2.4.0"
+          mypy
       - name: Build distributions
         run: |
           python -m pip install --upgrade pip build twine

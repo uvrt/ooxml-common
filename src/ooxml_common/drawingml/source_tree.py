@@ -25,14 +25,7 @@ from dataclasses import dataclass, field
 from typing import Literal, Union
 
 from .scene import (
-    ArrowEndpoint,
     BulletType,
-    CompoundLineType,
-    CustomGeometryPath,
-    DashStyle,
-    LineCap,
-    LineJoin,
-    RectangleAlignment,
     SpacingValue,
     TabStop,
     TextVerticalType,

@@ -251,7 +251,7 @@ def render_group(group: "m.GroupElement | m.ChartElement", context: RenderContex
             continue
         folded = _folded_child(child, scale_x, scale_y, offset_x, offset_y)
         text_transform = getattr(child, "text_transform", None)
-        if text_transform is not None:
+        if text_transform is not None and isinstance(folded, m.ShapeElement):
             folded = replace(folded, text_transform=_folded_transform(
                 text_transform, scale_x, scale_y, offset_x, offset_y
             ))

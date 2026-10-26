@@ -89,6 +89,7 @@ import base64
 import math
 import struct
 from dataclasses import dataclass, replace
+from typing import Any
 from xml.sax.saxutils import escape
 
 from . import dib, gdi
@@ -1482,7 +1483,7 @@ def parse_brush(d: _Data, pp: PlusPlayer):
         matrix = _matrix(d) if flags & 0x02 else IDENTITY
         # Windows draws the Reserved colours (GDI+ writes the start and end again there).
         c0, c1 = reserved1, reserved2
-        stops = ((0.0, c0), (1.0, c1))
+        stops: tuple[tuple[float, int], ...] = ((0.0, c0), (1.0, c1))
         if flags & 0x04:
             stops = tuple(sorted(_blend(d, True)))
         elif flags & 0x08 or flags & 0x10:
@@ -1497,7 +1498,7 @@ def parse_pen(d: _Data, pp: PlusPlayer) -> Pen | None:
     _version, _kind = d.u32(), d.u32()
     flags, unit = d.u32(), d.u32()
     width = d.f32()
-    values = {}
+    values: dict[str, Any] = {}
     if flags & 0x0001:
         values["matrix"] = _matrix(d)
     if flags & 0x0002:

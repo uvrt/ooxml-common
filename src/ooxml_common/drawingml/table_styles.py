@@ -966,7 +966,7 @@ def builtin_regions(style_id: str | None) -> dict[str, dict] | None:
     spec = BUILTIN_TABLE_STYLES.get(key or "")
     if spec is None:
         return None
-    measured = MEASURED_BORDERS.get(key, {})
+    measured = MEASURED_BORDERS.get(key or "", {})
     out = {}
     for region in REGIONS:
         merged = _with_borders(spec.get(region), measured.get(region))
@@ -1006,8 +1006,8 @@ def builtin_text_colors(style_id: str | None
         color = root.find(f"{{{_DRAWINGML}}}{region}/{{{_DRAWINGML}}}tcTxStyle/"
                           f"{{{_DRAWINGML}}}schemeClr")
         if color is not None:
-            out[region] = (color.get("val"), tuple(
-                (child.tag.rpartition("}")[2], int(child.get("val"))) for child in color))
+            out[region] = (color.attrib["val"], tuple(
+                (child.tag.rpartition("}")[2], int(child.attrib["val"])) for child in color))
     return out
 
 

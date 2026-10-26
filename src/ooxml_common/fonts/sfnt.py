@@ -440,24 +440,24 @@ def relabel(data: bytes, family: str, *, bold: bool, italic: bool) -> bytes:
 
     os2 = tables.get(b"OS/2")
     if os2 is not None and len(os2) >= 64:
-        os2 = bytearray(os2)
-        struct.pack_into(">H", os2, 4, 700 if bold else 400)
-        selection = struct.unpack_from(">H", os2, 62)[0]
+        patched = bytearray(os2)
+        struct.pack_into(">H", patched, 4, 700 if bold else 400)
+        selection = struct.unpack_from(">H", patched, 62)[0]
         selection &= ~0x0061  # clear ITALIC, BOLD, REGULAR and OBLIQUE
         selection |= (0x20 if bold else 0) | (0x01 if italic else 0)
         if not bold and not italic:
             selection |= 0x40
-        struct.pack_into(">H", os2, 62, selection)
-        tables[b"OS/2"] = bytes(os2)
+        struct.pack_into(">H", patched, 62, selection)
+        tables[b"OS/2"] = bytes(patched)
 
     head = tables.get(b"head")
     if head is not None and len(head) >= 46:
-        head = bytearray(head)
-        mac_style = struct.unpack_from(">H", head, 44)[0] & ~0x0003
+        patched = bytearray(head)
+        mac_style = struct.unpack_from(">H", patched, 44)[0] & ~0x0003
         struct.pack_into(
-            ">H", head, 44, mac_style | (0x01 if bold else 0) | (0x02 if italic else 0)
+            ">H", patched, 44, mac_style | (0x01 if bold else 0) | (0x02 if italic else 0)
         )
-        tables[b"head"] = bytes(head)
+        tables[b"head"] = bytes(patched)
 
     return write_sfnt(list(tables.items()))
 

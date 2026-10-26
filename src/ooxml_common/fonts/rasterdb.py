@@ -47,8 +47,7 @@ import sys
 import threading
 import urllib.parse
 import xml.etree.ElementTree as ET
-from pathlib import Path
-from typing import Iterable, Mapping, Sequence
+from typing import Mapping, Sequence
 
 from .office import _cmap_subtable, decode_name
 
@@ -534,7 +533,8 @@ def needed_font_files(
         if found is None or any(face is _UNKNOWN for face in found):
             out.append(entry[0])
             continue
-        if any(face.names & wanted for face in found) or (
-                missing and any(face.loose is None or face.loose & missing for face in found)):
+        known = [face for face in found if face is not None]  # every one, checked above
+        if any(face.names & wanted for face in known) or (
+                missing and any(face.loose is None or face.loose & missing for face in known)):
             out.append(entry[0])
     return list(dict.fromkeys(out))

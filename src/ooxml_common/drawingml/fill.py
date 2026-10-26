@@ -448,9 +448,10 @@ def _dash_lengths(outline: m.Outline, width_px: float, rules: DrawingRules) -> l
     if outline.custom_dash:
         pattern = list(outline.custom_dash)
     elif outline.dash_style != "solid":
-        pattern = DASH_PATTERNS.get(outline.dash_style)
-        if not pattern:
+        preset = DASH_PATTERNS.get(outline.dash_style)
+        if not preset:
             return None
+        pattern = preset
     else:
         return None
     lengths = [value * width_px for value in pattern]
