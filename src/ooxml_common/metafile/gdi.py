@@ -46,7 +46,8 @@ from __future__ import annotations
 import base64
 import math
 import struct
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
+from typing import Literal, cast
 from xml.sax.saxutils import escape
 
 from . import dib
@@ -205,8 +206,8 @@ for _font in (10, 11, 12, 13, 14, 16, 17):
 
 @dataclass(frozen=True)
 class DC:
-    pen: Pen = STOCK[7]
-    brush: Brush = STOCK[0]
+    pen: Pen = cast(Pen, STOCK[7])  # STOCK holds pens, brushes and fonts by number
+    brush: Brush = cast(Brush, STOCK[0])
     font: Font = Font(height=-16, face="Arial")
     text_color: str = "#000000"
     bk_color: str = "#FFFFFF"
@@ -396,21 +397,20 @@ class Player:
             self.truncated = True
             raise Stop
 
-    def _write(self, text: str, *, drawn: bool = True, clip: str | None | bool = False) -> None:
+    def _write(self, text: str, *, drawn: bool = True, clip: str | None | Literal[False] = False) -> None:
         """Append ``text`` to the drawing, inside the current clip -- the DC's, or
         ``clip`` where one is given (``None`` for no clip): the EMF+ player keeps its own."""
         self.size += len(text)
         if self.size > MAX_OUTPUT_BYTES:
             self.truncated = True
             raise Stop
-        if clip is False:
-            clip = self.dc.clip
-        if clip != self._open_clip:
+        target = self.dc.clip if clip is False else clip
+        if target != self._open_clip:
             if self._open_clip is not None:
                 self.body.append("</g>")
-            if clip is not None:
-                self.body.append(f'<g clip-path="url(#{clip})">')
-            self._open_clip = clip
+            if target is not None:
+                self.body.append(f'<g clip-path="url(#{target})">')
+            self._open_clip = target
         self.body.append(text)
         if drawn:
             self.drawn += 1
@@ -632,6 +632,7 @@ class Player:
         key = ("p", id(brush.image), m)
         if key in self._patterns:
             return self._patterns[key]
+        assert brush.image is not None  # a pattern brush always carries its bitmap
         data, w, h = brush.image
         pid = self._id("p")
         href = "data:image/png;base64," + base64.b64encode(data).decode("ascii")
@@ -951,7 +952,9 @@ class Player:
     def flat_polygon(self, points, fill: str) -> None:
         self.flush()
         m = self.matrix()
-        self._write(f'<path d="{path_data([polyline_figure(points, True)])}"{self._transform(m)} fill="{fill}"/>')
+        figure = polyline_figure(points, True)
+        figures = [figure] if figure is not None else []
+        self._write(f'<path d="{path_data(figures)}"{self._transform(m)} fill="{fill}"/>')
 
     # ---- text ---------------------------------------------------------------------------
 

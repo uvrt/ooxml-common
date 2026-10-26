@@ -330,21 +330,21 @@ def _decode_row(
 
     # 32 bpp.  With bitfields, honour the declared masks; otherwise it is plain BGRx and
     # the fourth byte is carried through for _alpha_is_meaningful to judge.
-    masks = info.masks
+    bitfields = info.masks
     for x in range(width):
         base_in = x * 4
         if base_in + 4 > len(row):
             break
         base = start + x * 4
-        if masks is None:
+        if bitfields is None:
             out[base : base + 4] = bytes(
                 (row[base_in + 2], row[base_in + 1], row[base_in], row[base_in + 3])
             )
         else:
             value = int.from_bytes(row[base_in : base_in + 4], "little")
-            alpha = _scale(value, masks[3]) if masks[3] else 255
+            alpha = _scale(value, bitfields[3]) if bitfields[3] else 255
             out[base : base + 4] = bytes(
-                (_scale(value, masks[0]), _scale(value, masks[1]), _scale(value, masks[2]), alpha)
+                (_scale(value, bitfields[0]), _scale(value, bitfields[1]), _scale(value, bitfields[2]), alpha)
             )
 
 
@@ -359,7 +359,7 @@ def _scale(value: int, mask: int) -> int:
     return (field * 255 + maximum // 2) // maximum if maximum else 0
 
 
-def _alpha_is_meaningful(info: _DibInfo, rgba: bytes) -> bool:
+def _alpha_is_meaningful(info: _DibInfo, rgba: bytes | bytearray) -> bool:
     """Decide whether a 32-bit DIB's fourth byte is really alpha.
 
     ``BI_RGB`` leaves it undefined and Office writes zeros, so an all-zero channel means
@@ -376,7 +376,7 @@ def _alpha_is_meaningful(info: _DibInfo, rgba: bytes) -> bool:
 # --------------------------------------------------------------------------------------
 
 
-def encode_png(width: int, height: int, rgba: bytes, *, has_alpha: bool) -> bytes:
+def encode_png(width: int, height: int, rgba: bytes | bytearray, *, has_alpha: bool) -> bytes:
     """Minimal PNG writer: one IHDR, one IDAT, one IEND, filter type 0 throughout.
 
     Filtering exists to help compression, not correctness, and a preview bitmap is not

@@ -63,6 +63,8 @@ def _render_shape_text(
     origin and only reads the extent, so the box's own offset has to be applied as a
     translation of the difference between the two -- both are absolute in the same space.
     """
+    if shape.text_body is None:
+        return ""
     box = shape.text_transform or transform
     # A SmartArt text box is its own rectangle already; every other shape lays its text
     # out in its geometry's text rectangle.
@@ -401,7 +403,7 @@ def render_table(table: m.TableElement, context: RenderContext) -> str:
             # An editor's cell (RenderContext.edit_marks): its fill and text in a group
             # named by its grid position, with a box drawn as nothing where it has no fill.
             marked = context.edit_marks and table_id is not None
-            if marked:
+            if marked and table_id is not None:
                 parts.append(f'<g data-pptx-id="{escape_xml_attr(table_id)}/cell{row_index},{column_index}">')
             if cell.fill is not None:
                 fill_attrs = render_fill_attrs(cell.fill, context, (x, y, width, height), rules=context.rules)

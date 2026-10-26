@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import struct
 
-from test_metafile_gdi import BLACK_BRUSH, NULL_BRUSH, NULL_PEN, RED, WHITE, Emf, _wmf, rgb
+from test_metafile_gdi import BLACK_BRUSH, NULL_BRUSH, NULL_PEN, RED, Emf, _wmf, rgb
 
 BLUE, GREEN, GREY = rgb(0, 0, 255), rgb(0, 160, 0), rgb(128, 128, 128)
 

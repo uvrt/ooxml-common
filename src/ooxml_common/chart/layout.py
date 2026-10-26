@@ -50,6 +50,7 @@ import math
 import re
 from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
+from typing import TypeVar, cast
 
 from ..drawingml import scene as m
 from ..drawingml import source_tree as s
@@ -2808,8 +2809,8 @@ def _surface_normal(
     if length <= 0:
         return None
     if sum(one * two for one, two in zip(normal, view)) < 0:
-        normal = tuple(-value for value in normal)
-    return tuple(value / length for value in normal)
+        normal = (-normal[0], -normal[1], -normal[2])
+    return (normal[0] / length, normal[1] / length, normal[2] / length)
 
 
 def _clip_to_band(
@@ -2860,7 +2861,11 @@ def _lerp(
     t = 0.0 if span == 0 else (limit - first_value) / span
     t = min(max(t, 0.0), 1.0)
     return (
-        tuple(a + (b - a) * t for a, b in zip(first, second)),
+        (
+            first[0] + (second[0] - first[0]) * t,
+            first[1] + (second[1] - first[1]) * t,
+            first[2] + (second[2] - first[2]) * t,
+        ),
         limit,
     )
 
@@ -3414,9 +3419,9 @@ class ChartBuilder:
         middle_y = (region.top + region.bottom) / 2
 
         other = sum(
-            abs(values[index])
+            abs(value)
             for index in sorted(moved)
-            if index < len(values) and values[index] is not None
+            if index < len(values) and (value := values[index]) is not None
         )
         other_sweep = other / total * 360.0
         # The aggregated slice is centred at three o'clock, so the ring of real slices
@@ -3567,7 +3572,8 @@ class ChartBuilder:
         lines run to the bar's two left corners, which is the natural analogue and is
         marked as a guess here rather than left undrawn.
         """
-        outline = self._axis_outline(self.plot.series_lines.outline)
+        lines = self.plot.series_lines
+        outline = self._axis_outline(lines.outline) if lines is not None else None
         if outline is None or radius <= 0:
             return
         upper, lower = sorted(corners, key=lambda point: point[1])
@@ -3901,7 +3907,7 @@ class ChartBuilder:
                 self._radar_point(centre, index, count, distance)
                 for index in range(count)
             ]
-            if len(points) > 1:
+            if len(points) > 1 and ring_outline is not None:
                 self._polyline(points + [points[0]], ring_outline, smooth=False)
 
 
@@ -6346,9 +6352,9 @@ class ChartBuilder:
             (source.explosion or 0.0 for source in self.plot.series), default=0.0
         )
         for source in self.plot.series:
-            for point in source.data_points:
-                if point.explosion:
-                    explosion = max(explosion, point.explosion)
+            for stated in source.data_points:
+                if stated.explosion:
+                    explosion = max(explosion, stated.explosion)
         if explosion > 0:
             radius /= 1.0 + explosion / 100.0
 
@@ -6687,7 +6693,7 @@ class ChartBuilder:
         """
         if self._title_cache is _UNSET:
             self._title_cache = self._build_title()
-        return self._title_cache
+        return cast("tuple[m.TextBody, FontBox] | None", self._title_cache)
 
     def _build_title(self) -> "tuple[m.TextBody, FontBox] | None":
         text = self._title_text()
@@ -6701,8 +6707,11 @@ class ChartBuilder:
         if self.chart.title is None and not self.rules.auto_title:
             # PowerPoint's automatic title: the sole series' name, in the text it is drawn
             # with (:func:`powerpoint_auto_title`).
-            rich = powerpoint_auto_title(self.chart, text)
-            return self._resolved_text(rich, text, rich.paragraphs[0].runs[0].properties.font_size)
+            auto = powerpoint_auto_title(self.chart, text)
+            auto_run = auto.paragraphs[0].runs[0].properties
+            # powerpoint_auto_title states the run's size, always.
+            assert auto_run is not None and auto_run.font_size is not None
+            return self._resolved_text(auto, text, auto_run.font_size)
         size = _title_size(self.chart.title)
         rich = self.chart.title.rich if self.chart.title is not None else None
         # A rich title is not drawn in the face a text box gets: PowerPoint's own fonts
@@ -7313,8 +7322,9 @@ class ChartBuilder:
                 corners = [
                     (row, col), (row, col + 1), (row + 1, col + 1), (row + 1, col)
                 ]
-                values = [value_at(r, c) for r, c in corners]
-                if any(value is None for value in values):
+                stated = [value_at(r, c) for r, c in corners]
+                values = [value for value in stated if value is not None]
+                if len(values) < len(stated):
                     # A gap in the data takes the whole cell with it: a lattice cell needs
                     # all four of its corners and there is nothing to interpolate from.
                     continue
@@ -7349,10 +7359,10 @@ class ChartBuilder:
                         faces.append(
                             ([scene.at(*point) for point in piece], index, shade, key)
                         )
-        for points, index, shade, _key in sorted(faces, key=lambda row: row[3]):
+        for polygon, index, shade, _key in sorted(faces, key=lambda row: row[3]):
             if wire:
                 self._polygon(
-                    points, fill=None, outline=self._band_outline(index, len(bands))
+                    polygon, fill=None, outline=self._band_outline(index, len(bands))
                 )
                 continue
             fill = self._shade_factor(
@@ -7361,7 +7371,7 @@ class ChartBuilder:
                 self._band_color(index, len(bands)),
             )
             self._polygon(
-                points,
+                polygon,
                 fill=fill,
                 # The seam, not a line of PowerPoint's: see `SURFACE_SEAM_WIDTH_EMU`.
                 outline=(
@@ -7407,7 +7417,9 @@ class ChartBuilder:
         def visible(normal: tuple[float, float, float]) -> bool:
             return -normal[0] * scene.depth[0] + normal[1] * scene.depth[1] < 0
 
-        def quad(a, b, normal) -> None:
+        def quad(
+            a: tuple[float, float], b: tuple[float, float], normal: tuple[float, float, float]
+        ) -> None:
             if not visible(normal):
                 return
             faces.append(
@@ -7437,7 +7449,7 @@ class ChartBuilder:
                     continue
                 # Screen y runs down, so the surface's upward normal is (dy, dx) in it.
                 normal = (rise / length, run / length, 0.0)
-                quad(first, second, normal if edge is top else tuple(-v for v in normal))
+                quad(first, second, normal if edge is top else (-normal[0], -normal[1], -normal[2]))
         for _, points, normal in sorted(faces, key=lambda row: row[0]):
             self._polygon(
                 points, fill=self._shade_normal(fill, normal, base), outline=None
@@ -10062,12 +10074,14 @@ def _rotate_past_blank(
     return points[start:] + points[:start]
 
 
-def _split_runs(
-    points: list["tuple[float, float] | None"],
-) -> list[list[tuple[float, float]]]:
+#: A point of a series' line, flat (x, y) or with a second y for an area's lower edge.
+_Point = TypeVar("_Point")
+
+
+def _split_runs(points: "list[_Point | None]") -> "list[list[_Point]]":
     """Split a series at its blanks, so ``dispBlanksAs="gap"`` really leaves a gap."""
-    runs: list[list[tuple[float, float]]] = []
-    current: list[tuple[float, float]] = []
+    runs: list[list[_Point]] = []
+    current: list[_Point] = []
     for point in points:
         if point is None:
             if current:

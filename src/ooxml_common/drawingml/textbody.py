@@ -21,6 +21,7 @@ tallest run on it, using the font's ``(ascender + |descender|) / unitsPerEm``.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from typing import TypeVar
 
 from ..text.fontmap import font_family_value, substitution_for, synthesises_italic
 from ..text.symbol_fonts import FALLBACK_FAMILIES, symbol_face, translate
@@ -413,7 +414,6 @@ def _render_column(
             properties.alignment, text_start_x, effective_text_width, dims.width, dims.margin_right
         )
 
-        para_font_size = _paragraph_font_size(paragraph, default_font_size) * font_scale
         para_natural = _paragraph_natural_height(
             paragraph, default_font_size, font_scale, context, default_line_ratio
         )
@@ -896,7 +896,7 @@ def _render_line(
             continue
 
         piece, tspans = entry
-        rendered: list[str] = []
+        spans: list[str] = []
         for family, styles, text, oblique in tspans:
             width = _tspan_width(
                 _measured(piece, text, context), piece.properties, default_font_size,
@@ -931,11 +931,11 @@ def _render_line(
                 )
             else:
                 prefix = _advance_only(take_advance())
-            rendered.append(f"<tspan {prefix}{styles}>{escape_xml_text(text)}</tspan>")
+            spans.append(f"<tspan {prefix}{styles}>{escape_xml_text(text)}</tspan>")
             cursor += width
             chunk_width += width
 
-        content = "".join(rendered)
+        content = "".join(spans)
         if content and piece.properties.hyperlink is not None and context.hyperlinks:
             content = (
                 f'<a href="{escape_xml_attr(piece.properties.hyperlink.url)}">{content}</a>'
@@ -1407,12 +1407,12 @@ def _segment_tspans(
     else:
         chains = []
         for part_text, east_asian in _split_by_script(segment.text):
-            fonts = (
+            chain_fonts = (
                 [properties.font_family_ea, context.jpan_fallback_font, properties.font_family]
                 if east_asian
                 else [properties.font_family, properties.font_family_ea]
             ) + [properties.font_family_cs]
-            chains.append((fonts, part_text))
+            chains.append((chain_fonts, part_text))
 
     face = _mapped_symbol_face(properties.font_family, context)
     if face:
@@ -1857,6 +1857,10 @@ def _scaled_size(size: float, font_scale: float) -> float:
     return max(1.0, float(int(size * font_scale + 0.5 + 1e-9)))
 
 
+#: A run's properties, or a paragraph's end-of-paragraph ones (which may be absent):
+#: :func:`_stored_autofit` sizes either and gives back what it was given.
+_RunProperties = TypeVar("_RunProperties", m.RunProperties, "m.RunProperties | None")
+
 def _stored_autofit(text_body: m.TextBody, rules: DrawingRules) -> m.TextBody:
     """``normAutofit`` as PowerPoint draws a file it has not re-fitted: what it stores.
 
@@ -1880,7 +1884,7 @@ def _stored_autofit(text_body: m.TextBody, rules: DrawingRules) -> m.TextBody:
         run.properties.font_size for paragraph in text_body.paragraphs for run in paragraph.runs
     )
 
-    def sized(properties: m.RunProperties | None) -> m.RunProperties | None:
+    def sized(properties: _RunProperties) -> _RunProperties:
         if properties is None or scale == 1.0:
             return properties
         if properties.font_size:

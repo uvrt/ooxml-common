@@ -605,9 +605,16 @@ class Face:
         offset, length = found
         return self._data[offset:offset + length]
 
+    def _required(self, tag: bytes) -> bytes:
+        # A table every font has (head, hhea, hmtx): without it the file is not a font.
+        table = self.table(tag)
+        if table is None:
+            raise FontError(f"{self.source or 'the font'} has no {tag.decode()} table")
+        return table
+
     @functools.cached_property
     def units_per_em(self) -> int:
-        return struct.unpack_from(">H", self.table(b"head"), 18)[0]
+        return struct.unpack_from(">H", self._required(b"head"), 18)[0]
 
     @functools.cached_property
     def names(self) -> list[tuple[int, str]]:
@@ -621,7 +628,7 @@ class Face:
         ``head.macStyle``'s."""
         os2 = self.table(b"OS/2")
         selection = struct.unpack_from(">H", os2, 62)[0] if os2 and len(os2) >= 64 else 0
-        mac_style = struct.unpack_from(">H", self.table(b"head"), 44)[0]
+        mac_style = struct.unpack_from(">H", self._required(b"head"), 44)[0]
         return bool(selection & 0x20 or mac_style & 1), bool(selection & 0x01 or mac_style & 2)
 
     @functools.cached_property
@@ -680,8 +687,8 @@ class Face:
     @functools.cached_property
     def advances(self) -> tuple[int, ...]:
         """Every glyph's advance, by glyph id up to ``numberOfHMetrics``."""
-        count = struct.unpack_from(">H", self.table(b"hhea"), 34)[0]
-        return struct.unpack_from(f">{2 * count}H", self.table(b"hmtx"), 0)[0::2]
+        count = struct.unpack_from(">H", self._required(b"hhea"), 34)[0]
+        return struct.unpack_from(f">{2 * count}H", self._required(b"hmtx"), 0)[0::2]
 
     @functools.cached_property
     def legacy_kern(self) -> dict[tuple[int, int], int]:

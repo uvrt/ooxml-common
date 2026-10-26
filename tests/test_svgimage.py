@@ -142,7 +142,7 @@ def test_an_external_document_type_is_kept_and_not_fetched():
     f'<!DOCTYPE svg [<!ENTITY x SYSTEM "file:///etc/passwd">]><svg {NS} width="&x;"/>',
     f'<!DOCTYPE svg [<!ATTLIST svg width CDATA "1in">]><svg {NS}/>',
     '<html xmlns="http://www.w3.org/1999/xhtml" width="1in"/>',
-    f'<svg xmlns="urn:other" width="1in"/>',
+    '<svg xmlns="urn:other" width="1in"/>',
     f'<svg {NS} width="1in"',
     "not markup at all",
     "",

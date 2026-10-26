@@ -39,7 +39,7 @@ from ..xmlutil import (
     local_name,
     num_attr,
 )
-from ..drawingml.read import parse_fill, parse_line, parse_outline
+from ..drawingml.read import parse_fill, parse_outline
 from ..drawingml.source_tree import (
     SourceColorMap,
     SourceFill,
@@ -907,7 +907,8 @@ def _numeric_points(reference: Element | None) -> tuple[list[float | None], str 
         index = int_attr(point, "idx")
         if index is None or not 0 <= index < count:
             continue
-        raw = (child(point, "v").text or "") if child(point, "v") is not None else ""
+        v = child(point, "v")
+        raw = (v.text or "") if v is not None else ""
         try:
             value = float(raw.strip())
         except (TypeError, ValueError):
@@ -933,10 +934,10 @@ def _cache_format_code(cache: Element) -> str | None:
         for choice in children(alternate, "Choice"):
             node = child(choice, "formatcode2")
             if node is not None and (node.text or "").strip():
-                return node.text.strip()
+                return (node.text or "").strip()
         node = child(child(alternate, "Fallback"), "formatCode")
         if node is not None and (node.text or "").strip():
-            return node.text.strip()
+            return (node.text or "").strip()
     return None
 
 

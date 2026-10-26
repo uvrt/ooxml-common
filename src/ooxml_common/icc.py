@@ -145,7 +145,8 @@ def parse(data: bytes | None) -> RGBProfile | None:
     curves = [_curve(tags.get(name)) for name in (b"rTRC", b"gTRC", b"bTRC")]
     if any(value is None for value in colorants) or any(value is None for value in curves):
         return None
-    matrix = tuple(tuple(colorants[column][row] for column in range(3)) for row in range(3))
+    known = [value for value in colorants if value is not None]  # all three, checked above
+    matrix = tuple(tuple(known[column][row] for column in range(3)) for row in range(3))
     return RGBProfile(_description(tags.get(b"desc")), matrix, tuple(curves))  # type: ignore[arg-type]
 
 

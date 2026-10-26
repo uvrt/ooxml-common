@@ -420,7 +420,7 @@ def _apply_sequential(rgb: list[float], transforms, rules: ColorRules) -> Resolv
         if not (kind in _HLS_TRANSFORMS and following in _HLS_TRANSFORMS):
             # A run of HLS transforms stays on sRGB channels; it is kept where it ends.
             rgb = [keep(channel) for channel in rgb]
-    return ResolvedColor(hex=_rgb_to_hex(*(c * 255 for c in rgb), rules=rules), alpha=alpha)
+    return ResolvedColor(hex=_rgb_to_hex(rgb[0] * 255, rgb[1] * 255, rgb[2] * 255, rules=rules), alpha=alpha)
 
 
 def _keeper(precision: int | None) -> Callable[[float], float]:

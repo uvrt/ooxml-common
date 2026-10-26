@@ -5,7 +5,13 @@
 ```sh
 pip install -e '.[dev]'
 python -m pytest -q
+ruff check .
+mypy
 ```
+
+CI's build job runs `ruff check .` and `mypy` at the versions the `dev` extra pins; both
+read their settings from pyproject.toml. A finding is fixed, not silenced: a `# noqa` or a
+`# type: ignore[code]` only on its line and with the reason next to it.
 
 Tests that need the OFL font files (`pptx2svg-fonts`, from a pptx2svg checkout) or fonts
 installed by Microsoft Office skip with a reason when they are absent; CI runs without

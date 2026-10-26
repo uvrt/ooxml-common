@@ -160,8 +160,9 @@ def render_with_resvg(
     from .fonts.rasterdb import needed_font_files
 
     files = [str(path) for path in font_files or ()]
-    dirs: list[str] | None = [str(path) for path in font_dirs or ()]
-    needed = needed_font_files(svg, font_files=files, font_dirs=dirs,
+    given_dirs = [str(path) for path in font_dirs or ()]
+    dirs: list[str] | None = given_dirs
+    needed = needed_font_files(svg, font_files=files, font_dirs=given_dirs,
                                system_fonts=not skip_system_fonts,
                                families=dict(families) if families else None)
     if needed is not None:

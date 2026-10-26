@@ -27,7 +27,7 @@ PERCENT_UNIT = 100000
 PX_PER_PT = 96 / 72
 
 
-def emu_to_px(emu: float, dpi: int = DEFAULT_DPI) -> float:
+def emu_to_px(emu: float, dpi: float = DEFAULT_DPI) -> float:
     return (emu / EMU_PER_INCH) * dpi
 
 
@@ -35,7 +35,7 @@ def emu_to_pt(emu: float) -> float:
     return emu / EMU_PER_POINT
 
 
-def px_to_emu(px: float, dpi: int = DEFAULT_DPI) -> float:
+def px_to_emu(px: float, dpi: float = DEFAULT_DPI) -> float:
     return (px / dpi) * EMU_PER_INCH
 
 

@@ -15,6 +15,7 @@ rules.
 
 from __future__ import annotations
 
+from typing import cast
 from xml.etree.ElementTree import Element
 
 from ..xmlutil import (
@@ -28,7 +29,7 @@ from ..xmlutil import (
     num_attr,
 )
 from .guides import arc_segments, evaluate_guides, resolve_value
-from .model import ArrowEndpoint, CustomGeometryPath
+from .model import ArrowEndpoint, CustomGeometryPath, LineJoin, RectangleAlignment
 from .source import (
     ColorTransform,
     SchemeColor,
@@ -517,8 +518,9 @@ def parse_relative_rect(rect: Element | None) -> tuple[float, float, float, floa
     )
 
 
-def parse_rectangle_alignment(value: str | None, fallback: str) -> str:
-    return value if value in RECTANGLE_ALIGNMENTS else fallback
+def parse_rectangle_alignment(value: str | None, fallback: RectangleAlignment) -> RectangleAlignment:
+    # The membership test is what makes ``value`` one of the Literal's names.
+    return cast(RectangleAlignment, value) if value in RECTANGLE_ALIGNMENTS else fallback
 
 
 def parse_pattern_fill(pattern: Element) -> SourceFill | None:
@@ -574,8 +576,9 @@ def parse_custom_dash(ln: Element) -> list[float] | None:
     return dashes
 
 
-def parse_line_join(ln: Element) -> str | None:
-    for name in ("round", "bevel", "miter"):
+def parse_line_join(ln: Element) -> LineJoin | None:
+    names: tuple[LineJoin, ...] = ("round", "bevel", "miter")
+    for name in names:
         if has_child(ln, name):
             return name
     return None
@@ -666,7 +669,7 @@ def _parse_outer_shadow(node: Element | None) -> SourceOuterShadow | None:
         distance=num_attr(node, "dist") or 0,
         direction=num_attr(node, "dir") or 0,
         color=color,
-        alignment=parse_rectangle_alignment(attr(node, "algn"), "b"),  # type: ignore[arg-type]
+        alignment=parse_rectangle_alignment(attr(node, "algn"), "b"),
         rotate_with_shape=attr(node, "rotWithShape") != "0",
     )
 
@@ -944,7 +947,7 @@ def parse_text_rect(sp_pr: Element | None) -> tuple[str, str, str, str] | None:
     rect = child(child(sp_pr, "custGeom"), "rect")
     if rect is None:
         return None
-    return tuple(attr(rect, key) or default for key, default in (("l", "l"), ("t", "t"), ("r", "r"), ("b", "b")))
+    return (attr(rect, "l") or "l", attr(rect, "t") or "t", attr(rect, "r") or "r", attr(rect, "b") or "b")
 
 
 def _parse_guide_list(parent: Element | None) -> list[tuple[str, str]]:
