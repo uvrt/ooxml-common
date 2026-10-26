@@ -21,9 +21,10 @@ import ooxml_common
 PACKAGE_DIR = Path(ooxml_common.__file__).resolve().parent
 SOURCES = sorted(PACKAGE_DIR.rglob("*.py"))
 
-#: Imported lazily inside a function, only when the caller asked for that capability,
-#: and each behind an extra: ``[measure]``.
-OPTIONAL = {"fontTools"}
+#: Imported lazily inside a function, only when the caller asked for that capability:
+#: fontTools behind the ``[measure]`` extra, and the rasterisers :mod:`ooxml_common.raster`
+#: calls behind the renderers' ``[png]`` and ``[cairo]`` extras.
+OPTIONAL = {"fontTools", "resvg_py", "cairosvg"}
 
 
 def _imports(path: Path) -> list[tuple[str, int]]:
@@ -61,6 +62,7 @@ def test_the_package_has_the_modules_it_claims():
         "ooxml_common.drawingml.preset_specs",
         "ooxml_common.imagemeta",
         "ooxml_common.svgimage",
+        "ooxml_common.raster",
         "ooxml_common.metafile",
         "ooxml_common.metafile.dib",
         "ooxml_common.metafile.gdi",

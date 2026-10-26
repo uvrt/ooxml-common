@@ -27,6 +27,8 @@ charts and the shape tree, with the shape and text body renderers that draw them
   measured in;
 * :mod:`ooxml_common.svgimage` -- an SVG picture's natural size as PowerPoint reads it,
   and the SVG with that size restated in pixels for a rasteriser;
+* :mod:`ooxml_common.raster` -- SVG to PNG through an installed rasteriser (resvg-py,
+  then cairosvg), and a page drawn in passes, for both renderers;
 * :mod:`ooxml_common.metafile` -- EMF and WMF pictures drawn from their GDI records as
   SVG, as Windows PowerPoint draws them, and device-independent bitmaps as PNG;
 * :mod:`ooxml_common.drawingml` -- DrawingML's value types, colour resolution with every
@@ -46,4 +48,4 @@ body's paragraphs against Word's own output.  :mod:`ooxml_common.drawingml.wrap`
 DrawingML text body's, which a chart and a SmartArt shape carry in either format.
 """
 
-__version__ = "0.32.0"
+__version__ = "0.33.0"
