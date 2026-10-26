@@ -56,6 +56,32 @@ def child(parent: Element | None, name: str) -> Element | None:
     return None
 
 
+def element_children(parent: Element | None, name: str | None = None) -> list[Element]:
+    """:func:`children`, elements only.
+
+    A comment or a processing instruction has a tag that is not a string: lxml keeps them
+    in the tree, and so does an ElementTree parser built with ``insert_comments`` or
+    ``insert_pis``.  :func:`children` returns them unfiltered, and asked for a name it
+    reads their tag as one, which fails; this skips them.  For a tree :func:`parse_xml`
+    made, which holds neither, the two return the same list.
+    """
+    if parent is None:
+        return []
+    if name is None:
+        return [node for node in parent if isinstance(node.tag, str)]
+    return [node for node in parent if isinstance(node.tag, str) and local_name(node.tag) == name]
+
+
+def element_child(parent: Element | None, name: str) -> Element | None:
+    """:func:`child`, past comments and processing instructions (:func:`element_children`)."""
+    if parent is None:
+        return None
+    for node in parent:
+        if isinstance(node.tag, str) and local_name(node.tag) == name:
+            return node
+    return None
+
+
 def child_path(parent: Element | None, *names: str) -> Element | None:
     """Walk a chain of local names, e.g. ``child_path(sp, "spPr", "xfrm", "off")``."""
     node = parent

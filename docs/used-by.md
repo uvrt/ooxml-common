@@ -55,7 +55,7 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.metafile` -- docx2svg, pptx2svg: `inline_metafile_images`, `metafile_to_svg`
 - `ooxml_common.metafile.dib` -- pptx2svg: `BI_ALPHABITFIELDS`, `BI_BITFIELDS`, `BI_JPEG`, `BI_PNG`, `BI_RGB`, `BI_RLE4`, `BI_RLE8`, `DecodedImage`, `DecodedPixels`, `MAX_PIXELS`, `PNG_COMPRESS_LEVEL`, `decode_dib`, `dib_to_image`, `encode_png`, `split_packed_dib`
 - `ooxml_common.numfmt` -- ooxml-edit, xlsx-agent: `DATE_KINDS`, `MEASURED`; ooxml-edit: `is_date_code`; xlsx-agent: `classify`
-- `ooxml_common.opc` -- docx2svg: `OpcPackage`; ooxml-edit: `CONTENT_TYPES_PART`, `REL_CHART`, `REL_IMAGE`, `REL_OFFICE_DOCUMENT`, `normalize_part_path`
+- `ooxml_common.opc` -- docx2svg, ooxml-edit: `CONTENT_TYPES_PART`, `REL_IMAGE`, `REL_OFFICE_DOCUMENT`, `normalize_part_path`; docx2svg: `OpcPackage`, `REL_HYPERLINK`, `REL_THEME`, `Relationship`, `rels_path_for`; ooxml-edit: `REL_CHART`
 - `ooxml_common.svgimage` -- pptx-agent: `with_pixel_size`; pptx2svg: `natural_size`, `with_pixel_sized_images`
 - `ooxml_common.text` -- pptx2svg: `kerning`, `metrics`
 - `ooxml_common.text.fontmap` -- docx2svg, pptx2svg: `generic_family`; docx2svg: `SUBSTITUTIONS`, `metrics_for`, `substitution_for`; pptx2svg: `JAPANESE_GOTHIC`, `covers_east_asian`, `family_key`, `japanese_fallback`, `metrics_fallback_font`
@@ -64,4 +64,4 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.text.recorded_symbol_faces` -- docx2svg: `ADVANCES`, `DECORATIONS`, `METRICS`
 - `ooxml_common.text.symbol_fonts` -- docx2svg: `to_unicode`; pptx2svg: `recorded_font_metrics`, `symbol_face`, `translate`
 - `ooxml_common.units` -- ooxml-edit: `EMU_PER_POINT`; pptx-agent: `PX_PER_PT`, `emu_to_px`, `px_to_emu`
-- `ooxml_common.xmlutil` -- docx2svg, pptx-agent: `child`, `local_name`; docx2svg: `attr`, `children`; ooxml-edit: `NS_R`
+- `ooxml_common.xmlutil` -- docx2svg, pptx-agent: `child`, `local_name`; docx2svg: `attr`, `children`, `descendants`, `element_child`, `element_children`, `parse_xml`; ooxml-edit: `NS_R`
