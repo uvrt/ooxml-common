@@ -460,6 +460,10 @@ USED_BY: dict[str, dict[str, str]] = {
         "with_pixel_size": "pptx-agent",
         "with_pixel_sized_images": "pptx2svg",
     },
+    "ooxml_common.stylenames": {
+        "find_style": "docx-agent",
+        "list_separator": "docx-agent",
+    },
     "ooxml_common.text": {
         "kerning": "pptx2svg",
         "metrics": "pptx2svg",
@@ -492,6 +496,9 @@ USED_BY: dict[str, dict[str, str]] = {
         "symbol_face": "pptx2svg",
         "to_unicode": "docx2svg",
         "translate": "pptx2svg",
+    },
+    "ooxml_common.themetint": {
+        "word_theme_tint": "docx-agent, docx2svg",
     },
     "ooxml_common.units": {
         "EMU_PER_POINT": "ooxml-edit",

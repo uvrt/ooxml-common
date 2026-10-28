@@ -234,7 +234,9 @@ def test_the_table_draws_what_docx2svg_wrote_by_hand(name, adjust):
         assert [p.fill for p in ours] == [p.fill for p in theirs]
     assert [p.stroke for p in ours] == [p.stroke for p in theirs]
     for a, b in zip(ours, theirs):
-        assert _points(a.d) == pytest.approx(_points(b.d), abs=1e-3)
+        # Flat: pytest's approx compares no nested structures (pytest 9.2 raises).
+        assert [v for point in _points(a.d) for v in point] == pytest.approx(
+            [v for point in _points(b.d) for v in point], abs=1e-3)
 
 
 # -- path data -------------------------------------------------------------------------

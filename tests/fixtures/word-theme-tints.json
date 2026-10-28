@@ -1,0 +1,3521 @@
+{
+"source": "Word 16.106 for Mac, 2026-10-28: made-up swatches (table cell shading and text, identical), read from Word's PDF (sRGB levels); the screen agreed. The last 27 are round 21 lane B's (paragraph shading and text).",
+"swatches": [
+{
+"base": "156082",
+"tint": null,
+"shade": "4D",
+"word": "061C27"
+},
+{
+"base": "E97132",
+"tint": "6B",
+"shade": null,
+"word": "F5C3A8"
+},
+{
+"base": "196B24",
+"tint": null,
+"shade": "B4",
+"word": "114B19"
+},
+{
+"base": "0F9ED5",
+"tint": "A0",
+"shade": null,
+"word": "59C8F3"
+},
+{
+"base": "A02B93",
+"tint": null,
+"shade": "89",
+"word": "55174E"
+},
+{
+"base": "4EA72E",
+"tint": "62",
+"shade": null,
+"word": "B6E6A5"
+},
+{
+"base": "000000",
+"tint": null,
+"shade": "FE",
+"word": "000000"
+},
+{
+"base": "0E2841",
+"tint": null,
+"shade": "35",
+"word": "03080D"
+},
+{
+"base": "FFFFFF",
+"tint": "DD",
+"shade": null,
+"word": "FFFFFF"
+},
+{
+"base": "E8E8E8",
+"tint": "66",
+"shade": null,
+"word": "F5F5F5"
+},
+{
+"base": "0E2841",
+"tint": null,
+"shade": "91",
+"word": "081624"
+},
+{
+"base": "E8E8E8",
+"tint": "1B",
+"shade": null,
+"word": "FCFCFC"
+},
+{
+"base": "467886",
+"tint": null,
+"shade": "49",
+"word": "142226"
+},
+{
+"base": "156082",
+"tint": "0D",
+"shade": null,
+"word": "EFF8FC"
+},
+{
+"base": "E97132",
+"tint": null,
+"shade": "3C",
+"word": "3B1806"
+},
+{
+"base": "196B24",
+"tint": null,
+"shade": "48",
+"word": "071D0A"
+},
+{
+"base": "0F9ED5",
+"tint": "9E",
+"shade": null,
+"word": "5BC9F3"
+},
+{
+"base": "A02B93",
+"tint": null,
+"shade": "98",
+"word": "5F1957"
+},
+{
+"base": "4EA72E",
+"tint": null,
+"shade": "8C",
+"word": "2A5B19"
+},
+{
+"base": "000000",
+"tint": "B3",
+"shade": null,
+"word": "4C4C4C"
+},
+{
+"base": "0E2841",
+"tint": null,
+"shade": "2F",
+"word": "02070B"
+},
+{
+"base": "FFFFFF",
+"tint": "23",
+"shade": null,
+"word": "FFFFFF"
+},
+{
+"base": "E8E8E8",
+"tint": null,
+"shade": "60",
+"word": "575757"
+},
+{
+"base": "0E2841",
+"tint": "59",
+"shade": null,
+"word": "83B4E4"
+},
+{
+"base": "E8E8E8",
+"tint": "D8",
+"shade": null,
+"word": "EBEBEB"
+},
+{
+"base": "467886",
+"tint": "2B",
+"shade": null,
+"word": "DDE9ED"
+},
+{
+"base": "156082",
+"tint": "FA",
+"shade": null,
+"word": "166488"
+},
+{
+"base": "E97132",
+"tint": null,
+"shade": "6E",
+"word": "6E2D0C"
+},
+{
+"base": "196B24",
+"tint": null,
+"shade": "77",
+"word": "0B3110"
+},
+{
+"base": "0F9ED5",
+"tint": null,
+"shade": "66",
+"word": "063E54"
+},
+{
+"base": "A02B93",
+"tint": null,
+"shade": "1F",
+"word": "130511"
+},
+{
+"base": "4EA72E",
+"tint": null,
+"shade": "28",
+"word": "0C1A07"
+},
+{
+"base": "000000",
+"tint": "9A",
+"shade": null,
+"word": "656565"
+},
+{
+"base": "0E2841",
+"tint": null,
+"shade": "26",
+"word": "020509"
+},
+{
+"base": "FFFFFF",
+"tint": null,
+"shade": "AF",
+"word": "AFAFAF"
+},
+{
+"base": "E8E8E8",
+"tint": "83",
+"shade": null,
+"word": "F3F3F3"
+},
+{
+"base": "0E2841",
+"tint": "A9",
+"shade": null,
+"word": "2771B8"
+},
+{
+"base": "E8E8E8",
+"tint": null,
+"shade": "73",
+"word": "686868"
+},
+{
+"base": "467886",
+"tint": "98",
+"shade": null,
+"word": "87B3C0"
+},
+{
+"base": "156082",
+"tint": "8F",
+"shade": null,
+"word": "51B5E3"
+},
+{
+"base": "E97132",
+"tint": null,
+"shade": "C6",
+"word": "C65115"
+},
+{
+"base": "196B24",
+"tint": "BF",
+"shade": null,
+"word": "2BB73D"
+},
+{
+"base": "0F9ED5",
+"tint": "2B",
+"shade": null,
+"word": "D2F0FC"
+},
+{
+"base": "A02B93",
+"tint": "0D",
+"shade": null,
+"word": "FBF2FA"
+},
+{
+"base": "4EA72E",
+"tint": null,
+"shade": "C6",
+"word": "3C8123"
+},
+{
+"base": "000000",
+"tint": null,
+"shade": "90",
+"word": "000000"
+},
+{
+"base": "0E2841",
+"tint": "E6",
+"shade": null,
+"word": "153D63"
+},
+{
+"base": "FFFFFF",
+"tint": "99",
+"shade": null,
+"word": "FFFFFF"
+},
+{
+"base": "E8E8E8",
+"tint": "BD",
+"shade": null,
+"word": "EDEDED"
+},
+{
+"base": "0E2841",
+"tint": "66",
+"shade": null,
+"word": "70A9E0"
+},
+{
+"base": "E8E8E8",
+"tint": "D9",
+"shade": null,
+"word": "EBEBEB"
+},
+{
+"base": "467886",
+"tint": "C0",
+"shade": null,
+"word": "67A0B0"
+},
+{
+"base": "156082",
+"tint": "7F",
+"shade": null,
+"word": "64BDE6"
+},
+{
+"base": "E97132",
+"tint": "F3",
+"shade": null,
+"word": "EA773B"
+},
+{
+"base": "196B24",
+"tint": null,
+"shade": "7B",
+"word": "0C3311"
+},
+{
+"base": "0F9ED5",
+"tint": "D9",
+"shade": null,
+"word": "1EB5EF"
+},
+{
+"base": "A02B93",
+"tint": null,
+"shade": "D4",
+"word": "842379"
+},
+{
+"base": "4EA72E",
+"tint": "A6",
+"shade": null,
+"word": "84D567"
+},
+{
+"base": "000000",
+"tint": "8C",
+"shade": null,
+"word": "737373"
+},
+{
+"base": "0E2841",
+"tint": "99",
+"shade": null,
+"word": "2C7FCE"
+},
+{
+"base": "FFFFFF",
+"tint": null,
+"shade": "26",
+"word": "262626"
+},
+{
+"base": "E8E8E8",
+"tint": "FD",
+"shade": null,
+"word": "E8E8E8"
+},
+{
+"base": "0E2841",
+"tint": "26",
+"shade": null,
+"word": "CADFF3"
+},
+{
+"base": "E8E8E8",
+"tint": null,
+"shade": "F5",
+"word": "DEDEDE"
+},
+{
+"base": "467886",
+"tint": "24",
+"shade": null,
+"word": "E2EDF0"
+},
+{
+"base": "156082",
+"tint": "21",
+"shade": null,
+"word": "D6EEF8"
+},
+{
+"base": "E97132",
+"tint": null,
+"shade": "80",
+"word": "80340D"
+},
+{
+"base": "196B24",
+"tint": "A6",
+"shade": null,
+"word": "37D04B"
+},
+{
+"base": "0F9ED5",
+"tint": null,
+"shade": "61",
+"word": "053B50"
+},
+{
+"base": "A02B93",
+"tint": "59",
+"shade": null,
+"word": "E8AAE1"
+},
+{
+"base": "4EA72E",
+"tint": "10",
+"shade": null,
+"word": "F3FBF0"
+},
+{
+"base": "000000",
+"tint": "E6",
+"shade": null,
+"word": "191919"
+},
+{
+"base": "0E2841",
+"tint": "80",
+"shade": null,
+"word": "4C94D8"
+},
+{
+"base": "FFFFFF",
+"tint": "33",
+"shade": null,
+"word": "FFFFFF"
+},
+{
+"base": "E8E8E8",
+"tint": "C4",
+"shade": null,
+"word": "EDEDED"
+},
+{
+"base": "0E2841",
+"tint": "35",
+"shade": null,
+"word": "B5D2EF"
+},
+{
+"base": "E8E8E8",
+"tint": "A4",
+"shade": null,
+"word": "F0F0F0"
+},
+{
+"base": "467886",
+"tint": null,
+"shade": "2B",
+"word": "0B1416"
+},
+{
+"base": "156082",
+"tint": null,
+"shade": "4D",
+"word": "061C27"
+},
+{
+"base": "E97132",
+"tint": "A9",
+"shade": null,
+"word": "F0A076"
+},
+{
+"base": "196B24",
+"tint": null,
+"shade": "48",
+"word": "071D0A"
+},
+{
+"base": "0F9ED5",
+"tint": null,
+"shade": "07",
+"word": "000405"
+},
+{
+"base": "A02B93",
+"tint": "26",
+"shade": null,
+"word": "F5DAF2"
+},
+{
+"base": "4EA72E",
+"tint": "83",
+"shade": null,
+"word": "9EDE87"
+},
+{
+"base": "000000",
+"tint": "40",
+"shade": null,
+"word": "BFBFBF"
+},
+{
+"base": "0E2841",
+"tint": "B3",
+"shade": null,
+"word": "2468AA"
+},
+{
+"base": "FFFFFF",
+"tint": "8D",
+"shade": null,
+"word": "FFFFFF"
+},
+{
+"base": "E8E8E8",
+"tint": null,
+"shade": "7F",
+"word": "737373"
+},
+{
+"base": "0E2841",
+"tint": null,
+"shade": "61",
+"word": "050F18"
+},
+{
+"base": "E8E8E8",
+"tint": null,
+"shade": "CC",
+"word": "B9B9B9"
+},
+{
+"base": "467886",
+"tint": "A4",
+"shade": null,
+"word": "7DADBB"
+},
+{
+"base": "156082",
+"tint": "33",
+"shade": null,
+"word": "C1E4F5"
+},
+{
+"base": "E97132",
+"tint": "69",
+"shade": null,
+"word": "F6C4AA"
+},
+{
+"base": "196B24",
+"tint": null,
+"shade": "E6",
+"word": "166020"
+},
+{
+"base": "0F9ED5",
+"tint": null,
+"shade": "50",
+"word": "043142"
+},
+{
+"base": "A02B93",
+"tint": null,
+"shade": "99",
+"word": "5F1957"
+},
+{
+"base": "4EA72E",
+"tint": null,
+"shade": "8C",
+"word": "2A5B19"
+},
+{
+"base": "000000",
+"tint": null,
+"shade": "99",
+"word": "000000"
+},
+{
+"base": "0E2841",
+"tint": null,
+"shade": "B6",
+"word": "0A1C2E"
+},
+{
+"base": "FFFFFF",
+"tint": "23",
+"shade": null,
+"word": "FFFFFF"
+},
+{
+"base": "E8E8E8",
+"tint": null,
+"shade": "8C",
+"word": "7F7F7F"
+},
+{
+"base": "0E2841",
+"tint": null,
+"shade": "A4",
+"word": "091929"
+},
+{
+"base": "E8E8E8",
+"tint": "73",
+"shade": null,
+"word": "F4F4F4"
+},
+{
+"base": "467886",
+"tint": null,
+"shade": "8B",
+"word": "264148"
+},
+{
+"base": "156082",
+"tint": "D5",
+"shade": null,
+"word": "1D85B4"
+},
+{
+"base": "E97132",
+"tint": null,
+"shade": "3A",
+"word": "3A1706"
+},
+{
+"base": "196B24",
+"tint": "59",
+"shade": null,
+"word": "94E69E"
+},
+{
+"base": "0F9ED5",
+"tint": null,
+"shade": "FC",
+"word": "0F9BD2"
+},
+{
+"base": "A02B93",
+"tint": null,
+"shade": "E1",
+"word": "8D2681"
+},
+{
+"base": "4EA72E",
+"tint": null,
+"shade": "D9",
+"word": "428D27"
+},
+{
+"base": "000000",
+"tint": "BF",
+"shade": null,
+"word": "404040"
+},
+{
+"base": "0E2841",
+"tint": "40",
+"shade": null,
+"word": "A5C9EB"
+},
+{
+"base": "32A1EF",
+"tint": "D4",
+"shade": null,
+"word": "54B0F1"
+},
+{
+"base": "35CE94",
+"tint": "80",
+"shade": null,
+"word": "99E6C9"
+},
+{
+"base": "C1183A",
+"tint": "AA",
+"shade": null,
+"word": "E9516F"
+},
+{
+"base": "50B015",
+"tint": "DA",
+"shade": null,
+"word": "62D81A"
+},
+{
+"base": "50B015",
+"tint": null,
+"shade": "65",
+"word": "1F4508"
+},
+{
+"base": "32A1EF",
+"tint": null,
+"shade": "99",
+"word": "0C63A0"
+},
+{
+"base": "35CE94",
+"tint": "CC",
+"shade": null,
+"word": "5DD7A9"
+},
+{
+"base": "50B015",
+"tint": null,
+"shade": "B6",
+"word": "387D0F"
+},
+{
+"base": "50B015",
+"tint": null,
+"shade": "33",
+"word": "0F2304"
+},
+{
+"base": "8A31D9",
+"tint": null,
+"shade": "B3",
+"word": "611D9D"
+},
+{
+"base": "8A31D9",
+"tint": null,
+"shade": "72",
+"word": "3D1264"
+},
+{
+"base": "8A31D9",
+"tint": "7F",
+"shade": null,
+"word": "C498EC"
+},
+{
+"base": "C1183A",
+"tint": null,
+"shade": "04",
+"word": "020000"
+},
+{
+"base": "50B015",
+"tint": null,
+"shade": "11",
+"word": "050B01"
+},
+{
+"base": "8B1E09",
+"tint": null,
+"shade": "D6",
+"word": "741907"
+},
+{
+"base": "8B1E09",
+"tint": null,
+"shade": "1A",
+"word": "0E0301"
+},
+{
+"base": "32A1EF",
+"tint": "08",
+"shade": null,
+"word": "F8FCFE"
+},
+{
+"base": "7F2425",
+"tint": null,
+"shade": "4E",
+"word": "260B0B"
+},
+{
+"base": "8A31D9",
+"tint": null,
+"shade": "33",
+"word": "1B082C"
+},
+{
+"base": "32A1EF",
+"tint": "0D",
+"shade": null,
+"word": "F4FAFE"
+},
+{
+"base": "8B1E09",
+"tint": "F8",
+"shade": null,
+"word": "941F09"
+},
+{
+"base": "35CE94",
+"tint": "26",
+"shade": null,
+"word": "E0F7EE"
+},
+{
+"base": "F7F4BF",
+"tint": "B4",
+"shade": null,
+"word": "F9F7D1"
+},
+{
+"base": "8B1E09",
+"tint": null,
+"shade": "59",
+"word": "300A03"
+},
+{
+"base": "8B1E09",
+"tint": null,
+"shade": "D0",
+"word": "711807"
+},
+{
+"base": "F7F4BF",
+"tint": null,
+"shade": "59",
+"word": "878111"
+},
+{
+"base": "50B015",
+"tint": "CC",
+"shade": null,
+"word": "6AE41F"
+},
+{
+"base": "50B015",
+"tint": "A0",
+"shade": null,
+"word": "8AEA4F"
+},
+{
+"base": "C1183A",
+"tint": "40",
+"shade": null,
+"word": "F7BDC8"
+},
+{
+"base": "32A1EF",
+"tint": null,
+"shade": "60",
+"word": "083E64"
+},
+{
+"base": "C1183A",
+"tint": "B3",
+"shade": null,
+"word": "E84767"
+},
+{
+"base": "F7F4BF",
+"tint": null,
+"shade": "A6",
+"word": "E6DC37"
+},
+{
+"base": "50B015",
+"tint": null,
+"shade": "30",
+"word": "0F2104"
+},
+{
+"base": "C1183A",
+"tint": "62",
+"shade": null,
+"word": "F29AAC"
+},
+{
+"base": "F7F4BF",
+"tint": null,
+"shade": "0A",
+"word": "0F0E02"
+},
+{
+"base": "50B015",
+"tint": "8C",
+"shade": null,
+"word": "98EC65"
+},
+{
+"base": "32A1EF",
+"tint": "CC",
+"shade": null,
+"word": "5AB3F2"
+},
+{
+"base": "7F2425",
+"tint": null,
+"shade": "A3",
+"word": "511717"
+},
+{
+"base": "C1183A",
+"tint": null,
+"shade": "99",
+"word": "730E22"
+},
+{
+"base": "7F2425",
+"tint": "ED",
+"shade": null,
+"word": "91292A"
+},
+{
+"base": "35CE94",
+"tint": null,
+"shade": "99",
+"word": "1E7C58"
+},
+{
+"base": "8B1E09",
+"tint": "D9",
+"shade": null,
+"word": "BD280C"
+},
+{
+"base": "8A31D9",
+"tint": null,
+"shade": "51",
+"word": "2B0D47"
+},
+{
+"base": "32A1EF",
+"tint": null,
+"shade": "99",
+"word": "0C63A0"
+},
+{
+"base": "C1183A",
+"tint": "84",
+"shade": null,
+"word": "EE778F"
+},
+{
+"base": "35CE94",
+"tint": "E6",
+"shade": null,
+"word": "48D29E"
+},
+{
+"base": "8A31D9",
+"tint": "F8",
+"shade": null,
+"word": "8D36DA"
+},
+{
+"base": "50B015",
+"tint": "D9",
+"shade": null,
+"word": "62D91A"
+},
+{
+"base": "50B015",
+"tint": "39",
+"shade": null,
+"word": "D5F7C0"
+},
+{
+"base": "8B1E09",
+"tint": "F2",
+"shade": null,
+"word": "9C210A"
+},
+{
+"base": "8A31D9",
+"tint": "40",
+"shade": null,
+"word": "E1CBF5"
+},
+{
+"base": "35CE94",
+"tint": null,
+"shade": "7F",
+"word": "196749"
+},
+{
+"base": "32A1EF",
+"tint": "B3",
+"shade": null,
+"word": "6EBCF3"
+},
+{
+"base": "C1183A",
+"tint": "65",
+"shade": null,
+"word": "F297A9"
+},
+{
+"base": "8A31D9",
+"tint": "52",
+"shade": null,
+"word": "D9BCF2"
+},
+{
+"base": "8B1E09",
+"tint": null,
+"shade": "4D",
+"word": "290902"
+},
+{
+"base": "8A31D9",
+"tint": null,
+"shade": "A0",
+"word": "561A8C"
+},
+{
+"base": "7F2425",
+"tint": "BF",
+"shade": null,
+"word": "C23738"
+},
+{
+"base": "F7F4BF",
+"tint": null,
+"shade": "73",
+"word": "AFA616"
+},
+{
+"base": "F7F4BF",
+"tint": null,
+"shade": "4D",
+"word": "756F0E"
+},
+{
+"base": "8A31D9",
+"tint": "F3",
+"shade": null,
+"word": "8F3ADA"
+},
+{
+"base": "32A1EF",
+"tint": null,
+"shade": "9B",
+"word": "0C64A2"
+},
+{
+"base": "50B015",
+"tint": null,
+"shade": "59",
+"word": "1B3D07"
+},
+{
+"base": "8B1E09",
+"tint": "C9",
+"shade": null,
+"word": "D22D0D"
+},
+{
+"base": "8A31D9",
+"tint": null,
+"shade": "FA",
+"word": "872CD8"
+},
+{
+"base": "C1183A",
+"tint": null,
+"shade": "AC",
+"word": "821027"
+},
+{
+"base": "8A31D9",
+"tint": null,
+"shade": "5B",
+"word": "310E4F"
+},
+{
+"base": "F7F4BF",
+"tint": null,
+"shade": "86",
+"word": "CCC219"
+},
+{
+"base": "50B015",
+"tint": null,
+"shade": "EC",
+"word": "49A213"
+},
+{
+"base": "32A1EF",
+"tint": "DA",
+"shade": null,
+"word": "4FAEF1"
+},
+{
+"base": "8A31D9",
+"tint": "E6",
+"shade": null,
+"word": "9545DC"
+},
+{
+"base": "F7F4BF",
+"tint": null,
+"shade": "99",
+"word": "E3D923"
+},
+{
+"base": "8B1E09",
+"tint": "C3",
+"shade": null,
+"word": "DA2F0E"
+},
+{
+"base": "35CE94",
+"tint": "7F",
+"shade": null,
+"word": "9AE6C9"
+},
+{
+"base": "7F2425",
+"tint": "D5",
+"shade": null,
+"word": "AB3031"
+},
+{
+"base": "7F2425",
+"tint": null,
+"shade": "BF",
+"word": "5F1B1B"
+},
+{
+"base": "50B015",
+"tint": "59",
+"shade": null,
+"word": "BEF39D"
+},
+{
+"base": "C1183A",
+"tint": "8C",
+"shade": null,
+"word": "ED6F88"
+},
+{
+"base": "32A1EF",
+"tint": null,
+"shade": "0D",
+"word": "01080D"
+},
+{
+"base": "32A1EF",
+"tint": null,
+"shade": "99",
+"word": "0C63A0"
+},
+{
+"base": "7F2425",
+"tint": null,
+"shade": "3F",
+"word": "1F0909"
+},
+{
+"base": "35CE94",
+"tint": null,
+"shade": "7F",
+"word": "196749"
+},
+{
+"base": "8B1E09",
+"tint": "37",
+"shade": null,
+"word": "FAC0B5"
+},
+{
+"base": "8A31D9",
+"tint": null,
+"shade": "22",
+"word": "12051D"
+},
+{
+"base": "35CE94",
+"tint": null,
+"shade": "E6",
+"word": "2DBB85"
+},
+{
+"base": "C1183A",
+"tint": null,
+"shade": "53",
+"word": "3E0712"
+},
+{
+"base": "7F2425",
+"tint": null,
+"shade": "5A",
+"word": "2C0C0C"
+},
+{
+"base": "32A1EF",
+"tint": "CC",
+"shade": null,
+"word": "5AB3F2"
+},
+{
+"base": "50B015",
+"tint": null,
+"shade": "BF",
+"word": "3B830F"
+},
+{
+"base": "F7F4BF",
+"tint": "BF",
+"shade": null,
+"word": "F9F6CF"
+},
+{
+"base": "C1183A",
+"tint": null,
+"shade": "66",
+"word": "4D0917"
+},
+{
+"base": "F7F4BF",
+"tint": "99",
+"shade": null,
+"word": "FAF8D8"
+},
+{
+"base": "8B1E09",
+"tint": null,
+"shade": "5A",
+"word": "300A03"
+},
+{
+"base": "8A31D9",
+"tint": "18",
+"shade": null,
+"word": "F3EBFB"
+},
+{
+"base": "8B1E09",
+"tint": "90",
+"shade": null,
+"word": "F25B3E"
+},
+{
+"base": "35CE94",
+"tint": null,
+"shade": "F1",
+"word": "2FC48C"
+},
+{
+"base": "F7F4BF",
+"tint": "49",
+"shade": null,
+"word": "FCFBEC"
+},
+{
+"base": "8B1E09",
+"tint": null,
+"shade": "EF",
+"word": "821C08"
+},
+{
+"base": "8A31D9",
+"tint": null,
+"shade": "B4",
+"word": "611D9E"
+},
+{
+"base": "50B015",
+"tint": "4D",
+"shade": null,
+"word": "C6F5AA"
+},
+{
+"base": "F7F4BF",
+"tint": null,
+"shade": "0D",
+"word": "131202"
+},
+{
+"base": "32A1EF",
+"tint": "AF",
+"shade": null,
+"word": "72BEF4"
+},
+{
+"base": "50B015",
+"tint": "99",
+"shade": null,
+"word": "8FEB57"
+},
+{
+"base": "50B015",
+"tint": null,
+"shade": "99",
+"word": "2F690C"
+},
+{
+"base": "C1183A",
+"tint": "D9",
+"shade": null,
+"word": "E32047"
+},
+{
+"base": "C1183A",
+"tint": null,
+"shade": "7F",
+"word": "600C1C"
+},
+{
+"base": "F7F4BF",
+"tint": null,
+"shade": "50",
+"word": "7A740F"
+},
+{
+"base": "8A31D9",
+"tint": "A6",
+"shade": null,
+"word": "B278E6"
+},
+{
+"base": "7F2425",
+"tint": null,
+"shade": "3E",
+"word": "1E0809"
+},
+{
+"base": "35CE94",
+"tint": "F0",
+"shade": null,
+"word": "40D09A"
+},
+{
+"base": "32A1EF",
+"tint": "3A",
+"shade": null,
+"word": "D0E9FB"
+},
+{
+"base": "8A31D9",
+"tint": null,
+"shade": "CC",
+"word": "6E21B3"
+},
+{
+"base": "66D21E",
+"tint": "A3",
+"shade": null,
+"word": "9BE967"
+},
+{
+"base": "D13E87",
+"tint": "3B",
+"shade": null,
+"word": "F4D2E3"
+},
+{
+"base": "D13E87",
+"tint": null,
+"shade": "66",
+"word": "571535"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "06",
+"word": "020303"
+},
+{
+"base": "4FA299",
+"tint": "1A",
+"shade": null,
+"word": "ECF6F4"
+},
+{
+"base": "66D21E",
+"tint": "7F",
+"shade": null,
+"word": "B1EE89"
+},
+{
+"base": "73D95D",
+"tint": "0D",
+"shade": null,
+"word": "F7FDF6"
+},
+{
+"base": "73D95D",
+"tint": "93",
+"shade": null,
+"word": "AEE9A1"
+},
+{
+"base": "5170AD",
+"tint": "B3",
+"shade": null,
+"word": "849AC5"
+},
+{
+"base": "66D21E",
+"tint": null,
+"shade": "B3",
+"word": "479315"
+},
+{
+"base": "DA7327",
+"tint": "26",
+"shade": null,
+"word": "F9E9DE"
+},
+{
+"base": "FE29CD",
+"tint": null,
+"shade": "F2",
+"word": "FE19C9"
+},
+{
+"base": "35FAB7",
+"tint": "94",
+"shade": null,
+"word": "89FCD5"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "B1",
+"word": "367069"
+},
+{
+"base": "66D21E",
+"tint": null,
+"shade": "3B",
+"word": "173007"
+},
+{
+"base": "66D21E",
+"tint": "99",
+"shade": null,
+"word": "A1EA71"
+},
+{
+"base": "DA7327",
+"tint": "90",
+"shade": null,
+"word": "EAAF84"
+},
+{
+"base": "66D21E",
+"tint": null,
+"shade": "66",
+"word": "28530C"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "07",
+"word": "020403"
+},
+{
+"base": "DA7327",
+"tint": "7F",
+"shade": null,
+"word": "ECB893"
+},
+{
+"base": "DA7327",
+"tint": "ED",
+"shade": null,
+"word": "DC7C36"
+},
+{
+"base": "D13E87",
+"tint": null,
+"shade": "1A",
+"word": "16050D"
+},
+{
+"base": "D13E87",
+"tint": "7F",
+"shade": null,
+"word": "E89EC2"
+},
+{
+"base": "35FAB7",
+"tint": "4E",
+"shade": null,
+"word": "C1FDE8"
+},
+{
+"base": "35FAB7",
+"tint": "4D",
+"shade": null,
+"word": "C1FDE9"
+},
+{
+"base": "66D21E",
+"tint": "7F",
+"shade": null,
+"word": "B1EE89"
+},
+{
+"base": "DA7327",
+"tint": "4A",
+"shade": null,
+"word": "F4D6C0"
+},
+{
+"base": "FE29CD",
+"tint": null,
+"shade": "0E",
+"word": "0F000C"
+},
+{
+"base": "73D95D",
+"tint": "CC",
+"shade": null,
+"word": "8EE07D"
+},
+{
+"base": "66D21E",
+"tint": "80",
+"shade": null,
+"word": "B0EE88"
+},
+{
+"base": "5170AD",
+"tint": null,
+"shade": "DC",
+"word": "466095"
+},
+{
+"base": "35FAB7",
+"tint": "E6",
+"shade": null,
+"word": "48FABD"
+},
+{
+"base": "DA7327",
+"tint": "1A",
+"shade": null,
+"word": "FBF0E8"
+},
+{
+"base": "66D21E",
+"tint": "A2",
+"shade": null,
+"word": "9CE968"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "E6",
+"word": "479289"
+},
+{
+"base": "35FAB7",
+"tint": "A6",
+"shade": null,
+"word": "7BFBCF"
+},
+{
+"base": "D13E87",
+"tint": "66",
+"shade": null,
+"word": "ECB1CE"
+},
+{
+"base": "D13E87",
+"tint": "9E",
+"shade": null,
+"word": "E287B4"
+},
+{
+"base": "4FA299",
+"tint": "E6",
+"shade": null,
+"word": "5BAFA6"
+},
+{
+"base": "66D21E",
+"tint": "90",
+"shade": null,
+"word": "A7EC79"
+},
+{
+"base": "5170AD",
+"tint": "F5",
+"shade": null,
+"word": "5775B0"
+},
+{
+"base": "66D21E",
+"tint": null,
+"shade": "A6",
+"word": "428813"
+},
+{
+"base": "35FAB7",
+"tint": "73",
+"shade": null,
+"word": "A3FCDE"
+},
+{
+"base": "D13E87",
+"tint": null,
+"shade": "E6",
+"word": "C52F79"
+},
+{
+"base": "73D95D",
+"tint": "EF",
+"shade": null,
+"word": "7BDB67"
+},
+{
+"base": "35FAB7",
+"tint": "27",
+"shade": null,
+"word": "E0FEF3"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "1A",
+"word": "08100F"
+},
+{
+"base": "66D21E",
+"tint": "D6",
+"shade": null,
+"word": "7CE238"
+},
+{
+"base": "73D95D",
+"tint": null,
+"shade": "E0",
+"word": "58D13E"
+},
+{
+"base": "DA7327",
+"tint": null,
+"shade": "39",
+"word": "301908"
+},
+{
+"base": "5170AD",
+"tint": "90",
+"shade": null,
+"word": "9CADD1"
+},
+{
+"base": "35FAB7",
+"tint": "4D",
+"shade": null,
+"word": "C1FDE9"
+},
+{
+"base": "FE29CD",
+"tint": null,
+"shade": "8A",
+"word": "9E007A"
+},
+{
+"base": "DA7327",
+"tint": "B3",
+"shade": null,
+"word": "E59C67"
+},
+{
+"base": "35FAB7",
+"tint": "DC",
+"shade": null,
+"word": "50FAC0"
+},
+{
+"base": "DA7327",
+"tint": null,
+"shade": "90",
+"word": "7B4015"
+},
+{
+"base": "D13E87",
+"tint": null,
+"shade": "2A",
+"word": "230816"
+},
+{
+"base": "35FAB7",
+"tint": null,
+"shade": "8C",
+"word": "04A26C"
+},
+{
+"base": "DA7327",
+"tint": null,
+"shade": "4D",
+"word": "42220B"
+},
+{
+"base": "5170AD",
+"tint": null,
+"shade": "AA",
+"word": "364A73"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "D1",
+"word": "40847D"
+},
+{
+"base": "DA7327",
+"tint": null,
+"shade": "4D",
+"word": "42220B"
+},
+{
+"base": "FE29CD",
+"tint": null,
+"shade": "FB",
+"word": "FE24CB"
+},
+{
+"base": "D13E87",
+"tint": "12",
+"shade": null,
+"word": "FBF1F6"
+},
+{
+"base": "FE29CD",
+"tint": "44",
+"shade": null,
+"word": "FEC5F1"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "E7",
+"word": "47928A"
+},
+{
+"base": "4FA299",
+"tint": "A7",
+"shade": null,
+"word": "88C5BE"
+},
+{
+"base": "5170AD",
+"tint": null,
+"shade": "8C",
+"word": "2C3D5E"
+},
+{
+"base": "35FAB7",
+"tint": "F2",
+"shade": null,
+"word": "3FFABA"
+},
+{
+"base": "35FAB7",
+"tint": null,
+"shade": "8C",
+"word": "04A26C"
+},
+{
+"base": "FE29CD",
+"tint": "84",
+"shade": null,
+"word": "FE90E4"
+},
+{
+"base": "35FAB7",
+"tint": null,
+"shade": "E6",
+"word": "17F9AC"
+},
+{
+"base": "5170AD",
+"tint": null,
+"shade": "8C",
+"word": "2C3D5E"
+},
+{
+"base": "35FAB7",
+"tint": null,
+"shade": "61",
+"word": "02704A"
+},
+{
+"base": "D13E87",
+"tint": null,
+"shade": "5B",
+"word": "4E122F"
+},
+{
+"base": "73D95D",
+"tint": "7F",
+"shade": null,
+"word": "B9ECAE"
+},
+{
+"base": "FE29CD",
+"tint": "F2",
+"shade": null,
+"word": "FE33CF"
+},
+{
+"base": "D13E87",
+"tint": null,
+"shade": "8C",
+"word": "781C49"
+},
+{
+"base": "73D95D",
+"tint": null,
+"shade": "A6",
+"word": "3CA326"
+},
+{
+"base": "FE29CD",
+"tint": null,
+"shade": "03",
+"word": "030002"
+},
+{
+"base": "66D21E",
+"tint": "15",
+"shade": null,
+"word": "F2FCEB"
+},
+{
+"base": "73D95D",
+"tint": "22",
+"shade": null,
+"word": "ECFAE9"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "26",
+"word": "0B1716"
+},
+{
+"base": "FE29CD",
+"tint": "E6",
+"shade": null,
+"word": "FE3DD1"
+},
+{
+"base": "DA7327",
+"tint": null,
+"shade": "1A",
+"word": "160B03"
+},
+{
+"base": "66D21E",
+"tint": null,
+"shade": "CB",
+"word": "51A718"
+},
+{
+"base": "35FAB7",
+"tint": "4C",
+"shade": null,
+"word": "C2FDE9"
+},
+{
+"base": "DA7327",
+"tint": null,
+"shade": "1A",
+"word": "160B03"
+},
+{
+"base": "4FA299",
+"tint": "CC",
+"shade": null,
+"word": "6EB8B0"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "88",
+"word": "2A5651"
+},
+{
+"base": "FE29CD",
+"tint": "98",
+"shade": null,
+"word": "FE7FE1"
+},
+{
+"base": "D13E87",
+"tint": "82",
+"shade": null,
+"word": "E79CC1"
+},
+{
+"base": "66D21E",
+"tint": "57",
+"shade": null,
+"word": "C9F3AE"
+},
+{
+"base": "73D95D",
+"tint": null,
+"shade": "33",
+"word": "12320B"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "CC",
+"word": "3F817A"
+},
+{
+"base": "4FA299",
+"tint": "6C",
+"shade": null,
+"word": "B2D9D5"
+},
+{
+"base": "66D21E",
+"tint": null,
+"shade": "A1",
+"word": "408413"
+},
+{
+"base": "35FAB7",
+"tint": "99",
+"shade": null,
+"word": "85FCD3"
+},
+{
+"base": "73D95D",
+"tint": "B2",
+"shade": null,
+"word": "9DE48D"
+},
+{
+"base": "66D21E",
+"tint": null,
+"shade": "01",
+"word": "000000"
+},
+{
+"base": "66D21E",
+"tint": "B3",
+"shade": null,
+"word": "91E759"
+},
+{
+"base": "73D95D",
+"tint": null,
+"shade": "F8",
+"word": "6CD756"
+},
+{
+"base": "FE29CD",
+"tint": "66",
+"shade": null,
+"word": "FEA9EA"
+},
+{
+"base": "66D21E",
+"tint": null,
+"shade": "52",
+"word": "204309"
+},
+{
+"base": "4FA299",
+"tint": null,
+"shade": "E4",
+"word": "469088"
+},
+{
+"base": "35FAB7",
+"tint": "0D",
+"shade": null,
+"word": "F4FEFB"
+},
+{
+"base": "35FAB7",
+"tint": "40",
+"shade": null,
+"word": "CCFDEC"
+},
+{
+"base": "DA7327",
+"tint": "66",
+"shade": null,
+"word": "F0C6A8"
+},
+{
+"base": "73D95D",
+"tint": "59",
+"shade": null,
+"word": "CDF1C6"
+},
+{
+"base": "35FAB7",
+"tint": null,
+"shade": "A8",
+"word": "04C281"
+},
+{
+"base": "D13E87",
+"tint": "30",
+"shade": null,
+"word": "F6DAE8"
+},
+{
+"base": "5170AD",
+"tint": null,
+"shade": "7F",
+"word": "283756"
+},
+{
+"base": "F29035",
+"tint": null,
+"shade": "26",
+"word": "291502"
+},
+{
+"base": "7084A4",
+"tint": null,
+"shade": "3B",
+"word": "181E26"
+},
+{
+"base": "7084A4",
+"tint": "D5",
+"shade": null,
+"word": "8798B3"
+},
+{
+"base": "E0950E",
+"tint": null,
+"shade": "A0",
+"word": "8C5C08"
+},
+{
+"base": "7084A4",
+"tint": null,
+"shade": "30",
+"word": "14181F"
+},
+{
+"base": "B22F15",
+"tint": null,
+"shade": "80",
+"word": "59170A"
+},
+{
+"base": "405147",
+"tint": "D9",
+"shade": null,
+"word": "586F61"
+},
+{
+"base": "18A3F3",
+"tint": "E6",
+"shade": null,
+"word": "2EABF4"
+},
+{
+"base": "E0950E",
+"tint": "37",
+"shade": null,
+"word": "FBE8C7"
+},
+{
+"base": "7084A4",
+"tint": null,
+"shade": "6D",
+"word": "2D3747"
+},
+{
+"base": "405147",
+"tint": "B3",
+"shade": null,
+"word": "708D7C"
+},
+{
+"base": "18A3F3",
+"tint": "33",
+"shade": null,
+"word": "D0ECFC"
+},
+{
+"base": "E0950E",
+"tint": "A2",
+"shade": null,
+"word": "F4BD5C"
+},
+{
+"base": "405147",
+"tint": "39",
+"shade": null,
+"word": "D1DBD5"
+},
+{
+"base": "F29035",
+"tint": "59",
+"shade": null,
+"word": "FAD7B8"
+},
+{
+"base": "DCF973",
+"tint": "C7",
+"shade": null,
+"word": "E3FA91"
+},
+{
+"base": "405147",
+"tint": "7B",
+"shade": null,
+"word": "9CB1A5"
+},
+{
+"base": "B22F15",
+"tint": null,
+"shade": "59",
+"word": "3E1007"
+},
+{
+"base": "39B237",
+"tint": "81",
+"shade": null,
+"word": "94DE93"
+},
+{
+"base": "18A3F3",
+"tint": null,
+"shade": "BE",
+"word": "0A7ABC"
+},
+{
+"base": "7084A4",
+"tint": "01",
+"shade": null,
+"word": "FEFEFE"
+},
+{
+"base": "B22F15",
+"tint": "12",
+"shade": null,
+"word": "FCEEEB"
+},
+{
+"base": "DCF973",
+"tint": "9F",
+"shade": null,
+"word": "E8FBA7"
+},
+{
+"base": "7084A4",
+"tint": "66",
+"shade": null,
+"word": "C5CDDA"
+},
+{
+"base": "18A3F3",
+"tint": "73",
+"shade": null,
+"word": "96D5F9"
+},
+{
+"base": "B22F15",
+"tint": "47",
+"shade": null,
+"word": "F6BCB1"
+},
+{
+"base": "DCF973",
+"tint": "8C",
+"shade": null,
+"word": "EBFBB1"
+},
+{
+"base": "39B237",
+"tint": null,
+"shade": "AC",
+"word": "267725"
+},
+{
+"base": "7084A4",
+"tint": "61",
+"shade": null,
+"word": "C8D0DC"
+},
+{
+"base": "7084A4",
+"tint": null,
+"shade": "D4",
+"word": "596C8C"
+},
+{
+"base": "7084A4",
+"tint": "66",
+"shade": null,
+"word": "C5CDDA"
+},
+{
+"base": "F29035",
+"tint": null,
+"shade": "CC",
+"word": "DD710E"
+},
+{
+"base": "F29035",
+"tint": "7F",
+"shade": null,
+"word": "F8C79A"
+},
+{
+"base": "18A3F3",
+"tint": null,
+"shade": "F6",
+"word": "0E9EF2"
+},
+{
+"base": "39B237",
+"tint": null,
+"shade": "D9",
+"word": "30972E"
+},
+{
+"base": "7084A4",
+"tint": null,
+"shade": "02",
+"word": "000001"
+},
+{
+"base": "B22F15",
+"tint": "43",
+"shade": null,
+"word": "F6C0B5"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "A6",
+"word": "B3E209"
+},
+{
+"base": "18A3F3",
+"tint": "7F",
+"shade": null,
+"word": "8BD0F9"
+},
+{
+"base": "7084A4",
+"tint": null,
+"shade": "99",
+"word": "404E65"
+},
+{
+"base": "E0950E",
+"tint": null,
+"shade": "05",
+"word": "040200"
+},
+{
+"base": "7084A4",
+"tint": "CC",
+"shade": null,
+"word": "8C9CB6"
+},
+{
+"base": "39B237",
+"tint": "33",
+"shade": null,
+"word": "D4F2D4"
+},
+{
+"base": "E0950E",
+"tint": null,
+"shade": "66",
+"word": "593B05"
+},
+{
+"base": "E0950E",
+"tint": "40",
+"shade": null,
+"word": "FBE5BE"
+},
+{
+"base": "B22F15",
+"tint": null,
+"shade": "A5",
+"word": "731E0D"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "83",
+"word": "8DB207"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "8C",
+"word": "97BF08"
+},
+{
+"base": "F29035",
+"tint": "26",
+"shade": null,
+"word": "FDEEE0"
+},
+{
+"base": "405147",
+"tint": "0B",
+"shade": null,
+"word": "F6F8F6"
+},
+{
+"base": "18A3F3",
+"tint": "B3",
+"shade": null,
+"word": "5CBDF6"
+},
+{
+"base": "F29035",
+"tint": null,
+"shade": "C8",
+"word": "D96F0E"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "80",
+"word": "8AAF07"
+},
+{
+"base": "18A3F3",
+"tint": null,
+"shade": "5F",
+"word": "053D5E"
+},
+{
+"base": "405147",
+"tint": "E6",
+"shade": null,
+"word": "4F6458"
+},
+{
+"base": "E0950E",
+"tint": null,
+"shade": "7C",
+"word": "6C4806"
+},
+{
+"base": "B22F15",
+"tint": null,
+"shade": "B2",
+"word": "7C200E"
+},
+{
+"base": "39B237",
+"tint": "80",
+"shade": null,
+"word": "95DE94"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "7F",
+"word": "89AD07"
+},
+{
+"base": "DCF973",
+"tint": "5E",
+"shade": null,
+"word": "F1FCCB"
+},
+{
+"base": "39B237",
+"tint": null,
+"shade": "47",
+"word": "0F310F"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "BF",
+"word": "C5F51B"
+},
+{
+"base": "18A3F3",
+"tint": "CC",
+"shade": null,
+"word": "46B4F5"
+},
+{
+"base": "E0950E",
+"tint": "3B",
+"shade": null,
+"word": "FBE7C3"
+},
+{
+"base": "B22F15",
+"tint": null,
+"shade": "11",
+"word": "0B0301"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "E5",
+"word": "D2F74F"
+},
+{
+"base": "39B237",
+"tint": null,
+"shade": "07",
+"word": "010401"
+},
+{
+"base": "39B237",
+"tint": "0D",
+"shade": null,
+"word": "F4FBF4"
+},
+{
+"base": "7084A4",
+"tint": "66",
+"shade": null,
+"word": "C5CDDA"
+},
+{
+"base": "B22F15",
+"tint": "99",
+"shade": null,
+"word": "EB7058"
+},
+{
+"base": "F29035",
+"tint": null,
+"shade": "33",
+"word": "371C03"
+},
+{
+"base": "B22F15",
+"tint": "C9",
+"shade": null,
+"word": "E54323"
+},
+{
+"base": "39B237",
+"tint": "F1",
+"shade": null,
+"word": "3CBD3A"
+},
+{
+"base": "39B237",
+"tint": "96",
+"shade": null,
+"word": "83D882"
+},
+{
+"base": "7084A4",
+"tint": "E6",
+"shade": null,
+"word": "7D8FAC"
+},
+{
+"base": "18A3F3",
+"tint": null,
+"shade": "BB",
+"word": "0978B9"
+},
+{
+"base": "7084A4",
+"tint": "BA",
+"shade": null,
+"word": "96A5BC"
+},
+{
+"base": "B22F15",
+"tint": null,
+"shade": "75",
+"word": "511509"
+},
+{
+"base": "B22F15",
+"tint": "80",
+"shade": null,
+"word": "EE8773"
+},
+{
+"base": "DCF973",
+"tint": "78",
+"shade": null,
+"word": "EEFCBC"
+},
+{
+"base": "E0950E",
+"tint": "B3",
+"shade": null,
+"word": "F3B64B"
+},
+{
+"base": "B22F15",
+"tint": null,
+"shade": "59",
+"word": "3E1007"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "3C",
+"word": "405103"
+},
+{
+"base": "405147",
+"tint": "ED",
+"shade": null,
+"word": "4B5F53"
+},
+{
+"base": "39B237",
+"tint": "74",
+"shade": null,
+"word": "9FE19E"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "9B",
+"word": "A7D309"
+},
+{
+"base": "F29035",
+"tint": null,
+"shade": "BD",
+"word": "CD690D"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "E6",
+"word": "D2F750"
+},
+{
+"base": "18A3F3",
+"tint": "0D",
+"shade": null,
+"word": "F2FAFE"
+},
+{
+"base": "405147",
+"tint": "8F",
+"shade": null,
+"word": "8CA496"
+},
+{
+"base": "F29035",
+"tint": "2B",
+"shade": null,
+"word": "FCECDC"
+},
+{
+"base": "7084A4",
+"tint": "F2",
+"shade": null,
+"word": "778AA8"
+},
+{
+"base": "F29035",
+"tint": "D9",
+"shade": null,
+"word": "F4A053"
+},
+{
+"base": "E0950E",
+"tint": null,
+"shade": "B3",
+"word": "9D6809"
+},
+{
+"base": "39B237",
+"tint": null,
+"shade": "CE",
+"word": "2E8F2C"
+},
+{
+"base": "B22F15",
+"tint": null,
+"shade": "26",
+"word": "1A0603"
+},
+{
+"base": "F29035",
+"tint": "FC",
+"shade": null,
+"word": "F29037"
+},
+{
+"base": "18A3F3",
+"tint": null,
+"shade": "D4",
+"word": "0B89D2"
+},
+{
+"base": "18A3F3",
+"tint": null,
+"shade": "3B",
+"word": "03263A"
+},
+{
+"base": "405147",
+"tint": "D3",
+"shade": null,
+"word": "5B7365"
+},
+{
+"base": "7084A4",
+"tint": null,
+"shade": "BF",
+"word": "50627E"
+},
+{
+"base": "B22F15",
+"tint": "BF",
+"shade": null,
+"word": "E64C2E"
+},
+{
+"base": "7084A4",
+"tint": null,
+"shade": "B3",
+"word": "4B5B76"
+},
+{
+"base": "F29035",
+"tint": "86",
+"shade": null,
+"word": "F8C494"
+},
+{
+"base": "39B237",
+"tint": null,
+"shade": "26",
+"word": "081A08"
+},
+{
+"base": "39B237",
+"tint": null,
+"shade": "E4",
+"word": "329E31"
+},
+{
+"base": "DCF973",
+"tint": null,
+"shade": "19",
+"word": "1A2201"
+},
+{
+"base": "7084A4",
+"tint": "E2",
+"shade": null,
+"word": "8091AE"
+},
+{
+"base": "B22F15",
+"tint": "A8",
+"shade": null,
+"word": "E96247"
+},
+{
+"base": "F29035",
+"tint": "26",
+"shade": null,
+"word": "FDEEE0"
+},
+{
+"base": "7084A4",
+"tint": null,
+"shade": "23",
+"word": "0E1117"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "A6",
+"word": "A68302"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "E6",
+"word": "3D74F3"
+},
+{
+"base": "19321A",
+"tint": "AC",
+"shade": null,
+"word": "48904A"
+},
+{
+"base": "3FFE16",
+"tint": null,
+"shade": "CC",
+"word": "27DB01"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "89",
+"word": "896C01"
+},
+{
+"base": "C0DB2A",
+"tint": "32",
+"shade": null,
+"word": "F2F8D5"
+},
+{
+"base": "19321A",
+"tint": null,
+"shade": "BD",
+"word": "122413"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "B4",
+"word": "0E4DE0"
+},
+{
+"base": "5AF307",
+"tint": "28",
+"shade": null,
+"word": "E4FED7"
+},
+{
+"base": "F4B4AA",
+"tint": null,
+"shade": "D4",
+"word": "EC7D6C"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "CC",
+"word": "1D5DF1"
+},
+{
+"base": "5D8BF5",
+"tint": "17",
+"shade": null,
+"word": "F0F4FE"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "25",
+"word": "241D00"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "A1",
+"word": "0C45C8"
+},
+{
+"base": "FCC907",
+"tint": "CC",
+"shade": null,
+"word": "FCD338"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "63",
+"word": "072A7B"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "F2",
+"word": "4C7FF4"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "65",
+"word": "654F01"
+},
+{
+"base": "5AF307",
+"tint": null,
+"shade": "4D",
+"word": "1A4902"
+},
+{
+"base": "C0DB2A",
+"tint": "A8",
+"shade": null,
+"word": "D5E772"
+},
+{
+"base": "C0DB2A",
+"tint": "93",
+"shade": null,
+"word": "DAEA84"
+},
+{
+"base": "F4B4AA",
+"tint": "E6",
+"shade": null,
+"word": "F5BBB2"
+},
+{
+"base": "3FFE16",
+"tint": null,
+"shade": "CC",
+"word": "27DB01"
+},
+{
+"base": "3FFE16",
+"tint": null,
+"shade": "E6",
+"word": "2CF701"
+},
+{
+"base": "3FFE16",
+"tint": "BF",
+"shade": null,
+"word": "6FFE50"
+},
+{
+"base": "19321A",
+"tint": null,
+"shade": "20",
+"word": "030603"
+},
+{
+"base": "F4B4AA",
+"tint": "66",
+"shade": null,
+"word": "FAE0DC"
+},
+{
+"base": "5AF307",
+"tint": null,
+"shade": "26",
+"word": "0D2301"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "B3",
+"word": "0D4DDF"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "1E",
+"word": "020C25"
+},
+{
+"base": "5AF307",
+"tint": "18",
+"shade": null,
+"word": "EFFEE7"
+},
+{
+"base": "3FFE16",
+"tint": null,
+"shade": "8A",
+"word": "1A9400"
+},
+{
+"base": "C0DB2A",
+"tint": "EB",
+"shade": null,
+"word": "C4DD3A"
+},
+{
+"base": "3FFE16",
+"tint": "88",
+"shade": null,
+"word": "98FE82"
+},
+{
+"base": "5D8BF5",
+"tint": "66",
+"shade": null,
+"word": "BED0FB"
+},
+{
+"base": "C0DB2A",
+"tint": "26",
+"shade": null,
+"word": "F5F9DF"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "22",
+"word": "020E2A"
+},
+{
+"base": "F4B4AA",
+"tint": "0D",
+"shade": null,
+"word": "FEFBFA"
+},
+{
+"base": "19321A",
+"tint": "8E",
+"shade": null,
+"word": "5DAE60"
+},
+{
+"base": "F4B4AA",
+"tint": null,
+"shade": "CE",
+"word": "EB7563"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "59",
+"word": "594601"
+},
+{
+"base": "5D8BF5",
+"tint": "03",
+"shade": null,
+"word": "FCFDFF"
+},
+{
+"base": "3FFE16",
+"tint": null,
+"shade": "48",
+"word": "0E4D00"
+},
+{
+"base": "AD3790",
+"tint": "99",
+"shade": null,
+"word": "D67EC0"
+},
+{
+"base": "F4B4AA",
+"tint": "7A",
+"shade": null,
+"word": "F9DAD6"
+},
+{
+"base": "F4B4AA",
+"tint": null,
+"shade": "92",
+"word": "D1331B"
+},
+{
+"base": "FCC907",
+"tint": "1A",
+"shade": null,
+"word": "FEF9E5"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "D3",
+"word": "D3A702"
+},
+{
+"base": "3FFE16",
+"tint": "2C",
+"shade": null,
+"word": "DDFED6"
+},
+{
+"base": "19321A",
+"tint": "19",
+"shade": null,
+"word": "E2F0E3"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "CC",
+"word": "CCA102"
+},
+{
+"base": "5AF307",
+"tint": "4D",
+"shade": null,
+"word": "CCFCB2"
+},
+{
+"base": "C0DB2A",
+"tint": "B7",
+"shade": null,
+"word": "D1E565"
+},
+{
+"base": "5D8BF5",
+"tint": "99",
+"shade": null,
+"word": "9DB9F9"
+},
+{
+"base": "F4B4AA",
+"tint": "9D",
+"shade": null,
+"word": "F8D0CA"
+},
+{
+"base": "19321A",
+"tint": "4D",
+"shade": null,
+"word": "A7D3A8"
+},
+{
+"base": "5D8BF5",
+"tint": "F2",
+"shade": null,
+"word": "6590F5"
+},
+{
+"base": "5AF307",
+"tint": "82",
+"shade": null,
+"word": "A9FB7E"
+},
+{
+"base": "19321A",
+"tint": null,
+"shade": "B5",
+"word": "112312"
+},
+{
+"base": "19321A",
+"tint": "08",
+"shade": null,
+"word": "F5FAF6"
+},
+{
+"base": "5D8BF5",
+"tint": "CC",
+"shade": null,
+"word": "7DA2F7"
+},
+{
+"base": "5AF307",
+"tint": "D9",
+"shade": null,
+"word": "70F827"
+},
+{
+"base": "3FFE16",
+"tint": null,
+"shade": "EE",
+"word": "2FFE03"
+},
+{
+"base": "3FFE16",
+"tint": null,
+"shade": "E4",
+"word": "2CF501"
+},
+{
+"base": "3FFE16",
+"tint": "E6",
+"shade": null,
+"word": "51FE2C"
+},
+{
+"base": "19321A",
+"tint": "F3",
+"shade": null,
+"word": "1F3F21"
+},
+{
+"base": "C0DB2A",
+"tint": "64",
+"shade": null,
+"word": "E6F1AB"
+},
+{
+"base": "AD3790",
+"tint": null,
+"shade": "9E",
+"word": "6A2258"
+},
+{
+"base": "AD3790",
+"tint": "D4",
+"shade": null,
+"word": "C64DA8"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "59",
+"word": "594601"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "F3",
+"word": "4D80F4"
+},
+{
+"base": "C0DB2A",
+"tint": null,
+"shade": "73",
+"word": "576411"
+},
+{
+"base": "5D8BF5",
+"tint": "F7",
+"shade": null,
+"word": "628EF5"
+},
+{
+"base": "5AF307",
+"tint": null,
+"shade": "EB",
+"word": "52DF06"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "95",
+"word": "957601"
+},
+{
+"base": "3FFE16",
+"tint": "B3",
+"shade": null,
+"word": "78FE5B"
+},
+{
+"base": "5AF307",
+"tint": "A4",
+"shade": null,
+"word": "93FA5C"
+},
+{
+"base": "FCC907",
+"tint": "4D",
+"shade": null,
+"word": "FEEEB3"
+},
+{
+"base": "AD3790",
+"tint": "CC",
+"shade": null,
+"word": "C853AB"
+},
+{
+"base": "19321A",
+"tint": null,
+"shade": "7F",
+"word": "0C180C"
+},
+{
+"base": "FCC907",
+"tint": "50",
+"shade": null,
+"word": "FEEDB0"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "E6",
+"word": "E6B602"
+},
+{
+"base": "3FFE16",
+"tint": "33",
+"shade": null,
+"word": "D8FED0"
+},
+{
+"base": "FCC907",
+"tint": null,
+"shade": "7F",
+"word": "7F6401"
+},
+{
+"base": "3FFE16",
+"tint": "C7",
+"shade": null,
+"word": "69FE49"
+},
+{
+"base": "19321A",
+"tint": "2F",
+"shade": null,
+"word": "C9E4CA"
+},
+{
+"base": "5AF307",
+"tint": null,
+"shade": "25",
+"word": "0C2201"
+},
+{
+"base": "5AF307",
+"tint": "66",
+"shade": null,
+"word": "BCFC99"
+},
+{
+"base": "C0DB2A",
+"tint": "F1",
+"shade": null,
+"word": "C3DD35"
+},
+{
+"base": "3FFE16",
+"tint": null,
+"shade": "2B",
+"word": "082E00"
+},
+{
+"base": "3FFE16",
+"tint": "7F",
+"shade": null,
+"word": "9FFE8A"
+},
+{
+"base": "AD3790",
+"tint": "D9",
+"shade": null,
+"word": "C548A6"
+},
+{
+"base": "3FFE16",
+"tint": null,
+"shade": "E9",
+"word": "2DFA01"
+},
+{
+"base": "AD3790",
+"tint": null,
+"shade": "9E",
+"word": "6A2258"
+},
+{
+"base": "AD3790",
+"tint": "9D",
+"shade": null,
+"word": "D57BBE"
+},
+{
+"base": "19321A",
+"tint": "0D",
+"shade": null,
+"word": "F0F7F0"
+},
+{
+"base": "3FFE16",
+"tint": "37",
+"shade": null,
+"word": "D5FECC"
+},
+{
+"base": "19321A",
+"tint": null,
+"shade": "F2",
+"word": "172F18"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "07",
+"word": "000208"
+},
+{
+"base": "19321A",
+"tint": "40",
+"shade": null,
+"word": "B6DAB7"
+},
+{
+"base": "AD3790",
+"tint": "66",
+"shade": null,
+"word": "E3A9D5"
+},
+{
+"base": "19321A",
+"tint": null,
+"shade": "A3",
+"word": "101F10"
+},
+{
+"base": "C0DB2A",
+"tint": null,
+"shade": "8C",
+"word": "6A7A14"
+},
+{
+"base": "F4B4AA",
+"tint": "0A",
+"shade": null,
+"word": "FEFBFB"
+},
+{
+"base": "AD3790",
+"tint": null,
+"shade": "1A",
+"word": "11050E"
+},
+{
+"base": "F4B4AA",
+"tint": "8C",
+"shade": null,
+"word": "F9D5D0"
+},
+{
+"base": "C0DB2A",
+"tint": "80",
+"shade": null,
+"word": "DFED94"
+},
+{
+"base": "5AF307",
+"tint": null,
+"shade": "7F",
+"word": "2C7803"
+},
+{
+"base": "5D8BF5",
+"tint": null,
+"shade": "B3",
+"word": "0D4DDF"
+},
+{
+"base": "AD3790",
+"tint": null,
+"shade": "4D",
+"word": "34102B"
+},
+{
+"base": "5AF307",
+"tint": "1A",
+"shade": null,
+"word": "EDFEE5"
+},
+{
+"base": "5AF307",
+"tint": "4D",
+"shade": null,
+"word": "CCFCB2"
+},
+{
+"base": "156082",
+"tint": null,
+"shade": "BF",
+"word": "0F4761"
+},
+{
+"base": "156082",
+"tint": "99",
+"shade": null,
+"word": "45B0E1"
+},
+{
+"base": "156082",
+"tint": "66",
+"shade": null,
+"word": "83CAEB"
+},
+{
+"base": "156082",
+"tint": "33",
+"shade": null,
+"word": "C1E4F5"
+},
+{
+"base": "E97132",
+"tint": null,
+"shade": "80",
+"word": "80340D"
+},
+{
+"base": "E97132",
+"tint": "BF",
+"shade": null,
+"word": "EE9465"
+},
+{
+"base": "000000",
+"tint": "BF",
+"shade": null,
+"word": "404040"
+},
+{
+"base": "000000",
+"tint": "80",
+"shade": null,
+"word": "7F7F7F"
+},
+{
+"base": "E8E8E8",
+"tint": null,
+"shade": "BF",
+"word": "ADADAD"
+},
+{
+"base": "E8E8E8",
+"tint": null,
+"shade": "E6",
+"word": "D1D1D1"
+},
+{
+"base": "FFFFFF",
+"tint": null,
+"shade": "A6",
+"word": "A6A6A6"
+},
+{
+"base": "E8E8E8",
+"tint": "BF",
+"shade": null,
+"word": "EDEDED"
+},
+{
+"base": "0E2841",
+"tint": "99",
+"shade": null,
+"word": "2C7FCE"
+},
+{
+"base": "0F9ED5",
+"tint": null,
+"shade": null,
+"word": "0F9ED5"
+},
+{
+"base": "A02B93",
+"tint": null,
+"shade": "40",
+"word": "270A24"
+},
+{
+"base": "4EA72E",
+"tint": "1A",
+"shade": null,
+"word": "EBF8E7"
+},
+{
+"base": "0E2841",
+"tint": null,
+"shade": null,
+"word": "0E2841"
+},
+{
+"base": "E8E8E8",
+"tint": null,
+"shade": "80",
+"word": "747474"
+},
+{
+"base": "156082",
+"tint": "99",
+"shade": "BF",
+"word": "45B0E1"
+},
+{
+"base": "196B24",
+"tint": "F2",
+"shade": null,
+"word": "1C7A29"
+},
+{
+"base": "196B24",
+"tint": null,
+"shade": "0D",
+"word": "010501"
+},
+{
+"base": "467886",
+"tint": null,
+"shade": null,
+"word": "467886"
+},
+{
+"base": "E97132",
+"tint": "00",
+"shade": null,
+"word": "FFFFFF"
+},
+{
+"base": "E97132",
+"tint": null,
+"shade": "FF",
+"word": "E97132"
+},
+{
+"base": "E97132",
+"tint": "FF",
+"shade": null,
+"word": "E97132"
+},
+{
+"base": "0F9ED5",
+"tint": "7F",
+"shade": null,
+"word": "7BD3F5"
+},
+{
+"base": "0F9ED5",
+"tint": null,
+"shade": "7F",
+"word": "074E69"
+}
+]
+}

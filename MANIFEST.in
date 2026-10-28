@@ -5,3 +5,4 @@ recursive-include tests *.py
 recursive-include tests/fixtures *.xml *.json
 recursive-include tests/golden *.svg *.json
 global-exclude __pycache__ *.py[cod] .DS_Store *.ttf *.ttc *.otf
+include src/ooxml_common/stylenames.json
