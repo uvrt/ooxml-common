@@ -17,6 +17,9 @@ charts and the shape tree, with the shape and text body renderers that draw them
   (:class:`~ooxml_common.locales.Locale`), en-US unless the caller says otherwise;
 * :mod:`ooxml_common.numfmt` -- a number format code read once: its sections, its
   tokens, and whether it shows a date, a time, a percent, a text (measured in Excel);
+* :mod:`ooxml_common.stylenames` -- Word's built-in style names in each measured language,
+  and the style a field's name means;
+* :mod:`ooxml_common.themetint` -- the colour Word draws for a theme colour's tint or shade;
 * :mod:`ooxml_common.dates` -- a date's serial printed in its number format code, with
   the month and day names measured per locale;
 * :mod:`ooxml_common.fonts` -- the font bundle probe, embedded-font decoding (EOT, MTX,
@@ -48,4 +51,4 @@ body's paragraphs against Word's own output.  :mod:`ooxml_common.drawingml.wrap`
 DrawingML text body's, which a chart and a SmartArt shape carry in either format.
 """
 
-__version__ = "0.33.1"
+__version__ = "0.34.0"

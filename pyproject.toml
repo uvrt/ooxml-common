@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ooxml-common"
-version = "0.33.1"
+version = "0.34.0"
 description = "Format-neutral OOXML pieces shared by pptx2svg and docx2svg: OPC, units, DrawingML data, fonts and measured text metrics"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -64,7 +64,7 @@ where = ["src"]
 
 # PEP 561: the package's annotations are its types for a checker in a project that uses it.
 [tool.setuptools.package-data]
-ooxml_common = ["py.typed"]
+ooxml_common = ["py.typed", "stylenames.json"]
 
 # `ruff check .` (CI's build job).  A small set of rules that find bugs, not style:
 # pyflakes (F), syntax errors (E9), mutable or call defaults (B006, B008), a return or

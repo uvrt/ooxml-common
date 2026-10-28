@@ -58,11 +58,13 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.opc` -- docx2svg, ooxml-edit: `CONTENT_TYPES_PART`, `REL_IMAGE`, `REL_OFFICE_DOCUMENT`, `normalize_part_path`; docx2svg: `OpcPackage`, `REL_HYPERLINK`, `REL_THEME`, `Relationship`, `rels_path_for`; ooxml-edit: `REL_CHART`
 - `ooxml_common.raster` -- docx2svg, pptx2svg: `BACKENDS`, `Backend`, `RasterizerNotAvailable`, `as_bytes`, `available_backends`, `choose_backend`, `draw_in_passes`, `importable`, `pass_svg`, `render_with_cairosvg`, `render_with_resvg`; pptx2svg: `preferred_backend`, `without_undrawn_text`
 - `ooxml_common.svgimage` -- pptx-agent: `with_pixel_size`; pptx2svg: `natural_size`, `with_pixel_sized_images`
+- `ooxml_common.stylenames` -- docx-agent: `find_style`, `list_separator`
 - `ooxml_common.text` -- pptx2svg: `kerning`, `metrics`
 - `ooxml_common.text.fontmap` -- docx2svg, pptx2svg: `generic_family`; docx2svg: `SUBSTITUTIONS`, `metrics_for`, `substitution_for`; pptx2svg: `JAPANESE_GOTHIC`, `covers_east_asian`, `family_key`, `japanese_fallback`, `metrics_fallback_font`
 - `ooxml_common.text.measure` -- docx2svg, pptx-agent: `DefaultTextMeasurer`; docx2svg: `font_kern_units`
 - `ooxml_common.text.metrics` -- docx2svg: `METRICS`
 - `ooxml_common.text.recorded_symbol_faces` -- docx2svg: `ADVANCES`, `DECORATIONS`, `METRICS`
 - `ooxml_common.text.symbol_fonts` -- docx2svg: `to_unicode`; pptx2svg: `recorded_font_metrics`, `symbol_face`, `translate`
+- `ooxml_common.themetint` -- docx-agent, docx2svg: `word_theme_tint`
 - `ooxml_common.units` -- ooxml-edit: `EMU_PER_POINT`; pptx-agent: `PX_PER_PT`, `emu_to_px`, `px_to_emu`
 - `ooxml_common.xmlutil` -- docx2svg, pptx-agent: `child`, `local_name`; docx2svg: `attr`, `children`, `descendants`, `element_child`, `element_children`, `parse_xml`; ooxml-edit: `NS_R`
