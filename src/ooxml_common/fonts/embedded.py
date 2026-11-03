@@ -41,6 +41,7 @@ from __future__ import annotations
 import hashlib
 import os
 import re
+import threading
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from typing import Iterable
@@ -242,23 +243,38 @@ def extract_embedded_fonts(
 #: Bounded, because the values are whole font files: 32 entries is at most ~11 MB, the
 #: same order as the font bundle.  Failures are cached too -- a deck whose fonts cannot be
 #: decoded should not pay for the attempt on every render.
+#:
+#: Every read and write of it holds :data:`_decode_lock`: an LRU's get-then-move and its
+#: eviction are separate steps, and with the GIL off (Python 3.15t) another thread's
+#: eviction between them raised ``KeyError``.  The decoding itself runs outside the lock,
+#: so two threads may decode one payload at once; both get the same bytes.
 _DECODE_CACHE_SIZE = 32
 _decode_cache: "OrderedDict[bytes, bytes | EotError]" = OrderedDict()
+_decode_lock = threading.Lock()
+
+
+def _remember(digest: bytes, result: "bytes | EotError") -> None:
+    """``result`` into the cache as its newest entry, evicting the oldest past the bound.
+    The caller holds :data:`_decode_lock`."""
+    _decode_cache[digest] = result
+    _decode_cache.move_to_end(digest)
+    while len(_decode_cache) > _DECODE_CACHE_SIZE:
+        _decode_cache.popitem(last=False)
 
 
 def _decode(payload: bytes) -> bytes:
     digest = hashlib.sha256(payload).digest()
-    result = _decode_cache.get(digest)
+    with _decode_lock:
+        result = _decode_cache.get(digest)
+        if result is not None:
+            _decode_cache.move_to_end(digest)
     if result is None:
         try:
             result = decode_eot(payload)
         except EotError as error:
             result = error
-        _decode_cache[digest] = result
-        if len(_decode_cache) > _DECODE_CACHE_SIZE:
-            _decode_cache.popitem(last=False)
-    else:
-        _decode_cache.move_to_end(digest)
+        with _decode_lock:
+            _remember(digest, result)
     if isinstance(result, EotError):
         raise result
     return result
@@ -270,27 +286,27 @@ def decoded_faces() -> dict[bytes, bytes]:
     a worker does not decode again what one has decoded: MicroType Express decoding is
     pure Python, 0.15 s to 1.1 s a face, and a template deck embeds eight.  Failures are
     left out."""
-    return {digest: font for digest, font in list(_decode_cache.items())
-            if isinstance(font, bytes)}
+    with _decode_lock:
+        return {digest: font for digest, font in _decode_cache.items()
+                if isinstance(font, bytes)}
 
 
 def remember_decoded(faces: "dict[bytes, bytes]") -> None:
     """Take faces another process decoded (:func:`decoded_faces`), by payload digest,
     into this process's cache, as though decoded here: a payload whose digest is given is
     not decoded.  Kept in memory only, and bounded as the decoded faces are."""
-    for digest, font in faces.items():
-        if not isinstance(digest, bytes) or len(digest) != 32 or not isinstance(font, bytes):
-            continue
-        _decode_cache[digest] = font
-        _decode_cache.move_to_end(digest)
-        if len(_decode_cache) > _DECODE_CACHE_SIZE:
-            _decode_cache.popitem(last=False)
+    taken = [(digest, font) for digest, font in faces.items()
+             if isinstance(digest, bytes) and len(digest) == 32 and isinstance(font, bytes)]
+    with _decode_lock:
+        for digest, font in taken:
+            _remember(digest, font)
 
 
 def forget_decoded() -> None:
     """Forget every face this process has decoded (and every failure), as a new process
     starts: what a test of handing faces between processes runs in one process with."""
-    _decode_cache.clear()
+    with _decode_lock:
+        _decode_cache.clear()
 
 
 _SLOT_FIELDS = {

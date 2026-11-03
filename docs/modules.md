@@ -59,6 +59,12 @@ Back to the [README](../README.md).
 | `ooxml_common.chart.layout` | A chart laid out and lowered to scene elements, every constant measured on PowerPoint |
 | `ooxml_common.chart.rules` | Where Word and PowerPoint lay a chart out differently, as a parameter |
 
+## Threads
+
+The module caches (embedded fonts, pictures, metafiles, font folders) are safe to use from
+several threads, with the GIL off too (Python 3.15t; `tests/test_threads.py`). One object is
+not: a `text.measure.FontToolsTextMeasurer` opens its fonts lazily, so give each thread its own.
+
 ## What is deliberately not in it
 
 - **Line breaking for a Word paragraph.** `drawingml.wrap` breaks DrawingML paragraphs

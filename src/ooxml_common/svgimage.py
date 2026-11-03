@@ -90,6 +90,7 @@ _DATA_URI = re.compile(r"data:image/svg\+xml;base64,([A-Za-z0-9+/=]+)")
 #: Rewritten SVGs by their base64 text: a deck repeats its pictures across slides.
 _CACHE: dict[str, str | None] = {}
 _CACHE_LIMIT = 64
+_MISSING = object()
 
 
 class _Refused(Exception):
@@ -343,16 +344,18 @@ def with_pixel_sized_images(svg: str) -> str:
 
     def replace(match: re.Match) -> str:
         encoded = match.group(1)
-        if encoded not in _CACHE:
-            if len(_CACHE) >= _CACHE_LIMIT:
-                _CACHE.clear()
+        # The value found or made is the one used, never read back from the cache: with
+        # the GIL off (Python 3.15t) another thread's clear() in between raised KeyError.
+        found = _CACHE.get(encoded, _MISSING)
+        if found is _MISSING:
             try:
                 rewritten = with_pixel_size(base64.b64decode(encoded, validate=True))
             except ValueError:
                 rewritten = None
-            _CACHE[encoded] = (None if rewritten is None
-                               else base64.b64encode(rewritten).decode("ascii"))
-        found = _CACHE[encoded]
+            found = None if rewritten is None else base64.b64encode(rewritten).decode("ascii")
+            if len(_CACHE) >= _CACHE_LIMIT:
+                _CACHE.clear()
+            _CACHE[encoded] = found
         return match.group(0) if found is None else f"data:image/svg+xml;base64,{found}"
 
     return _DATA_URI.sub(replace, svg)

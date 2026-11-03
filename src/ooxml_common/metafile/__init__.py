@@ -29,6 +29,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import re
+import threading
 from dataclasses import dataclass
 
 from . import emf as _emf
@@ -144,10 +145,28 @@ _HEAD = 1024
 
 #: payload -> what :func:`inline_metafile_images` writes inline for it, or ``None`` (not a
 #: picture this module drew): a slide is rasterised in several passes and calls.
+#: Writes hold :data:`_INLINE_LOCK`, which also guards the running count of payload
+#: characters kept (summing the keys of a dict another thread writes is unsafe with the
+#: GIL off, on Python 3.15t).
 _INLINE: dict = {}
 _INLINE_LIMIT = 64
 #: At most this many characters of payload kept (the content kept is about three quarters).
 _INLINE_CHARS = 32 * 1024 * 1024
+_INLINE_LOCK = threading.Lock()
+_inline_kept = 0
+
+
+def _keep_inline(encoded: str, parts: "tuple[str | None, str] | None") -> None:
+    """``parts`` into :data:`_INLINE` for ``encoded``, emptying it first when full."""
+    global _inline_kept
+    with _INLINE_LOCK:
+        if encoded in _INLINE:
+            return
+        if len(_INLINE) >= _INLINE_LIMIT or _inline_kept + len(encoded) > _INLINE_CHARS:
+            _INLINE.clear()
+            _inline_kept = 0
+        _INLINE[encoded] = parts
+        _inline_kept += len(encoded)
 
 
 def _inline_parts(encoded: str) -> "tuple[str | None, str] | None":
@@ -205,9 +224,7 @@ def inline_metafile_images(svg: str) -> str:
         parts = _INLINE.get(encoded, False)
         if parts is False:
             parts = _inline_parts(encoded)
-            if len(_INLINE) >= _INLINE_LIMIT or sum(map(len, _INLINE)) + len(encoded) > _INLINE_CHARS:
-                _INLINE.clear()
-            _INLINE[encoded] = parts
+            _keep_inline(encoded, parts)
         if parts is None:
             return match.group(0)
         view_box, inner = parts
