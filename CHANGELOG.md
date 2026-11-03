@@ -4,6 +4,13 @@ Versions are set in `pyproject.toml`; none is on PyPI yet. Each version that rea
 is tagged `v<version>` on the commit that brought it, from 0.28.0; the earlier ones were
 never tagged.
 
+## 0.36.0 -- unreleased
+- Blank chart points as Office draws them (production round 29, lane V). Measured 2026-11-03 in PowerPoint 16 for Mac on screen (ScreenCaptureKit) and in Word 16 for Mac as a PDF export, on line, column, radar, scatter (markers, and with lines) and area charts with a blank point under every `c:dispBlanksAs` setting:
+  - A chart that does not state `c:dispBlanksAs`, or states it without `val`, draws a blank as zero, which is the schema's default for `val`. This renderer drew a gap.
+  - An area chart draws `span` as zero: its band is not joined across the blank. This renderer joined it.
+  - Everything else matched already: gap, zero and span on line, radar and scatter; columns; area gap and zero.
+  New `chart.layout._blanks_as` is used by the line, radar, scatter, area and 3D line and area drawings. Bars and surfaces are unchanged: their blank drawing is not measured. `SourceChart.display_blanks_as` stays what the file states (`None` when it states none). One golden moves: `case-16-malformed-charts-lay-out-rather-than-word`, an area series whose points are all blank and whose chart states no setting, now draws as a flat band at zero (a path with no area) instead of nothing. New `tests/test_chart_blanks.py`.
+
 ## 0.35.0 -- unreleased
 - Safe with the GIL off (free threading, step 1). On Python 3.15t three module caches raised from threads: the embedded-font cache (`fonts.embedded`) is an LRU whose get, move and eviction another thread's eviction came between (`KeyError`; and `decoded_faces` iterated it while another thread wrote it), so every read and write of it now holds one lock -- the decoding itself stays outside it; `svgimage.with_pixel_sized_images` read an entry back after another thread could have cleared the cache, and now uses the value it found or made; `metafile.inline_metafile_images` summed the keys of a dict another thread wrote, and now keeps a count under a lock. New `tests/test_threads.py`: eight threads over more keys than each cache holds, for about a second; on 3.15t the old code failed it within that time. Thread notes in [docs/modules.md](docs/modules.md) (`FontToolsTextMeasurer` is one thread's). New `.github/workflows/freethreading.yml`: the suite on Python 3.15t, Linux and macOS, with the GIL off and `RuntimeWarning` an error, after checking that importing the package leaves the GIL off; not a required check yet; green, so the package is classified `Programming Language :: Python :: Free Threading :: 2 - Beta`. No output change.
 
