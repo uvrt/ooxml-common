@@ -85,8 +85,9 @@ jobs:
   # its own tests do, so a change that breaks pptx2svg or docx2svg fails here, on its own
   # pull request, instead of at the sibling's next push.  Each sibling is its main, with
   # this checkout installed (editable) before it so its `ooxml-common` requirement is
-  # already met; one Linux leg on one Python, the sibling's default run (docx2svg's
-  # without --run-slow, serial as its CI runs it).  A change a sibling must follow is red
+  # already met; one Linux leg on one Python, the sibling's default run as its own CI runs
+  # it (docx2svg's without --run-slow, on every core, and on a pull request without its
+  # tests marked long).  A change a sibling must follow is red
   # here until the sibling's matching pull request (its CI pointed at this branch, as its
   # comment says) is merged right after this one.
   downstream:
@@ -142,7 +143,7 @@ jobs:
 
       - name: Test ${{ matrix.sibling }}
         working-directory: ${{ matrix.sibling }}
-        run: python -m pytest -q
+        run: python -m pytest -q ${{ matrix.sibling == 'docx2svg' && '-n auto' || '' }} ${{ matrix.sibling == 'docx2svg' && github.event_name == 'pull_request' && '-m "not long"' || '' }}
 
   build:
     runs-on: ubuntu-latest
