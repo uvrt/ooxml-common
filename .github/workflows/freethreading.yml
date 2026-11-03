@@ -1,0 +1,58 @@
+name: Free threading
+
+# The suite on the free-threaded build of Python (3.15t), with the GIL off.  A separate
+# workflow on purpose: ci.yml's jobs are the required checks of branch protection, and
+# this one is not required (yet).  The package is standard library only, so importing it
+# must leave the GIL off; the first step checks that without PYTHON_GIL set (an extension
+# that has not declared itself free-threading safe turns the GIL back on, with a
+# RuntimeWarning).  The suite then runs with PYTHON_GIL=0 and RuntimeWarning an error.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: test (${{ matrix.os }}, 3.15t)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.15t"
+          allow-prereleases: true
+
+      # As ci.yml installs them: the font bundle from pptx2svg, ooxml-edit test only.
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .[dev]
+          python -m pip install "pptx2svg-fonts @ git+https://github.com/uvrt/pptx2svg@main#subdirectory=packages/pptx2svg-fonts"
+          python -m pip install "ooxml-edit @ git+https://github.com/uvrt/ooxml-edit@main"
+
+      - name: Importing the package leaves the GIL off
+        run: |
+          python -W error::RuntimeWarning - <<'PY'
+          import importlib, pkgutil, sys
+          assert hasattr(sys, "_is_gil_enabled"), "not a free-threaded build"
+          import ooxml_common as package
+          for module in pkgutil.walk_packages(package.__path__, package.__name__ + "."):
+              if not module.name.endswith("__main__"):
+                  importlib.import_module(module.name)
+          import fontTools.ttLib  # the measure extra, as FontToolsTextMeasurer imports it
+          print(sys.version)
+          sys.exit("the GIL is enabled" if sys._is_gil_enabled() else 0)
+          PY
+
+      - name: Test
+        env:
+          PYTHON_GIL: "0"
+        run: python -W error::RuntimeWarning -m pytest -q -W error::RuntimeWarning
