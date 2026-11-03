@@ -451,7 +451,9 @@ class SourceChart:
     legend: SourceChartLegend | None = None
     #: ``c:view3D``.  Present only when the file states the element.
     view_3d: SourceChartView3D | None = None
-    #: ``c:dispBlanksAs`` -- ``gap`` (default), ``zero`` or ``span``.
+    #: ``c:dispBlanksAs``'s ``val`` -- ``gap``, ``zero`` or ``span`` -- as the file states it:
+    #: ``None`` when it states none, which Office draws as ``zero`` (measured in round 29;
+    #: :func:`ooxml_common.chart.layout._blanks_as`).
     display_blanks_as: str | None = None
     plot_visible_only: bool | None = None
     #: ``c:chartSpace/c:spPr`` -- the frame behind the whole chart.

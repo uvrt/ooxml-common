@@ -4004,9 +4004,9 @@ class ChartBuilder:
         if count <= 0:
             return
         filled = self._radar_style == "filled"
-        # `dispBlanksAs` on a radar is **not measured**; this mirrors the line chart, whose
-        # behaviour was.  A ring with a hole in it cannot close, so it is drawn open.
-        blanks = self.chart.display_blanks_as or "gap"
+        # `dispBlanksAs` on a radar was measured in round 29 (:func:`_blanks_as`): as the
+        # line chart.  A ring with a hole in it cannot close, so it is drawn open.
+        blanks = _blanks_as(self.chart.display_blanks_as)
         for item in series:
             points: list[tuple[float, float] | None] = []
             for index in range(count):
@@ -4825,7 +4825,7 @@ class ChartBuilder:
         The points are joined **in the order the file lists them**, not sorted by x: the
         unsorted-x probe's path runs 3, 1, 5, 2, 4.
         """
-        blanks = self.chart.display_blanks_as or "gap"
+        blanks = _blanks_as(self.chart.display_blanks_as)
         points: list[tuple[float, float] | None] = []
         for index, value in enumerate(item.values):
             x = xs[index] if index < len(xs) else None
@@ -4833,7 +4833,7 @@ class ChartBuilder:
                 if blanks == "zero" and x is not None:
                     value = 0.0
                 elif blanks == "span":
-                    # Unmeasured for a scatter; the line chart's reading is reused.
+                    # Measured for a scatter with lines (round 29): as a line chart.
                     continue
                 else:
                     points.append(None)
@@ -7089,11 +7089,11 @@ class ChartBuilder:
         if scene is None or not series or not categories:
             return
         xs = self._category_positions(rect, len(categories))
-        blanks = self.chart.display_blanks_as or "gap"
         zero = self._value_to_y(rect, 0.0, scale)
         rows = self._scene_rows(len(series))
         thickness = scene.face.width * VIEW_3D_RIBBON_THICKNESS
         ribbon = self._is_line
+        blanks = _blanks_as(self.chart.display_blanks_as, area=not ribbon)
         # Back to front: the first series stands nearest the viewer, so it is painted
         # last and hides what stands behind it -- which is PowerPoint's picture.
         for order in reversed(range(len(series))):
@@ -7918,7 +7918,7 @@ class ChartBuilder:
         if not categories or not series:
             return
         xs = self._category_positions(rect, len(categories))
-        blanks = self.chart.display_blanks_as or "gap"
+        blanks = _blanks_as(self.chart.display_blanks_as, area=True)
         grouping = self.plot.grouping or "standard"
         stacked = grouping in ("stacked", "percentStacked")
         percent = grouping == "percentStacked"
@@ -7976,7 +7976,7 @@ class ChartBuilder:
         if not categories:
             return
         xs = self._category_positions(rect, len(categories))
-        blanks = self.chart.display_blanks_as or "gap"
+        blanks = _blanks_as(self.chart.display_blanks_as)
 
         for item in series:
             points: list[tuple[float, float] | None] = []
@@ -10312,6 +10312,22 @@ def _apply_axis_limits(
     if maximum <= minimum:
         maximum = minimum + (unit or 1.0)
     return minimum, maximum, unit
+
+
+def _blanks_as(stated: str | None, *, area: bool = False) -> str:
+    """How a chart whose ``c:dispBlanksAs`` says ``stated`` draws a blank point on a line,
+    radar, scatter or area chart: ``gap``, ``zero`` or ``span``.
+
+    Measured in round 29 (2026-11-03) in PowerPoint 16 for Mac (on screen) and Word 16 for
+    Mac (PDF export) on line, radar, scatter (markers, and with lines) and area charts with
+    a blank point: a chart that does not state the element, or states it without ``val``,
+    draws the blank as zero -- the schema's default for ``val`` -- not as a gap; and an
+    area chart (``area``) draws ``span`` as zero, its band not joined across the blank.  A
+    value the schema does not have is read as the default, zero.  Bars and surfaces read
+    ``display_blanks_as`` themselves: their blank-point drawing is not measured.
+    """
+    found = stated if stated in ("gap", "zero", "span") else "zero"
+    return "zero" if area and found == "span" else found
 
 
 def _at(values: list[float | None], index: int) -> float | None:
