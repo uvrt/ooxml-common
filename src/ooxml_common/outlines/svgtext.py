@@ -414,18 +414,18 @@ class _Cluster:
 
 
 class _Run:
-    """A span's glyphs as references: the paint they share and each glyph's id, matrix
-    and whether it starts its text chunk (is where an ``x`` or ``y`` put it)."""
+    """A span's glyphs as references: the paint they share and each glyph's id and
+    matrix; ``single`` where it is one glyph, or one-glyph spans joined (:func:`_joined`)."""
 
-    __slots__ = ("paint", "placed")
+    __slots__ = ("paint", "placed", "single")
 
-    def __init__(self, paint: str, placed: "list[tuple[str, Matrix, bool]]") -> None:
-        self.paint, self.placed = paint, placed
+    def __init__(self, paint: str, placed: "list[tuple[str, Matrix]]", single: bool) -> None:
+        self.paint, self.placed, self.single = paint, placed, single
 
     def linear(self) -> "tuple[float, float, float, float] | None":
         """The scale every glyph shares, ``None`` where they do not share one."""
         first = self.placed[0][1][:4]
-        return first if all(m[:4] == first for _, m, _ in self.placed) else None  # type: ignore[return-value]
+        return first if all(m[:4] == first for _, m in self.placed) else None  # type: ignore[return-value]
 
 
 #: Base 62 digits, for glyph ids.
@@ -1063,10 +1063,9 @@ class _Outliner:
         out.append(decoration("overline", -metrics["ascent"] * scale))
         out.append(decoration("underline", -metrics["underline_position"] * scale))
         merged = self._merged(span, paint, text_node)
-        placed: list[tuple[str, Matrix, bool]] = []
+        placed: list[tuple[str, Matrix]] = []
         combined: list[str] = []
         for cluster in mine:
-            starts = cluster is clusters[0]
             cluster_ts = _mul(span_ts, cluster.transform)
             for glyph, gx, gy, gscale in cluster.glyphs:
                 m = _mul(cluster_ts, _translate(gx * gscale, gy * gscale))
@@ -1081,11 +1080,11 @@ class _Outliner:
                 else:
                     ref = self._glyph_def(glyph)
                     if ref is not None:
-                        placed.append((ref, _mul(m, (gscale, 0.0, 0.0, gscale, 0.0, 0.0)), starts))
+                        placed.append((ref, _mul(m, (gscale, 0.0, 0.0, gscale, 0.0, 0.0))))
         if merged and combined:
             out.append(f'<path d="{"".join(combined)}"{paint}/>')
         elif placed:
-            out.append(_Run(paint, placed))
+            out.append(_Run(paint, placed, len(placed) == 1))
         out.append(decoration("line-through", -metrics["line_through_position"] * scale))
         out = [piece for piece in out if piece]
         anchor = next((n for n in span.node.chain() if n.tag == "a"), None)
@@ -1139,62 +1138,86 @@ def glyph_id(data: str, glyphs: "dict[str, str]") -> str:
 
 
 def _joined(pieces: "list[str | _Run]") -> str:
-    """The pieces' markup, each run of references joined with the runs straight after it
-    that share its paint and scale: one group for a line of glyphs a renderer placed one
-    by one."""
+    """The pieces' markup, consecutive one-glyph runs of references that share their paint
+    and scale joined into one group: a line of characters a renderer placed one by one
+    (docx2svg writes an ``x`` for each) is one group, not one a glyph.  A span of more
+    glyphs is a group of its own, as it was."""
     out: list[str] = []
     pending: _Run | None = None
     for piece in pieces:
         if isinstance(piece, _Run):
-            if pending is not None and pending.paint == piece.paint and pending.linear() is not None \
-                    and pending.linear() == piece.linear():
-                pending = _Run(pending.paint, pending.placed + piece.placed)
+            if pending is not None and pending.single and piece.single and pending.paint == piece.paint \
+                    and pending.linear() is not None and pending.linear() == piece.linear():
+                pending = _Run(pending.paint, pending.placed + piece.placed, True)
                 continue
             if pending is not None:
-                out.append(_uses(pending.placed, pending.paint))
+                out.append(_uses(pending))
             pending = piece
             continue
         if pending is not None:
-            out.append(_uses(pending.placed, pending.paint))
+            out.append(_uses(pending))
             pending = None
         out.append(piece)
     if pending is not None:
-        out.append(_uses(pending.placed, pending.paint))
+        out.append(_uses(pending))
     return "".join(out)
 
 
-def _uses(placed: "list[tuple[str, Matrix, bool]]", paint: str) -> str:
-    """References to glyph definitions, each with its matrix: groups whose matrix is
-    their first glyph's, their glyphs at their offsets from it in font units, where they
-    all share a scale (one size, nothing stretched) -- a new group where a glyph that
-    starts its text chunk cannot be put exactly in place by an offset (:func:`_offset`);
-    else a matrix each."""
+def _uniform(placed) -> "tuple[float, float] | None":
+    """The scale every glyph of ``placed`` shares, where it is a scale only."""
     linear = placed[0][1][:4]
     if linear[1] == 0.0 and linear[2] == 0.0 and linear[0] != 0.0 and linear[3] != 0.0 and all(
-            m[:4] == linear for _, m, _ in placed):
-        sx, sy = linear[0], linear[3]
-        scale_x, scale_y = _fmt_scale(sx), _fmt_scale(sy)
-        scale = scale_x if sx == sy else f"{scale_x} {scale_y}"
-        groups: list[str] = []
-        refs: list[str] = []
-        ox = oy = ""
-        for ref, m, starts in placed:
-            if refs:
-                u, v = _offset(m[4], ox, scale_x, starts), _offset(m[5], oy, scale_y, starts)
-                if u is not None and v is not None:
-                    position = (f' x="{u}"' if u != "0" else "") + (f' y="{v}"' if v != "0" else "")
-                    refs.append(f'<use href="#{ref}"{position}/>')
-                    continue
-                groups.append(f'<g transform="translate({ox} {oy}) scale({scale})">{"".join(refs)}</g>')
-            ox, oy = _fmt(m[4]), _fmt(m[5])
-            refs = [f'<use href="#{ref}"/>']
-        groups.append(f'<g transform="translate({ox} {oy}) scale({scale})">{"".join(refs)}</g>')
-        if len(groups) == 1:
-            return groups[0][:2] + paint + groups[0][2:]
-        return f"<g{paint}>{''.join(groups)}</g>"
-    each = "".join(f'<use href="#{ref}" transform="matrix({" ".join(_fmt_scale(v) for v in m[:4])} '
-                   f'{_fmt(m[4])} {_fmt(m[5])})"/>' for ref, m, _ in placed)
-    return f"<g{paint}>{each}</g>" if paint else each
+            m[:4] == linear for _, m, *_ in placed):
+        return linear[0], linear[3]
+    return None
+
+
+def _uses(run: _Run) -> str:
+    """References to glyph definitions, each with its matrix: a group whose matrix is the
+    first glyph's, its glyphs at their offsets from it in font units (two decimals), where
+    they all share a scale (one size, nothing stretched); else a matrix each.
+
+    One-glyph spans joined (:func:`_joined`) are each where their own group would have put
+    them: resvg reckons ``origin + scale * offset`` in single precision, and a glyph a
+    ten-thousandth of a pixel off its own ``translate`` lights an edge pixel otherwise.
+    Each takes the shortest offset, to four decimals, that lands on its position in
+    single precision (:func:`_offset`), and starts a new group where none does."""
+    placed, paint = run.placed, run.paint
+    scale = _uniform(placed)
+    if scale is None:
+        each = "".join(f'<use href="#{ref}" transform="matrix({" ".join(_fmt_scale(v) for v in m[:4])} '
+                       f'{_fmt(m[4])} {_fmt(m[5])})"/>' for ref, m in placed)
+        return f"<g{paint}>{each}</g>" if paint else each
+    sx, sy = scale
+    scale_x, scale_y = _fmt_scale(sx), _fmt_scale(sy)
+    both = scale_x if sx == sy else f"{scale_x} {scale_y}"
+    if not run.single:
+        ox, oy = placed[0][1][4], placed[0][1][5]
+        refs = []
+        for ref, m in placed:
+            u, v = (m[4] - ox) / sx, (m[5] - oy) / sy
+            position = (f' x="{_fmt_units(u)}"' if abs(u) > 5e-5 else "") + (
+                f' y="{_fmt_units(v)}"' if abs(v) > 5e-5 else "")
+            refs.append(f'<use href="#{ref}"{position}/>')
+        return f'<g{paint} transform="translate({_fmt(ox)} {_fmt(oy)}) scale({both})">{"".join(refs)}</g>'
+    groups: list[str] = []
+    refs = []
+    tx = ty = ""
+    for ref, m in placed:
+        x, y = _fmt(m[4]), _fmt(m[5])
+        if refs:
+            dx, dy = _offset(_f32(float(x)), tx, scale_x), _offset(_f32(float(y)), ty, scale_y)
+            if dx is not None and dy is not None:
+                position = (f' x="{dx}"' if dx != "0" else "") + (f' y="{dy}"' if dy != "0" else "")
+                refs.append(f'<use href="#{ref}"{position}/>')
+                continue
+            groups.append(f'<g transform="translate({tx} {ty}) scale({both})">{"".join(refs)}</g>')
+        tx, ty = x, y
+        refs = [f'<use href="#{ref}"/>']
+    groups.append(f'<g transform="translate({tx} {ty}) scale({both})">{"".join(refs)}</g>')
+    if len(groups) == 1:
+        return groups[0][:2] + paint + groups[0][2:]
+    return f"<g{paint}>{''.join(groups)}</g>"
 
 
 _F32 = struct.Struct("<f")
@@ -1208,30 +1231,23 @@ def _f32(value: float) -> float:
         return value
 
 
-def _offset(position: float, origin: str, scale: str, starts: bool) -> "str | None":
-    """A glyph's offset in font units from its group's origin (``origin``, in user units,
-    as written) at its group's ``scale`` (as written), to two decimals (a hundredth of a
-    unit).  A glyph that starts its text chunk -- where the text's ``x`` or ``y`` put it,
-    as a renderer that places every character writes it -- takes the shortest number, to
-    four decimals, that puts it where its own ``translate(position)`` would, as the text
-    puts it, and ``None`` where no number does: resvg reckons a transform in single
-    precision, ``origin + scale * offset``, and a glyph a hair's breadth off its place
-    lights a pixel's edge otherwise."""
-    if position == float(origin) or _fmt(position) == origin:
-        return "0"
-    if not starts:
-        return _fmt_units((float(_fmt(position)) - float(origin)) / float(scale), 2)
-    goal = _f32(float(_fmt(position)))
+def _offset(place: float, origin: str, scale: str) -> "str | None":
+    """The shortest offset in font units, to four decimals, from a group's origin
+    (``origin``, in user units, as written) at its ``scale`` (as written) that resvg puts
+    at ``place`` -- ``origin + scale * offset`` in single precision; ``None`` where none
+    does.  A glyph a ten-thousandth of a pixel off its place lights an edge pixel."""
     t, s = _f32(float(origin)), _f32(float(scale))
+    if place == t:
+        return "0"
     if s == 0.0:
         return None
-    centre = (goal - t) / s
+    centre = (place - t) / s
     for digits in range(5):
         step = 10.0 ** -digits
         base = round(centre, digits)
         for k in (0, -1, 1, -2, 2, -3, 3):
             text = _fmt_units(base + k * step, digits)
-            if _f32(_f32(s * _f32(float(text))) + t) == goal:
+            if _f32(_f32(s * _f32(float(text))) + t) == place:
                 return text
     return None
 

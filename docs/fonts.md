@@ -119,8 +119,8 @@ A page carries its own definitions, unless the pages share one set: `outline_tex
 fonts, glyphs={})` puts them into the caller's dict and the page only references them;
 `glyph_sheet(glyphs)` is the set as one hidden `<svg>` to put once in an HTML page that
 shows the pages inline, and `embed_glyphs(svg, glyphs)` makes one page standalone again
-(the renderers: `ConvertOptions(glyphs={})`). A made-up 49-slide deck's outlines are 3.7
-times its text with one set (4.7 times gzipped), a 24-page report's 2.3 times (1.2).
+(the renderers: `ConvertOptions(glyphs={})`). A made-up 49-slide deck's outlines are 3.1
+times its text with one set (4.1 times gzipped), a 24-page report's 2.3 times (1.2).
 
 **Ids that do not move.** A glyph's id is made of its outline (`glyph_id`: `g` and six
 base 62 digits of its path data's hash, one more where a shorter one is another outline's),
