@@ -110,11 +110,26 @@ answers to, `textPath`, `rotate`, vertical writing, small caps, and an SVG with 
 `<style>` sheet. Text no face has a glyph for is drawn as the face's missing-glyph box,
 as resvg draws it (`Outlined.missing`).
 
-**Size.** A glyph is defined once per face, glyph and instance, in font units, and every
-use of it is a reference (`<use>`) scaled by its run's size: repeated letters cost a
-reference each. A run with a stroke, a translucent fill or a paint server is one path, as
-resvg draws it. A page's outlines are still larger than its text -- a glyph outline is a
-few hundred bytes -- and every page carries its own definitions.
+**Size.** A glyph is defined once, in font units, and every use of it is a reference
+(`<use>`) in a group scaled by its run's size: repeated letters cost a reference each
+(about 31 bytes), and the characters of a line placed one by one are one group. A run with
+a stroke, a translucent fill or a paint server is one path, as resvg draws it. Path data is
+relative, rounded once, with `t`/`s` for smooth curves and separators only where needed.
+A page carries its own definitions, unless the pages share one set: `outline_text(svg,
+fonts, glyphs={})` puts them into the caller's dict and the page only references them;
+`glyph_sheet(glyphs)` is the set as one hidden `<svg>` to put once in an HTML page that
+shows the pages inline, and `embed_glyphs(svg, glyphs)` makes one page standalone again
+(the renderers: `ConvertOptions(glyphs={})`). A made-up 49-slide deck's outlines are 3.1
+times its text with one set (4.1 times gzipped), a 24-page report's 2.3 times (1.2).
+
+**Ids that do not move.** A glyph's id is made of its outline (`glyph_id`: `g` and six
+base 62 digits of its path data's hash, one more where a shorter one is another outline's),
+so it is the same on every page, in every render and whatever folder the face was read
+from; two definitions under one id are the same path, so pages inlined together cannot
+draw each other's glyphs wrongly. A page's `<defs data-outline-glyphs="">` lists them in
+the order of their first use; a viewer that splits a page by shape (pptx2svg's
+`slide_groups`) orders each shape's by its own first use, so that an edit elsewhere does
+not change it.
 
 **Selectable text.** `selectable=True` (`ConvertOptions(selectable_text=True)`) keeps
 each text after its outlines, transparent (`fill-opacity` and `stroke-opacity` 0, marked

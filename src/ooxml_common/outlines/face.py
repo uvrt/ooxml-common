@@ -847,15 +847,21 @@ class OutlineFace:
         self._outlines[key] = commands
         return commands
 
-    def definition(self, gid: int, coords: tuple[float, ...], ident: str) -> str:
-        """``<path id=ident d=...>`` of the glyph in font units, y down (``""`` for a
-        glyph with no outline), kept with the face."""
+    def glyph_data(self, gid: int, coords: tuple[float, ...] = ()) -> str:
+        """The glyph's path data in font units, y down (``""`` for a glyph with no
+        outline), kept with the face."""
         cache = self.__dict__.setdefault("_definitions", {})
         key = (gid, coords)
         found = cache.get(key)
         if found is None:
             commands = self.outline(gid, coords)
             found = cache[key] = path_data(commands, 1.0, 1.0) if commands else ""
+        return found
+
+    def definition(self, gid: int, coords: tuple[float, ...], ident: str) -> str:
+        """``<path id=ident d=...>`` of the glyph in font units, y down (``""`` for a
+        glyph with no outline)."""
+        found = self.glyph_data(gid, coords)
         return f'<path id="{ident}" d="{found}"/>' if found else ""
 
     def _loca(self, gid: int) -> tuple[int, int]:
@@ -1134,16 +1140,25 @@ def _fmt(value: float) -> str:
     return "0" if text in ("-0", "") else text
 
 
-def path_data(commands: Sequence[Command], scale_x: float, scale_y: float, dx: float = 0.0, dy: float = 0.0) -> str:
+def path_data(commands: Sequence[Command], scale_x: float, scale_y: float, dx: float = 0.0, dy: float = 0.0,
+              digits: int = DIGITS) -> str:
     """SVG path data for ``commands``: each point ``(x, y)`` drawn at
-    ``(dx + x * scale_x, dy - y * scale_y)`` (font units are y up).  Written in relative
-    commands (``h``/``v`` for axis-aligned lines), every point rounded to :data:`DIGITS`
-    decimals first, so that no rounding accumulates along a contour."""
-    step = 10 ** DIGITS
+    ``(dx + x * scale_x, dy - y * scale_y)`` (font units are y up).  Written short and
+    exact: every point rounded to ``digits`` decimals first, so that no rounding
+    accumulates along a contour; relative commands, ``h``/``v`` for axis-aligned lines;
+    ``t`` for a quadratic and ``s`` for a cubic whose first control point is the last
+    one's reflection (TrueType's implied on-curve points make every run of off-curve
+    points one), where it is so in the rounded numbers; a command letter written once
+    for a run of the same command, a line straight after a move not at all; a separator
+    only where two numbers would run together."""
+    step = 10 ** digits
     parts: list[str] = []
-    cx = cy = 0          # the current point, in units of 10 ** -DIGITS
+    cx = cy = 0          # the current point, in units of 10 ** -digits
     sx = sy = 0          # the subpath's start
     last = ""
+    # The last curve's kind (``"q"`` or ``"c"``) and its last control point, for t and s.
+    curve = ""
+    kx = ky = 0
 
     def fixed(x: float, y: float) -> tuple[int, int]:
         return round((dx + x * scale_x) * step), round((dy - y * scale_y) * step)
@@ -1153,7 +1168,7 @@ def path_data(commands: Sequence[Command], scale_x: float, scale_y: float, dx: f
             return str(value // step)
         sign = "-" if value < 0 else ""
         whole, frac = divmod(abs(value), step)
-        text = f"{frac:0{DIGITS}d}".rstrip("0")
+        text = f"{frac:0{digits}d}".rstrip("0")
         return f"{sign}{whole}.{text}" if whole else f"{sign}.{text}"
 
     previous = ""         # the last number written, "" after a command letter
@@ -1161,7 +1176,8 @@ def path_data(commands: Sequence[Command], scale_x: float, scale_y: float, dx: f
     def emit(op: str, values: Sequence[int]) -> None:
         nonlocal last, previous
         text = ""
-        if op != last:
+        # After a relative move, further pairs are relative lines (SVG 1.1, 8.3.2).
+        if op != last and not (op == "l" and last == "m"):
             text, previous = op, ""
         for value in values:
             item = number(value)
@@ -1177,7 +1193,7 @@ def path_data(commands: Sequence[Command], scale_x: float, scale_y: float, dx: f
         op = command[0]
         if op == "Z":
             parts.append("z")
-            last, previous = "z", ""
+            last, previous, curve = "z", "", ""
             cx, cy = sx, sy
             continue
         points = [fixed(command[i], command[i + 1]) for i in range(1, len(command), 2)]
@@ -1187,6 +1203,7 @@ def path_data(commands: Sequence[Command], scale_x: float, scale_y: float, dx: f
             # The first move absolute: path data is joined glyph after glyph.
             emit("M", (x, y)) if not parts else emit("m", (x - cx, y - cy))
             cx, cy = sx, sy = x, y
+            curve = ""
         elif op == "L":
             x, y = points[0]
             if y == cy:
@@ -1196,12 +1213,23 @@ def path_data(commands: Sequence[Command], scale_x: float, scale_y: float, dx: f
             else:
                 emit("l", (x - cx, y - cy))
             cx, cy = x, y
+            curve = ""
+        elif op == "Q":
+            (qx, qy), (x, y) = points
+            if curve == "q" and qx == 2 * cx - kx and qy == 2 * cy - ky:
+                emit("t", (x - cx, y - cy))
+            else:
+                emit("q", (qx - cx, qy - cy, x - cx, y - cy))
+            curve, kx, ky = "q", qx, qy
+            cx, cy = x, y
         else:
-            values: list[int] = []
-            for x, y in points:
-                values.extend((x - cx, y - cy))
-            emit(op.lower(), values)
-            cx, cy = points[-1]
+            (ax, ay), (bx, by), (x, y) = points
+            if curve == "c" and ax == 2 * cx - kx and ay == 2 * cy - ky:
+                emit("s", (bx - cx, by - cy, x - cx, y - cy))
+            else:
+                emit("c", (ax - cx, ay - cy, bx - cx, by - cy, x - cx, y - cy))
+            curve, kx, ky = "c", bx, by
+            cx, cy = x, y
     return "".join(parts)
 
 

@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 
 from ooxml_common.fonts import bundle_dir
-from ooxml_common.outlines import FontSetup, outline_text
+from ooxml_common.outlines import FontSetup, embed_glyphs, glyph_id, glyph_sheet, outline_text
 from ooxml_common.outlines.face import load_face, path_data
 from ooxml_common.outlines.fontdb import database, parse_families
 from ooxml_common.outlines.shaper import shape, shapeable
@@ -50,7 +50,26 @@ def test_path_data_is_relative_and_rounded_once():
     commands = [("M", 10, 20), ("L", 30, 20), ("L", 30, 50), ("Q", 40, 60, 50.5, 50), ("Z",),
                 ("M", 0, 0), ("L", 1.0004, 2), ("Z",)]
     # Font units are y up; the path is y down.
-    assert path_data(commands, 1.0, 1.0) == "M10-20h20v-30q10-10 20.5 0zm-10 20l1-2z"
+    assert path_data(commands, 1.0, 1.0) == "M10-20h20v-30q10-10 20.5 0zm-10 20 1-2z"
+
+
+def test_smooth_curves_are_written_with_t_and_s():
+    # TrueType: two off-curve points in a row, the on-curve point between them implied --
+    # the second curve's control point is the first's reflection.
+    quads = [("M", 0, 0), ("Q", 10, 10, 20, 10), ("Q", 30, 10, 40, 0), ("Q", 50, -5, 60, 0), ("Z",)]
+    assert path_data(quads, 1.0, 1.0) == "M0 0q10-10 20-10t20 10q10 5 20 0z"
+    cubics = [("M", 0, 0), ("C", 0, 10, 10, 20, 20, 20), ("C", 30, 20, 40, 10, 40, 0), ("Z",)]
+    assert path_data(cubics, 1.0, 1.0) == "M0 0c0-10 10-20 20-20s20 10 20 20z"
+    # Only where the rounded numbers say so: a reflection off by a rounding is a q.
+    assert path_data([("M", 0, 0), ("Q", 1, 1, 2, 1), ("Q", 3.0004, 1, 4, 0)], 1.0, 1.0, digits=3) == \
+        "M0 0q1-1 2-1t2 1"
+    assert path_data([("M", 0, 0), ("Q", 1, 1, 2, 1), ("Q", 3.004, 1, 4, 0)], 1.0, 1.0, digits=3) == \
+        "M0 0q1-1 2-1 1.004 0 2 1"
+
+
+def test_a_line_after_a_move_needs_no_letter():
+    commands = [("M", 0, 0), ("Z",), ("M", 5, 5), ("L", 7, 8), ("L", 9, 9), ("Z",)]
+    assert path_data(commands, 1.0, 1.0) == "M0 0zm5-5 2-3 2-1z"
 
 
 def test_numbers_are_separated_only_where_they_would_run_together():
@@ -164,6 +183,85 @@ def test_repeated_glyphs_are_one_definition_each():
     assert outlined.svg.count("<use ") == 6
     # Definitions are named by face, glyph and instance: the same text draws the same bytes.
     assert outline_text(svg, _setup()).svg == outlined.svg
+
+
+@needs_bundle
+def test_a_glyph_id_is_made_of_its_outline_wherever_the_face_was_read_from(tmp_path):
+    assert BUNDLE is not None
+    source = Path(BUNDLE) / "Carlito-Regular.ttf"
+    copy = tmp_path / "elsewhere" / source.name
+    copy.parent.mkdir()
+    copy.write_bytes(source.read_bytes())
+    svg = _svg('<text x="10" y="60" font-family="Carlito" font-size="30">Same glyphs</text>')
+    here = outline_text(svg, FontSetup.of([str(source)], (), False, GENERIC))
+    there = outline_text(svg, FontSetup.of([str(copy)], (), False, GENERIC))
+    assert here.svg == there.svg and here.glyphs
+    assert all(re.fullmatch(r"g[0-9A-Za-z]{6}", ident) for ident in here.glyphs)
+
+
+def test_an_id_another_outline_has_takes_another_digit():
+    glyphs: dict[str, str] = {}
+    first = glyph_id("M0 0h10v10h-10z", glyphs)
+    assert glyph_id("M0 0h10v10h-10z", glyphs) == first and len(glyphs) == 1
+    # Another outline already under the id this one would take.
+    taken = {first: '<path id="%s" d="M1 1z"/>' % first}
+    longer = glyph_id("M0 0h10v10h-10z", taken)
+    assert longer.startswith(first) and len(longer) == len(first) + 1
+    assert taken[longer] == f'<path id="{longer}" d="M0 0h10v10h-10z"/>'
+
+
+@needs_bundle
+def test_one_glyph_set_for_several_pages():
+    pages = [_svg('<text x="10" y="60" font-family="Carlito" font-size="30">First page</text>'),
+             _svg('<text x="10" y="60" font-family="Lato" font-size="30">Second page, first</text>')]
+    alone = [outline_text(page, _setup()) for page in pages]
+    glyphs: dict[str, str] = {}
+    shared = [outline_text(page, _setup(), glyphs=glyphs) for page in pages]
+    for one, other in zip(alone, shared):
+        # The page only references its glyphs; the set holds each glyph once.
+        assert "<path id=" not in other.svg and "data-outline-glyphs" not in other.svg
+        assert other.glyphs == one.glyphs
+        assert set(other.glyphs) <= set(glyphs)
+        # Its own definitions put back: the page outlined alone, byte for byte.
+        assert embed_glyphs(other.svg, glyphs) == one.svg
+    assert len(glyphs) == len({i for one in alone for i in one.glyphs})
+    sheet = glyph_sheet(glyphs)
+    assert sheet.startswith('<svg xmlns="http://www.w3.org/2000/svg" width="0" height="0"')
+    assert re.findall(r'<path id="([^"]+)"', sheet) == sorted(glyphs)
+    # Whatever order the pages were drawn in, the same set and the same sheet.
+    again: dict[str, str] = {}
+    for page in reversed(pages):
+        outline_text(page, _setup(), glyphs=again)
+    assert glyph_sheet(again) == sheet
+
+
+def test_a_page_with_its_definitions_is_embedded_as_it_is():
+    svg = _svg('<use href="#gAbc123"/>')
+    assert embed_glyphs(svg, {}) == svg
+    full = embed_glyphs(svg, {"gAbc123": '<path id="gAbc123" d="M0 0h1v1z"/>'})
+    assert '<defs data-outline-glyphs=""><path id="gAbc123" d="M0 0h1v1z"/></defs>' in full
+    assert embed_glyphs(full, {"gAbc123": '<path id="gAbc123" d="M0 0h1v1z"/>'}) == full
+
+
+@needs_bundle
+def test_characters_placed_one_by_one_are_one_group_and_draw_the_same_pixels():
+    # A renderer that places every character (docx2svg) writes an x for each: the
+    # references join one group, each glyph exactly where its own x puts it.
+    xs = " ".join(f"{10 + 17.3127 * k:.4f}" for k in range(12))
+    svg = _svg(f'<text x="{xs}" y="60" font-family="Carlito" font-size="29.3">Placed apart</text>')
+    outlined = outline_text(svg, _setup())
+    assert outlined.svg.count("<g transform=") <= 2
+    assert _png(outlined.svg) == _png(svg)
+
+
+@needs_bundle
+def test_two_pages_gradients_of_one_id_are_two_definitions():
+    def page(colour: str) -> str:
+        defs = (f'<defs><linearGradient id="fade"><stop offset="0" stop-color="{colour}"/>'
+                '<stop offset="1" stop-color="#fff"/></linearGradient></defs>')
+        return _svg('<text x="10" y="60" font-family="Lato" font-size="40" fill="url(#fade)">Same box</text>', defs)
+    ids = [re.search(r'id="(fade-t[^"]+)"', outline_text(page(c), _setup()).svg).group(1) for c in ("#f00", "#00f")]
+    assert ids[0] != ids[1]
 
 
 @needs_bundle

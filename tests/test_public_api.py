@@ -430,6 +430,8 @@ USED_BY: dict[str, dict[str, str]] = {
     },
     "ooxml_common.outlines": {
         "FontSetup": "docx2svg, pptx2svg",
+        "embed_glyphs": "docx2svg, pptx2svg",
+        "glyph_sheet": "docx2svg, pptx2svg",
         "outline_text": "docx2svg, pptx2svg",
     },
     "ooxml_common.opc": {

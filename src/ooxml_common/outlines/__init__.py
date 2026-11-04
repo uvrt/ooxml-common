@@ -26,6 +26,7 @@ Standard library only.
 """
 
 from .fontdb import Database, FontSetup
-from .svgtext import KeptText, Outlined, outline_text
+from .svgtext import KeptText, Outlined, embed_glyphs, glyph_id, glyph_sheet, outline_text
 
-__all__ = ["Database", "FontSetup", "KeptText", "Outlined", "outline_text"]
+__all__ = ["Database", "FontSetup", "KeptText", "Outlined", "embed_glyphs", "glyph_id", "glyph_sheet",
+           "outline_text"]
