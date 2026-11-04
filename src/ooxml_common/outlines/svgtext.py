@@ -4,9 +4,11 @@ Each ``<text>`` becomes a ``<g>`` with the element's own attributes but the text
 (its transform, filter, clip, opacity and identity attributes kept), holding per span
 its underline, its glyphs and its line-through, in usvg's order.  A glyph drawn with an
 opaque fill and no stroke is a ``<use>`` of a path in ``<defs>`` -- one definition per
-face, glyph, instance and size, so repeated letters cost one reference each; any other
-span's glyphs are one ``<path>``, as resvg makes them, so a stroke or a translucent fill
-paints the run once.  Positions follow usvg's layout (``ooxml_common.outlines`` names the
+outline, under an id made of it (:func:`glyph_id`), so repeated letters cost one reference
+each, and the references of consecutive spans of one paint and size share a group; any
+other span's glyphs are one ``<path>``, as resvg makes them, so a stroke or a translucent
+fill paints the run once.  The definitions can be a set shared by many pages
+(``outline_text(glyphs=)``, :func:`glyph_sheet`, :func:`embed_glyphs`).  Positions follow usvg's layout (``ooxml_common.outlines`` names the
 version): text chunks at each absolutely positioned character, ``text-anchor`` over the
 chunk's advance, ``dx``/``dy``, ``baseline-shift``, ``letter-spacing``,
 ``word-spacing``, ``textLength`` with ``lengthAdjust``, and each chunk shaped whole
