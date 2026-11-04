@@ -55,6 +55,7 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.metafile` -- docx2svg, pptx2svg: `inline_metafile_images`, `metafile_to_svg`
 - `ooxml_common.metafile.dib` -- pptx2svg: `BI_ALPHABITFIELDS`, `BI_BITFIELDS`, `BI_JPEG`, `BI_PNG`, `BI_RGB`, `BI_RLE4`, `BI_RLE8`, `DecodedImage`, `DecodedPixels`, `MAX_PIXELS`, `PNG_COMPRESS_LEVEL`, `decode_dib`, `dib_to_image`, `encode_png`, `split_packed_dib`
 - `ooxml_common.numfmt` -- ooxml-edit, xlsx-agent: `DATE_KINDS`, `MEASURED`; ooxml-edit: `is_date_code`; xlsx-agent: `classify`
+- `ooxml_common.outlines` -- docx2svg, pptx2svg: `FontSetup`, `outline_text`
 - `ooxml_common.opc` -- docx2svg, ooxml-edit: `CONTENT_TYPES_PART`, `REL_IMAGE`, `REL_OFFICE_DOCUMENT`, `normalize_part_path`; docx2svg: `OpcPackage`, `REL_HYPERLINK`, `REL_THEME`, `Relationship`, `rels_path_for`; ooxml-edit: `REL_CHART`
 - `ooxml_common.raster` -- docx2svg, pptx2svg: `BACKENDS`, `Backend`, `RasterizerNotAvailable`, `as_bytes`, `available_backends`, `choose_backend`, `draw_in_passes`, `importable`, `pass_svg`, `render_with_cairosvg`, `render_with_resvg`; pptx2svg: `preferred_backend`, `without_undrawn_text`
 - `ooxml_common.svgimage` -- pptx-agent: `with_pixel_size`; pptx2svg: `natural_size`, `with_pixel_sized_images`
