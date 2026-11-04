@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import struct
 import threading
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
@@ -32,7 +33,7 @@ from .face import OutlineFace, path_data
 from .fontdb import Database, FontSetup, HeaderFace, database
 from .shaper import shape, shapeable
 
-__all__ = ["KeptText", "Outlined", "outline_text"]
+__all__ = ["KeptText", "Outlined", "embed_glyphs", "glyph_id", "glyph_sheet", "outline_text"]
 
 _SVG = "http://www.w3.org/2000/svg"
 _NS = "{" + _SVG + "}"
@@ -82,6 +83,8 @@ class Outlined:
     outlined: int = 0
     #: Characters no loaded face has, drawn as the face's missing-glyph box, as resvg does.
     missing: list[str] = field(default_factory=list)
+    #: The ids of the glyph definitions the document uses, in the order of their first use.
+    glyphs: list[str] = field(default_factory=list)
 
 
 class _Keep(Exception):
@@ -408,11 +411,59 @@ class _Cluster:
     has_shift: bool = False
 
 
+class _Run:
+    """A span's glyphs as references: the paint they share and each glyph's id, matrix
+    and whether it starts its text chunk (is where an ``x`` or ``y`` put it)."""
+
+    __slots__ = ("paint", "placed")
+
+    def __init__(self, paint: str, placed: "list[tuple[str, Matrix, bool]]") -> None:
+        self.paint, self.placed = paint, placed
+
+    def linear(self) -> "tuple[float, float, float, float] | None":
+        """The scale every glyph shares, ``None`` where they do not share one."""
+        first = self.placed[0][1][:4]
+        return first if all(m[:4] == first for _, m, _ in self.placed) else None  # type: ignore[return-value]
+
+
+#: Base 62 digits, for glyph ids.
+_DIGITS62 = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+#: How many base 62 digits of its outline's hash a glyph's id takes (``g`` and six: about
+#: 36 bits), more only where a shorter one is already another outline's.
+ID_DIGITS = 6
+_HASHES: dict[str, str] = {}
+_HASHES_LOCK = threading.Lock()
+
+
+def _hash62(data: str) -> str:
+    """``data``'s SHA-1 in base 62 (27 digits), remembered across documents."""
+    found = _HASHES.get(data)
+    if found is not None:
+        return found
+    number = int.from_bytes(hashlib.sha1(data.encode("ascii")).digest(), "big")
+    digits = []
+    while number:
+        number, digit = divmod(number, 62)
+        digits.append(_DIGITS62[digit])
+    found = "".join(digits).ljust(27, "0")
+    with _HASHES_LOCK:
+        if len(_HASHES) >= _SHAPED_LIMIT:
+            _HASHES.clear()
+        _HASHES[data] = found
+    return found
+
+
 class _Outliner:
-    def __init__(self, fonts: Callable[[str | None], FontSetup], selectable: bool) -> None:
+    def __init__(self, fonts: Callable[[str | None], FontSetup], selectable: bool,
+                 glyphs: "dict[str, str] | None" = None) -> None:
         self.fonts = fonts
         self.selectable = selectable
+        #: Paint servers restated for the outlines.
         self.defs: dict[str, str] = {}
+        #: Glyph definitions by id: the caller's, shared by its documents, or this one's.
+        self.glyphs: dict[str, str] = glyphs if glyphs is not None else {}
+        #: This document's glyph ids, in the order of their first use.
+        self.used: dict[str, None] = {}
         self.kept: list[KeptText] = []
         self.missing: list[str] = []
         self.outlined = 0
@@ -673,7 +724,6 @@ class _Outliner:
                         raise _Keep("no loaded font answers to its font-family", family_of(span))
                     self._face(span.face, family_of(span))
 
-        parts: list[str] = []
         laid: list[tuple] = []
         last_x = last_y = 0.0
         char_offset = 0
@@ -694,11 +744,12 @@ class _Outliner:
             char_offset += len(chunk.text)
             last_x, last_y = x + end_x, y + end_y
         self.bbox = self._text_bbox(laid)
+        pieces: list[str | _Run] = []
         for span, chunk, clusters, x, y in laid:
-            parts.append(self._draw_span(span, chunk, clusters, x, y, text_node))
+            pieces.extend(self._draw_span(span, chunk, clusters, x, y, text_node))
         self.outlined += 1
         del sample
-        return "".join(parts)
+        return _joined(pieces)
 
     def _span_ts(self, span: _Span, x: float, y: float) -> Matrix:
         assert span.face is not None
@@ -748,7 +799,8 @@ class _Outliner:
         bx, by, bw, bh = self.bbox
         box = f"matrix({_fmt_scale(bw)} 0 0 {_fmt_scale(bh)} {_fmt(bx)} {_fmt(by)})"
         transform = (box + " " + attributes["gradientTransform"]) if "gradientTransform" in attributes else box
-        new_id = ident + "-t" + hashlib.sha1(box.encode()).hexdigest()[:8]
+        # Of the box and the gradient both: two pages' gradients of one id are two.
+        new_id = ident + "-t" + hashlib.sha1((box + source).encode()).hexdigest()[:8]
         if new_id not in self.defs:
             # The geometry restated in the box's own units: a percentage, and a default
             # (which is one), would otherwise be of the viewport in user space.
@@ -957,17 +1009,20 @@ class _Outliner:
         return "".join(f' {k}="{_escape(v)}"' for k, v in merged.items())
 
     def _draw_span(self, span: _Span, chunk: _Chunk, clusters: list[_Cluster], x: float, y: float,
-                   text_node: _Node) -> str:
+                   text_node: _Node) -> "list[str | _Run]":
+        """The span drawn: markup, and its glyphs as a :class:`_Run` of references where
+        they are drawn so, which :meth:`outline` joins with the next span's where both
+        share their paint and scale."""
         if not span.visible:
-            return ""
+            return []
         assert span.face is not None
         base_face = self._face(span.face, "")
         span_ts = self._span_ts(span, x, y)
         mine = [c for c in clusters if span.start <= c.byte < span.end]
         if not mine:
-            return ""
+            return []
         paint = self._paint_attrs(span.node, text_node)
-        out: list[str] = []
+        out: list[str | _Run] = []
         metrics = base_face.metrics
         scale = span.font_size / base_face.units_per_em
 
@@ -1006,9 +1061,10 @@ class _Outliner:
         out.append(decoration("overline", -metrics["ascent"] * scale))
         out.append(decoration("underline", -metrics["underline_position"] * scale))
         merged = self._merged(span, paint, text_node)
-        placed: list[tuple[str, Matrix]] = []
+        placed: list[tuple[str, Matrix, bool]] = []
         combined: list[str] = []
         for cluster in mine:
+            starts = cluster is clusters[0]
             cluster_ts = _mul(span_ts, cluster.transform)
             for glyph, gx, gy, gscale in cluster.glyphs:
                 m = _mul(cluster_ts, _translate(gx * gscale, gy * gscale))
@@ -1023,19 +1079,19 @@ class _Outliner:
                 else:
                     ref = self._glyph_def(glyph)
                     if ref is not None:
-                        placed.append((ref, _mul(m, (gscale, 0.0, 0.0, gscale, 0.0, 0.0))))
+                        placed.append((ref, _mul(m, (gscale, 0.0, 0.0, gscale, 0.0, 0.0)), starts))
         if merged and combined:
             out.append(f'<path d="{"".join(combined)}"{paint}/>')
         elif placed:
-            out.append(_uses(placed, paint))
+            out.append(_Run(paint, placed))
         out.append(decoration("line-through", -metrics["line_through_position"] * scale))
-        drawn = "".join(out)
+        out = [piece for piece in out if piece]
         anchor = next((n for n in span.node.chain() if n.tag == "a"), None)
-        if anchor is not None and drawn:
+        if anchor is not None and out:
             attrs = "".join(f' {_attr_name(k)}="{_escape(v)}"' for k, v in anchor.element.attrib.items()  # type: ignore[union-attr]
                             if k not in _TEXT_ONLY and k not in _PAINT and k != "style")
-            drawn = f"<a{attrs}>{drawn}</a>"
-        return drawn
+            return [f"<a{attrs}>{_joined(out)}</a>"]
+        return out
 
     def _merged(self, span: _Span, paint: str, text_node: _Node) -> bool:
         """Whether the span's glyphs are drawn as one path (a stroke, a translucent fill
@@ -1049,39 +1105,140 @@ class _Outliner:
 
     def _glyph_def(self, glyph: _ShapedGlyph) -> str | None:
         """The id of the glyph's definition: its outline in font units, y down -- one per
-        face, glyph and instance, whatever the size it is drawn at."""
-        key = f"{glyph.header.path}|{glyph.header.number}|{glyph.id}|{glyph.coords}"
-        ident = "g" + hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
-        if ident not in self.defs:
-            self.defs[ident] = glyph.face.definition(glyph.id, glyph.coords, ident)
-        return ident if self.defs[ident] else None
+        outline, whatever the face, file or size it is drawn from (:func:`glyph_id`)."""
+        data = glyph.face.glyph_data(glyph.id, glyph.coords)
+        if not data:
+            return None
+        ident = glyph_id(data, self.glyphs)
+        self.used[ident] = None
+        return ident
 
 
-def _uses(placed: list[tuple[str, Matrix]], paint: str) -> str:
-    """References to glyph definitions, each with its matrix: one group whose matrix is
-    the first glyph's, its glyphs at their offsets from it in font units, where they all
-    share a scale (one size, nothing stretched); else a matrix each."""
+def glyph_id(data: str, glyphs: "dict[str, str]") -> str:
+    """The id of the glyph whose path data is ``data``, its definition added to
+    ``glyphs`` (id -> ``<path id d/>``) where it is not there yet.
+
+    The id is made of the outline itself -- ``g`` and the first :data:`ID_DIGITS` base 62
+    digits of its hash -- so the same glyph has the same id on every page, in every
+    render of a document and in every document, wherever its font file was read from,
+    and two ids name two outlines.  An id already another outline's in ``glyphs`` (one
+    chance in about 10**10 for two given outlines) takes one more digit, and so on."""
+    digest = _hash62(data)
+    for length in range(ID_DIGITS, len(digest) + 1):
+        ident = "g" + digest[:length]
+        element = f'<path id="{ident}" d="{data}"/>'
+        found = glyphs.get(ident)
+        if found is None:
+            glyphs[ident] = element
+            return ident
+        if found == element:
+            return ident
+    raise AssertionError("a SHA-1 collision")  # pragma: no cover
+
+
+def _joined(pieces: "list[str | _Run]") -> str:
+    """The pieces' markup, each run of references joined with the runs straight after it
+    that share its paint and scale: one group for a line of glyphs a renderer placed one
+    by one."""
+    out: list[str] = []
+    pending: _Run | None = None
+    for piece in pieces:
+        if isinstance(piece, _Run):
+            if pending is not None and pending.paint == piece.paint and pending.linear() is not None \
+                    and pending.linear() == piece.linear():
+                pending = _Run(pending.paint, pending.placed + piece.placed)
+                continue
+            if pending is not None:
+                out.append(_uses(pending.placed, pending.paint))
+            pending = piece
+            continue
+        if pending is not None:
+            out.append(_uses(pending.placed, pending.paint))
+            pending = None
+        out.append(piece)
+    if pending is not None:
+        out.append(_uses(pending.placed, pending.paint))
+    return "".join(out)
+
+
+def _uses(placed: "list[tuple[str, Matrix, bool]]", paint: str) -> str:
+    """References to glyph definitions, each with its matrix: groups whose matrix is
+    their first glyph's, their glyphs at their offsets from it in font units, where they
+    all share a scale (one size, nothing stretched) -- a new group where a glyph that
+    starts its text chunk cannot be put exactly in place by an offset (:func:`_offset`);
+    else a matrix each."""
     linear = placed[0][1][:4]
     if linear[1] == 0.0 and linear[2] == 0.0 and linear[0] != 0.0 and linear[3] != 0.0 and all(
-            m[:4] == linear for _, m in placed):
+            m[:4] == linear for _, m, _ in placed):
         sx, sy = linear[0], linear[3]
-        ox, oy = placed[0][1][4], placed[0][1][5]
-        refs = []
-        for ref, m in placed:
-            u, v = (m[4] - ox) / sx, (m[5] - oy) / sy
-            position = (f' x="{_fmt_units(u)}"' if abs(u) > 5e-5 else "") + (
-                f' y="{_fmt_units(v)}"' if abs(v) > 5e-5 else "")
-            refs.append(f'<use href="#{ref}"{position}/>')
-        scale = f"{_fmt_scale(sx)}" if sx == sy else f"{_fmt_scale(sx)} {_fmt_scale(sy)}"
-        return f'<g{paint} transform="translate({_fmt(ox)} {_fmt(oy)}) scale({scale})">{"".join(refs)}</g>'
+        scale_x, scale_y = _fmt_scale(sx), _fmt_scale(sy)
+        scale = scale_x if sx == sy else f"{scale_x} {scale_y}"
+        groups: list[str] = []
+        refs: list[str] = []
+        ox = oy = ""
+        for ref, m, starts in placed:
+            if refs:
+                u, v = _offset(m[4], ox, scale_x, starts), _offset(m[5], oy, scale_y, starts)
+                if u is not None and v is not None:
+                    position = (f' x="{u}"' if u != "0" else "") + (f' y="{v}"' if v != "0" else "")
+                    refs.append(f'<use href="#{ref}"{position}/>')
+                    continue
+                groups.append(f'<g transform="translate({ox} {oy}) scale({scale})">{"".join(refs)}</g>')
+            ox, oy = _fmt(m[4]), _fmt(m[5])
+            refs = [f'<use href="#{ref}"/>']
+        groups.append(f'<g transform="translate({ox} {oy}) scale({scale})">{"".join(refs)}</g>')
+        if len(groups) == 1:
+            return groups[0][:2] + paint + groups[0][2:]
+        return f"<g{paint}>{''.join(groups)}</g>"
     each = "".join(f'<use href="#{ref}" transform="matrix({" ".join(_fmt_scale(v) for v in m[:4])} '
-                   f'{_fmt(m[4])} {_fmt(m[5])})"/>' for ref, m in placed)
+                   f'{_fmt(m[4])} {_fmt(m[5])})"/>' for ref, m, _ in placed)
     return f"<g{paint}>{each}</g>" if paint else each
 
 
-def _fmt_units(value: float) -> str:
-    """An offset in font units: two decimals (a hundredth of a unit)."""
-    text = f"{value:.2f}".rstrip("0").rstrip(".")
+_F32 = struct.Struct("<f")
+
+
+def _f32(value: float) -> float:
+    """``value`` as the nearest single-precision float, as resvg holds a number."""
+    try:
+        return _F32.unpack(_F32.pack(value))[0]
+    except OverflowError:
+        return value
+
+
+def _offset(position: float, origin: str, scale: str, starts: bool) -> "str | None":
+    """A glyph's offset in font units from its group's origin (``origin``, in user units,
+    as written) at its group's ``scale`` (as written), to two decimals (a hundredth of a
+    unit).  A glyph that starts its text chunk -- where the text's ``x`` or ``y`` put it,
+    as a renderer that places every character writes it -- takes the shortest number, to
+    four decimals, that puts it where its own ``translate(position)`` would, as the text
+    puts it, and ``None`` where no number does: resvg reckons a transform in single
+    precision, ``origin + scale * offset``, and a glyph a hair's breadth off its place
+    lights a pixel's edge otherwise."""
+    if position == float(origin) or _fmt(position) == origin:
+        return "0"
+    if not starts:
+        return _fmt_units((float(_fmt(position)) - float(origin)) / float(scale), 2)
+    goal = _f32(float(_fmt(position)))
+    t, s = _f32(float(origin)), _f32(float(scale))
+    if s == 0.0:
+        return None
+    centre = (goal - t) / s
+    for digits in range(5):
+        step = 10.0 ** -digits
+        base = round(centre, digits)
+        for k in (0, -1, 1, -2, 2, -3, 3):
+            text = _fmt_units(base + k * step, digits)
+            if _f32(_f32(s * _f32(float(text))) + t) == goal:
+                return text
+    return None
+
+
+def _fmt_units(value: float, digits: int = 2) -> str:
+    """An offset in font units, to ``digits`` decimals."""
+    text = f"{value:.{digits}f}"
+    if "." in text:
+        text = text.rstrip("0").rstrip(".")
     return "0" if text in ("-0", "") else text
 
 
@@ -1143,7 +1300,7 @@ def _unescape(value: str) -> str:
 
 
 def outline_text(svg: str, fonts: "FontSetup | Callable[[str | None], FontSetup]", *,
-                 selectable: bool = False) -> Outlined:
+                 selectable: bool = False, glyphs: "dict[str, str] | None" = None) -> Outlined:
     """``svg`` with every ``<text>`` drawn as the outlines resvg would draw it with
     ``fonts`` -- one :class:`FontSetup`, or a function giving the setup a text's
     ``font-family`` value is drawn with (a renderer drawing in passes).
@@ -1151,6 +1308,16 @@ def outline_text(svg: str, fonts: "FontSetup | Callable[[str | None], FontSetup]
     With ``selectable`` each outlined text is followed by the text itself, transparent
     (``fill-opacity`` and ``stroke-opacity`` 0), for a viewer to select, search and copy;
     the outlines are ``aria-hidden`` so that a screen reader reads the text once.
+
+    Each glyph is defined once, in font units, and drawn by reference (``<use
+    href="#g…">``); its id is made of its outline (:func:`glyph_id`), so it is the same on
+    every page and in every render.  The document's definitions go into a ``<defs
+    data-outline-glyphs="">`` first in it, in the order of their first use -- unless
+    ``glyphs`` is given: a dict (id -> ``<path id d/>``) shared by a document's pages, which
+    the definitions go into instead, the page then holding only the references.  Such a
+    page needs the definitions beside it: :func:`glyph_sheet` writes them once, for an
+    HTML page that shows the pages inline, and :func:`embed_glyphs` puts a page's own back
+    into it, standalone again.
 
     A text left as text is listed in :attr:`Outlined.kept`; the rest of the document is
     copied as it is."""
@@ -1162,7 +1329,7 @@ def outline_text(svg: str, fonts: "FontSetup | Callable[[str | None], FontSetup]
         setup_of = fonts
     if "<text" not in svg:
         return Outlined(svg)
-    outliner = _Outliner(setup_of, selectable)
+    outliner = _Outliner(setup_of, selectable, glyphs)
     outliner.document = svg
     if re.search(r"<style\b", svg):
         outliner.kept.append(KeptText("a <style> sheet this module does not follow", "", ""))
@@ -1211,12 +1378,53 @@ def outline_text(svg: str, fonts: "FontSetup | Callable[[str | None], FontSetup]
         stack.append((name, attributes))
     pieces.append(svg[kept_to:])
     out = "".join(pieces)
-    definitions = "".join(value for value in outliner.defs.values() if value)
+    own = "" if glyphs is not None else "".join(outliner.glyphs[ident] for ident in outliner.used)
+    definitions = own + "".join(value for value in outliner.defs.values() if value)
     if definitions:
         root = _ROOT.search(out)
         if root is not None:
             out = out[:root.end()] + f'<defs data-outline-glyphs="">{definitions}</defs>' + out[root.end():]
-    return Outlined(out, outliner.kept, outliner.outlined, outliner.missing)
+    return Outlined(out, outliner.kept, outliner.outlined, outliner.missing, list(outliner.used))
+
+
+#: A reference to a glyph definition.
+_GLYPH_REF = re.compile(r'href="#(g[0-9A-Za-z]+)"')
+
+
+def glyph_sheet(glyphs: "dict[str, str]") -> str:
+    """The glyph definitions of documents outlined with a shared ``glyphs`` dict
+    (:func:`outline_text`) as one ``<svg>`` element that draws nothing and takes no room:
+    put once in an HTML page, before or after the pages' own ``<svg>`` elements, every
+    page's references resolve to it.  Ordered by id, so that the same glyphs write the
+    same bytes whatever order the pages were drawn in."""
+    definitions = "".join(glyphs[ident] for ident in sorted(glyphs))
+    return (f'<svg xmlns="{_SVG}" width="0" height="0" style="position:absolute" aria-hidden="true" '
+            f'data-outline-glyphs=""><defs>{definitions}</defs></svg>')
+
+
+def embed_glyphs(svg: str, glyphs: "dict[str, str]") -> str:
+    """``svg``, outlined with a shared ``glyphs`` dict, with the definitions it uses put
+    back into it -- into its ``<defs data-outline-glyphs="">`` (one is made first in it
+    where it has none), in the order of their first use: the document a page outlined
+    on its own would be, standalone, to rasterise or to save.  A reference ``glyphs``
+    does not hold is left as it is; a document holding its definitions already is
+    returned as it is."""
+    wanted: dict[str, None] = {}
+    for ident in _GLYPH_REF.findall(svg):
+        if ident in glyphs:
+            wanted[ident] = None
+    have = set(re.findall(r'<path id="(g[0-9A-Za-z]+)"', svg))
+    missing = "".join(glyphs[ident] for ident in wanted if ident not in have)
+    if not missing:
+        return svg
+    block = svg.find('<defs data-outline-glyphs="">')
+    if block >= 0:
+        at = block + len('<defs data-outline-glyphs="">')
+        return svg[:at] + missing + svg[at:]
+    root = _ROOT.search(svg)
+    if root is None:
+        return svg
+    return svg[:root.end()] + f'<defs data-outline-glyphs="">{missing}</defs>' + svg[root.end():]
 
 
 def _fraction(value: str) -> str:
