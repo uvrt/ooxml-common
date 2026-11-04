@@ -198,3 +198,167 @@ def test_a_style_sheet_keeps_every_text():
 def test_an_svg_without_text_is_returned_as_it_is():
     svg = _svg('<rect x="1" y="1" width="2" height="2"/>')
     assert outline_text(svg, FontSetup.of((), (), False)).svg is svg
+
+
+# --------------------------------------------------------------------------------------
+# More of usvg's layout and harfrust's shaping, against resvg's pixels
+# --------------------------------------------------------------------------------------
+
+def _decoded(png: bytes) -> list[bytes]:
+    """The rows of a PNG as resvg writes it (8-bit RGBA, not interlaced), unfiltered."""
+    import struct
+    import zlib
+
+    width, height, depth, colour = struct.unpack(">IIBB", png[16:26])
+    assert (depth, colour) == (8, 6)
+    data, at = b"", 8
+    while at < len(png):
+        length, kind = struct.unpack(">I4s", png[at:at + 8])
+        if kind == b"IDAT":
+            data += png[at + 8:at + 8 + length]
+        at += 12 + length
+    raw, stride, rows, previous = zlib.decompress(data), width * 4, [], bytes(width * 4)
+    for y in range(height):
+        kind, line = raw[y * (stride + 1)], bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+        for x in range(stride):
+            left = line[x - 4] if x >= 4 else 0
+            up, corner = previous[x], previous[x - 4] if x >= 4 else 0
+            if kind == 1:
+                line[x] = (line[x] + left) & 255
+            elif kind == 2:
+                line[x] = (line[x] + up) & 255
+            elif kind == 3:
+                line[x] = (line[x] + (left + up) // 2) & 255
+            elif kind == 4:
+                estimate = left + up - corner
+                pa, pb, pc = abs(estimate - left), abs(estimate - up), abs(estimate - corner)
+                line[x] = (line[x] + (left if pa <= pb and pa <= pc else up if pb <= pc else corner)) & 255
+        rows.append(bytes(line))
+        previous = line
+    return rows
+
+
+def _worst(a: bytes, b: bytes) -> int:
+    """The largest difference of one channel of one pixel between two PNGs."""
+    if a == b:
+        return 0
+    return max(abs(x - y) for left, right in zip(_decoded(a), _decoded(b)) for x, y in zip(left, right))
+
+
+MORE = [
+    # Marks positioned on their bases, and composed forms.
+    '<text x="10" y="60" font-family="Arimo" font-size="36">Véronique näive café</text>',
+    '<text x="10" y="60" font-family="Lato" font-size="36">office affluent fjord Th</text>',
+    # Marks with no composed form: attached by GPOS (mark-to-base, mark-to-mark), and
+    # decomposed in a contextual substitution.
+    *(f'<text x="10" y="60" font-family="{family}" font-size="40">q\u0301 x\u0308\u0301 g\u0323 Ka\u0300</text>'
+      for family in ("Arimo", "Lato", "Tinos", "Raleway", "Caladea")),
+    # Spaces the face may lack, drawn at HarfBuzz's widths; default ignorables hidden.
+    *(f'<text x="10" y="60" xml:space="preserve" font-family="{family}" font-size="30">'
+      'a\u2003b\u2009c\u200ad\u2007e\u202ff\u200bg\u00adh\u2060i</text>' for family in ("Cousine", "Carlito")),
+    '<text x="10" y="60" font-family="Carlito" font-size="30">Ελληνικά Кириллица ﬁ ½ ‰</text>',
+    '<text x="10" y="60" font-family="Noto Sans JP" font-size="28" font-weight="bold">「日本語」ですか？ｶﾀｶﾅ</text>',
+    # Spacing and lengths.
+    '<text x="10" y="60" font-family="Carlito" font-size="30" letter-spacing="3" word-spacing="9">Spaced out words</text>',
+    '<text x="10" y="60" font-family="Carlito" font-size="30" textLength="400">Stretched by spacing</text>',
+    '<text x="10" y="60" font-family="Carlito" font-size="30" textLength="400" lengthAdjust="spacingAndGlyphs">'
+    'Stretched glyphs</text>',
+    '<text x="10" y="60" dx="0 4 8" dy="0 -5 5" font-family="Tinos" font-size="30">Shifted letters</text>',
+    '<text x="10" y="60" font-family="Tinos" font-size="30">H<tspan baseline-shift="sub" font-size="18">2</tspan>O '
+    'x<tspan baseline-shift="30%">n</tspan> <tspan baseline-shift="-4">low</tspan></text>',
+    # Whitespace, links, visibility, paint.
+    '<text x="10" y="60" font-family="Carlito" font-size="30">  Collapsed   <tspan> spaces </tspan>  here  </text>',
+    '<text x="10" y="60" font-family="Carlito" font-size="30"><a href="https://example.com/x">Linked</a> '
+    '<tspan visibility="hidden">gone</tspan> <tspan fill="none" stroke="#080" stroke-width="1.2">hollow</tspan> '
+    '<tspan fill-opacity="0.4">faint</tspan></text>',
+    '<text x="590" y="60" font-family="Cousine, monospace" font-size="24" text-anchor="end" font-kerning="none">'
+    'AVAT <tspan text-decoration="overline underline">To</tspan> end</text>',
+]
+
+
+@needs_bundle
+@pytest.mark.parametrize("body", MORE)
+def test_more_layout_and_shaping_draws_the_pixels_the_text_draws(body):
+    svg = _svg(body)
+    outlined = outline_text(svg, _setup())
+    assert outlined.kept == [] and "<text" not in outlined.svg
+    assert _worst(_png(outlined.svg), _png(svg)) <= 64
+
+
+# --------------------------------------------------------------------------------------
+# CFF outlines, from a made-up face
+# --------------------------------------------------------------------------------------
+
+def _cff_face(path: Path) -> None:
+    """A made-up CFF face, "Made Up Sans": a box, a diamond, a curved glyph and a space."""
+    fontbuilder = pytest.importorskip("fontTools.fontBuilder")
+    from fontTools.pens.t2CharStringPen import T2CharStringPen
+
+    names = [".notdef", "space", "A", "B", "C"]
+    builder = fontbuilder.FontBuilder(1000, isTTF=False)
+    builder.setupGlyphOrder(names)
+    builder.setupCharacterMap({0x20: "space", 0x41: "A", 0x42: "B", 0x43: "C"})
+    advances = {".notdef": 500, "space": 250, "A": 600, "B": 640, "C": 700}
+    charstrings = {}
+    for name in names:
+        pen = T2CharStringPen(advances[name], None)
+        if name in (".notdef", "A"):
+            pen.moveTo((50, 0)); pen.lineTo((450, 0)); pen.lineTo((450, 700)); pen.lineTo((50, 700)); pen.closePath()
+            pen.moveTo((150, 100)); pen.lineTo((150, 600)); pen.lineTo((350, 600)); pen.lineTo((350, 100)); pen.closePath()
+        elif name == "B":
+            pen.moveTo((320, 0)); pen.lineTo((620, 350)); pen.lineTo((320, 700)); pen.lineTo((20, 350)); pen.closePath()
+        elif name == "C":
+            pen.moveTo((650, 100)); pen.curveTo((500, -20), (100, -20), (60, 350))
+            pen.curveTo((100, 720), (500, 720), (650, 600)); pen.lineTo((600, 560))
+            pen.curveTo((480, 650), (170, 650), (140, 350)); pen.curveTo((170, 50), (480, 50), (600, 140))
+            pen.closePath()
+        charstrings[name] = pen.getCharString()
+    builder.setupCFF("MadeUpSans-Regular", {"FullName": "Made Up Sans"}, charstrings, {})
+    builder.setupHorizontalMetrics({name: (advances[name], 0) for name in names})
+    builder.setupHorizontalHeader(ascent=800, descent=-200)
+    builder.setupNameTable({"familyName": "Made Up Sans", "styleName": "Regular"})
+    builder.setupOS2(sTypoAscender=800, sTypoDescender=-200, usWinAscent=800, usWinDescent=200)
+    builder.setupPost()
+    builder.save(str(path))
+
+
+def test_cff_outlines_are_the_charstrings_drawn(tmp_path):
+    font = tmp_path / "made-up-sans.otf"
+    _cff_face(font)
+    from fontTools.pens.recordingPen import RecordingPen
+    from fontTools.ttLib import TTFont
+
+    ours = load_face(str(font), 0)
+    assert ours is not None and ours.unsupported is None
+    reference = TTFont(str(font))
+    glyphs = reference.getGlyphSet()
+    for name in ("A", "B", "C"):
+        pen = RecordingPen()
+        glyphs[name].draw(pen)
+        expected = []
+        for op, points in pen.value:
+            if op == "closePath":
+                expected.append(("Z",))
+            else:
+                expected.append(({"moveTo": "M", "lineTo": "L", "curveTo": "C"}[op],
+                                 *[float(v) for point in points for v in point]))
+        drawn = ours.outline(reference.getGlyphID(name))
+        assert [(c[0], *[round(v, 3) for v in c[1:]]) for c in drawn] == \
+            [(c[0], *[round(v, 3) for v in c[1:]]) for c in expected]
+
+
+#: A CID-keyed CFF face (subroutines, hint masks, a collection) where macOS has it.
+SYSTEM_CFF = Path("/System/Library/Fonts/AppleSDGothicNeo.ttc")
+
+
+@pytest.mark.skipif(not SYSTEM_CFF.is_file(), reason="no CID-keyed CFF face on this machine")
+def test_a_cff_face_outlined_draws_the_pixels_its_text_draws():
+    resvg_py = pytest.importorskip("resvg_py")
+    svg = _svg('<text x="10" y="70" font-family="Apple SD Gothic Neo" font-size="40">한국어 Hello fi</text>')
+    outlined = outline_text(svg, FontSetup.of([str(SYSTEM_CFF)], (), False))
+    assert outlined.kept == [] and "<text" not in outlined.svg
+
+    def draw(document: str) -> bytes:
+        return bytes(resvg_py.svg_to_bytes(svg_string=document, font_files=[str(SYSTEM_CFF)], skip_system_fonts=True))
+
+    assert draw(outlined.svg) == draw(svg)

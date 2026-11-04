@@ -329,6 +329,11 @@ class _Context:
     # -- skipping -------------------------------------------------------------------------
 
     def skip(self, glyph: Glyph) -> bool:
+        # A default-ignorable character is passed over in matching, as HarfBuzz does
+        # (a zero-width joiner or non-joiner only when positioning).
+        if _default_ignorable(glyph.codepoint) and (
+                not self.table.is_gsub or glyph.codepoint not in (0x200C, 0x200D)):
+            return True
         flag = self.flag
         klass = glyph.klass
         if flag & 2 and klass == 1:
@@ -836,15 +841,55 @@ def _tables(face: OutlineFace) -> tuple[_Table, _Table, _Gdef]:
     return face._shaper_gsub, face._shaper_gpos, face._shaper_gdef  # type: ignore[attr-defined]
 
 
+def _normalised(face: OutlineFace, text: str) -> list[tuple[int, int]]:
+    """``(code point, byte offset)`` of ``text`` as HarfBuzz's normaliser leaves it for
+    the face: a character the face lacks decomposed where it has the parts, and a base
+    with its marks composed where the face has the composed character (the composed one
+    at the base's offset)."""
+    out: list[tuple[int, int]] = []
+    offset = 0
+    chars = list(text)
+    i = 0
+    while i < len(chars):
+        char = chars[i]
+        size = len(char.encode("utf-8"))
+        # A base and the marks after it.
+        j = i + 1
+        while j < len(chars) and unicodedata.combining(chars[j]):
+            j += 1
+        if j > i + 1:
+            cluster = "".join(chars[i:j])
+            composed = unicodedata.normalize("NFC", cluster)
+            if composed != cluster and all(face.has_char(ord(c)) for c in composed):
+                for c in composed[:1]:
+                    out.append((ord(c), offset))
+                rest = offset + size
+                for c, original in zip(composed[1:], chars[i + 1:j]):
+                    out.append((ord(c), rest))
+                    rest += len(original.encode("utf-8"))
+                offset += len(cluster.encode("utf-8"))
+                i = j
+                continue
+        if not face.has_char(ord(char)):
+            parts = unicodedata.normalize("NFD", char)
+            if len(parts) > 1 and all(face.has_char(ord(c)) for c in parts):
+                out.extend((ord(c), offset) for c in parts)
+                offset += size
+                i += 1
+                continue
+        out.append((ord(char), offset))
+        offset += size
+        i += 1
+    return out
+
+
 def shape(face: OutlineFace, text: str, coords: tuple[float, ...] = (), *, kerning: bool = True) -> list[Glyph]:
     """``text`` (a left-to-right run :func:`shapeable` accepts) as glyphs of ``face`` at
     the instance ``coords``; a character the face lacks is glyph 0."""
     gsub, gpos, gdef = _tables(face)
     glyphs: list[Glyph] = []
     space = face.glyph(0x20)
-    offset = 0
-    for char in text:
-        code = ord(char)
+    for code, offset in _normalised(face, text):
         gid = face.glyph(code)
         g = Glyph(gid, offset, codepoint=code)
         if gid == 0 and code in _SPACES and code != 0x20 and space:
@@ -853,7 +898,6 @@ def shape(face: OutlineFace, text: str, coords: tuple[float, ...] = (), *, kerni
         if _is_mark_char(code) and glyphs:
             g.cluster = glyphs[-1].cluster   # a mark continues its base's cluster
         glyphs.append(g)
-        offset += len(char.encode("utf-8"))
     for g in glyphs:
         if gdef.classes is not None:
             g.klass = gdef.classes.get(g.id, 0)
@@ -897,7 +941,7 @@ def shape(face: OutlineFace, text: str, coords: tuple[float, ...] = (), *, kerni
         pairs = face.legacy_kern
         previous = None
         for g in glyphs:
-            if g.klass == 3:
+            if g.klass == 3 or _default_ignorable(g.codepoint):
                 continue
             if previous is not None:
                 previous.x_advance += pairs.get((previous.id, g.id), 0)
