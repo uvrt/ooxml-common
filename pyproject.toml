@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ooxml-common"
-version = "0.36.0"
+version = "0.37.0"
 description = "Format-neutral OOXML pieces shared by pptx2svg and docx2svg: OPC, units, DrawingML data, fonts and measured text metrics"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -43,6 +43,8 @@ measure = ["fonttools>=4.40"]
 dev = [
   "pytest>=7",
   "fonttools>=4.40",
+  # tests/test_outlines.py rasterises an outlined SVG against its text (skipped without it).
+  "resvg-py>=0.5",
   # Pinned, and CI's build job installs the same versions: a new release's new findings
   # then arrive as a pull request that bumps these, not as a red main.
   "ruff==0.17.2",

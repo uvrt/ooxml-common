@@ -428,6 +428,10 @@ USED_BY: dict[str, dict[str, str]] = {
         "classify": "xlsx-agent",
         "is_date_code": "ooxml-edit",
     },
+    "ooxml_common.outlines": {
+        "FontSetup": "docx2svg, pptx2svg",
+        "outline_text": "docx2svg, pptx2svg",
+    },
     "ooxml_common.opc": {
         "CONTENT_TYPES_PART": "docx2svg, ooxml-edit",
         "OpcPackage": "docx2svg",
