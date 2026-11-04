@@ -17,6 +17,8 @@ never tagged.
   | 49-slide deck (pptx2svg 0.3.7) | 548 KB, gz 68 KB | 2,894 KB (x5.3), gz 729 KB (x10.8) | 2,533 KB (x4.6), gz 670 KB | 1,698 KB (x3.1), gz 281 KB (x4.1) |
   | 24-page report (docx2svg 0.11.5) | 1,153 KB, gz 389 KB | 6,985 KB (x6.1), gz 956 KB (x2.5) | 3,412 KB (x3.0), gz 754 KB (x1.9) | 2,707 KB (x2.3), gz 467 KB (x1.2) |
 
+  On the local corpora (this machine's fonts): pptx2svg, every third deck (191 decks, 995 slides), text 12.33 MB, 0.37.0's outlines 24.73 MB, 0.38.0's 22.01 MB slide by slide and 16.83 MB with one set (gzipped slide by slide 4.47, 9.05, 8.36 and 6.03 MB), every slide's PNG 0.37.0's byte for byte; docx2svg, 110 documents, text 46.5 MB, 153.4 MB, 87.8 MB and 76.8 MB (19.1, 31.0, 27.2 and 22.5 MB), every third document's pages (37 documents, 358 pages, 300 dpi) 0.37.0's PNGs byte for byte. Every page outlined with one set and embedded again is the page outlined alone, byte for byte.
+
   What is left is the references: a glyph drawn is about 31 bytes (`<use href="#gAbc123" x="1706"/>`) where its character was one. New tests in `tests/test_outlines.py`: `t`/`s`, ids from the outline (the same face read from two folders draws the same bytes), a taken id, the shared set (each page embedded back is the page alone, byte for byte; the sheet the same whatever order the pages were drawn in), one group for characters placed one by one (its PNG the text's, byte for byte), two pages' gradients. No change when nothing is outlined.
 
 ## 0.37.0 -- unreleased
