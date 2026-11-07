@@ -30,11 +30,26 @@ def parse_xml(data: bytes | str) -> Element:
 
 def local_name(tag: str) -> str:
     """``{http://...}sp`` -> ``sp``; ``a:sp`` -> ``sp``."""
+    found = _LOCAL_NAMES.get(tag)
+    if found is not None:
+        return found
     if tag.startswith("{"):
-        return tag.rsplit("}", 1)[-1]
-    if ":" in tag:
-        return tag.rsplit(":", 1)[-1]
-    return tag
+        found = tag.rsplit("}", 1)[-1]
+    elif ":" in tag:
+        found = tag.rsplit(":", 1)[-1]
+    else:
+        found = tag
+    if len(_LOCAL_NAMES) < LOCAL_NAMES:
+        _LOCAL_NAMES[tag] = found
+    return found
+
+
+#: Each tag's local name, as :func:`local_name` found it (round 39): a document's few hundred
+#: tags are asked for over and over -- a check's paths resolved name every sibling on the
+#: way -- and a look-up takes a quarter of the time splitting it does.  At most :data:`LOCAL_NAMES` tags;
+#: past that, the others are split each time.  A dict: safe across threads, the GIL or not.
+_LOCAL_NAMES: dict[str, str] = {}
+LOCAL_NAMES = 8192
 
 
 def children(parent: Element | None, name: str | None = None) -> list[Element]:

@@ -4,6 +4,19 @@ Versions are set in `pyproject.toml`; none is on PyPI yet. Each version that rea
 is tagged `v<version>` on the commit that brought it, from 0.28.0; the earlier ones were
 never tagged.
 
+## 0.40.0 -- unreleased
+- `xmlutil.local_name` keeps each tag's local name once found (production round 39): a
+  document's few hundred tags are asked for over and over -- a check's paths resolved name
+  every sibling on the way -- and a look-up takes about a quarter of the time splitting the tag does. At most
+  `xmlutil.LOCAL_NAMES` (8,192) tags are kept; past that, the others are split each time, as
+  before. The same names; a tag that is not a string fails as it did (`tests/test_xmlutil.py`).
+- `OpcPackage.from_parts(parts)`: a package of parts already read (part path -> bytes, the
+  content types part among them), as `OpcPackage.open` makes one of a ZIP's -- each path
+  normalised, the content types read -- for a caller that holds a package's parts and would
+  otherwise write and read a ZIP, or call the private `_load_content_types`
+  (`tests/test_package_and_images.py`).
+- (0.39.0 was not used.)
+
 ## 0.38.0 -- unreleased
 - Smaller outlines, one glyph set per document, and ids that do not move (production round 32, R10 and R11). Text as outlines was 5 to 6.5 times its text's size, and a shape that did not change could still be sent again:
   - **One glyph set for many pages.** `outline_text(svg, fonts, glyphs={})`: every glyph definition goes into the caller's dict (id -> `<path id d/>`) instead of the page's `<defs>`, and the page holds only references (`<use href="#g…">`). `glyph_sheet(glyphs)` writes the set as one `<svg>` element that draws nothing and takes no room (`width="0" height="0"`, `position:absolute`, `aria-hidden`), ordered by id, to put once in an HTML page that shows the pages inline; `embed_glyphs(svg, glyphs)` puts a page's own definitions back into it, in the order of their first use -- byte for byte the page outlined on its own, to rasterise or save. Without `glyphs` a page is standalone, as before. `Outlined.glyphs` lists the ids a page uses.

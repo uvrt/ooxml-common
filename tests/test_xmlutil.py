@@ -9,7 +9,10 @@ from __future__ import annotations
 
 from xml.etree.ElementTree import TreeBuilder, XMLParser, fromstring
 
-from ooxml_common.xmlutil import child, children, element_child, element_children, parse_xml
+import pytest
+
+from ooxml_common import xmlutil
+from ooxml_common.xmlutil import child, children, element_child, element_children, local_name, parse_xml
 
 W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
 XML = (f'<w:p xmlns:w="{W}"><!-- a note --><w:pPr/><?mark here?><w:r><w:t>one</w:t></w:r>'
@@ -46,3 +49,27 @@ def test_nothing_gives_nothing():
 def test_children_return_a_list():
     found = element_children(parse_xml(XML), "r")
     assert isinstance(found, list) and isinstance(element_children(parse_xml(XML)), list)
+
+
+# -- a tag's local name, kept once found (round 39) ---------------------------------------------
+def test_a_tag_s_local_name_whatever_its_namespace_form():
+    assert local_name("{http://schemas.openxmlformats.org/drawingml/2006/main}sp") == "sp"
+    assert local_name("a:sp") == "sp"
+    assert local_name("sp") == "sp"
+    assert local_name("{urn:x}a:b") == "a:b"   # a URI's own colons are not a prefix's
+    assert local_name("") == ""
+    # Asked again: the same, from what was kept.
+    assert local_name("{urn:x}a:b") == "a:b" and local_name("a:sp") == "sp"
+
+
+def test_past_the_limit_names_are_still_found_and_nothing_more_is_kept(monkeypatch):
+    monkeypatch.setattr(xmlutil, "_LOCAL_NAMES", {})
+    monkeypatch.setattr(xmlutil, "LOCAL_NAMES", 3)
+    names = [local_name(f"{{urn:limit}}n{k}") for k in range(10)]
+    assert names == [f"n{k}" for k in range(10)]
+    assert len(xmlutil._LOCAL_NAMES) == 3
+
+
+def test_a_tag_that_is_not_a_string_fails_as_it_did():
+    with pytest.raises(AttributeError):
+        local_name(None)  # type: ignore[arg-type]
