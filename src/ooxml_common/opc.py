@@ -12,7 +12,7 @@ from __future__ import annotations
 import posixpath
 import zipfile
 from dataclasses import dataclass, field
-from typing import BinaryIO
+from typing import BinaryIO, Mapping
 
 from .xmlutil import attr, children, local_name, parse_xml
 
@@ -92,6 +92,16 @@ class OpcPackage:
                 if not info.is_dir()
             }
         package = cls(parts=parts)
+        package._load_content_types()
+        return package
+
+    @classmethod
+    def from_parts(cls, parts: "Mapping[str, bytes]") -> "OpcPackage":
+        """A package of parts already read -- part path -> bytes, ``[Content_Types].xml``
+        among them -- as :meth:`open` makes one of a ZIP's: each path normalised
+        (:func:`normalize_part_path`), the content types read.  For a caller holding a
+        package's parts (an editor's, a cache's) that would otherwise write and read a ZIP."""
+        package = cls(parts={normalize_part_path(path): data for path, data in parts.items()})
         package._load_content_types()
         return package
 

@@ -88,6 +88,21 @@ def test_a_package_is_read_from_bytes_a_file_or_a_stream(tmp_path):
         assert "ppt/media" not in package.parts and package.has_part("/ppt/media/image1.png")
 
 
+def test_a_package_of_parts_already_read_is_the_package_of_their_zip():
+    data = _package()
+    opened = OpcPackage.open(data)
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        # As a caller holds them: some with a leading slash or a backslash.
+        parts = {("/" if k % 2 else "") + info.filename.replace("/", "\\" if k % 3 == 0 else "/"):
+                 archive.read(info) for k, info in enumerate(archive.infolist()) if not info.is_dir()}
+    made = OpcPackage.from_parts(parts)
+    assert made.parts == opened.parts
+    assert made.content_types == opened.content_types and made.default_types == opened.default_types
+    assert made.presentation_part() == "ppt/presentation.xml"
+    assert made.relationships("ppt/slides/slide1.xml") == opened.relationships("ppt/slides/slide1.xml")
+    assert OpcPackage.from_parts({}).parts == {} and OpcPackage.from_parts({}).content_type("a.png") == "image/png"
+
+
 def test_content_types_come_from_the_overrides_the_defaults_and_the_extension():
     package = OpcPackage.open(_package())
     assert package.content_type("/ppt/presentation.xml").endswith("presentation.main+xml")
