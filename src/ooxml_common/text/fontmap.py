@@ -66,6 +66,7 @@ __all__ = [
     "panose_is_sans",
     "metrics_fallback_font",
     "metrics_for",
+    "own_metrics",
     "substitution_for",
     "theme_east_asian",
     "typographic_family",
@@ -152,8 +153,11 @@ def _entries() -> list[Substitution]:
     rows.append(
         Substitution("Aptos Display", "Carlito", "Aptos Display", metric_compatible=False)
     )
-    # Aptos Narrow is a condensed cut with no table of its own; Aptos's is closer than
-    # anything else we have, and saying so beats falling through to the 0.6 em guess.
+    # Aptos Narrow is a condensed cut.  It has a table of its own now (Excel's default body
+    # face; :func:`own_metrics` answers with it), but the renderers keep measuring it with
+    # Aptos's: it is drawn as Carlito, about 11% wider than Aptos Narrow, so its own widths
+    # would draw every line well past the box they were broken for.  Where Office is
+    # installed the renderers measure the installed face anyway (``fonts.office``).
     rows.append(Substitution("Aptos Narrow", "Carlito", "Aptos", metric_compatible=False))
 
     # -- Japanese.  Noto Sans JP is not metric-compatible with any of these -- as a
@@ -562,6 +566,36 @@ def metrics_for(font_family: str | None) -> FontMetrics | None:
     """Metrics table for a PPTX font name, or ``None`` when we have no data for it."""
     substitution = substitution_for(font_family)
     return METRICS.get(substitution.metrics) if substitution else None
+
+
+def own_metrics(font_family: str | None) -> FontMetrics | None:
+    """The advance widths of the very face ``font_family`` names, or ``None``.
+
+    A table of its own (Aptos, Aptos Narrow, Cambria, Carlito, ＭＳ ゴシック), or a Latin
+    clone's verified to the same widths with nothing to add (Calibri -> Carlito, Arial ->
+    Arimo; not Calibri Light, which Carlito runs 1.3% wide, and not an East Asian face
+    reached by another name).  :func:`metrics_for` answers what
+    the renderers *measure* a face with, which for a face with no table of its own is the
+    nearest one's ("Aptos Light" -> Aptos) -- and for Aptos Narrow stays Aptos's, see its
+    row.  This is for a caller that must know a face's own widths or say it cannot: a
+    spreadsheet's fitted column widths, where a near face is a wrong width.
+    """
+    if not font_family:
+        return None
+    key = family_key(_normalize_full_width(font_family))
+    table = _own_tables().get(key)
+    if table is not None:
+        return table
+    row = substitution_for(font_family)
+    if (row is not None and row.metric_compatible and not row.caveat and not row.east_asian
+            and family_key(row.office) == key):
+        return METRICS.get(row.metrics)
+    return None
+
+
+@functools.lru_cache(maxsize=1)
+def _own_tables() -> dict:
+    return {family_key(_normalize_full_width(name)): table for name, table in METRICS.items()}
 
 
 def covers_east_asian(font_family: str | None) -> bool:

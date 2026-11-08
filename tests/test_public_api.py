@@ -483,6 +483,7 @@ USED_BY: dict[str, dict[str, str]] = {
         "japanese_fallback": "pptx2svg",
         "metrics_fallback_font": "pptx2svg",
         "metrics_for": "docx2svg",
+        "own_metrics": "xlsx-agent",
         "substitution_for": "docx2svg",
     },
     "ooxml_common.text.measure": {
