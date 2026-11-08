@@ -7,7 +7,8 @@ Back to the [README](../README.md).
 | Module | What it is |
 | --- | --- |
 | `ooxml_common.opc` | The OPC container: ZIP parts, content types, relationships |
-| `ooxml_common.kinds` | The package kinds: which extension names which (`.docx`, `.dotm`, `.potx`, `.xltm`...), whether it is a template and may carry macros, its main part's content type, and `kind_mismatch` for a package whose content type its file name does not take |
+| `ooxml_common.kinds` | The package kinds: which extension names which (`.docx`, `.dotm`, `.potx`, `.xltm`...), whether it is a template and may carry macros, its main part's content type, `kind_mismatch` for a package whose content type its file name does not take, and `identify_package`/`package_kind`: the kind a file's bytes declare, or why it is none (a `.xls`, `.doc`, `.ppt`, an encrypted file named) |
+| `ooxml_common.cfb` | The names of a compound file's streams ([MS-CFB]), read without reading any stream: what tells a `.xls`, `.doc`, `.ppt` or an encrypted package apart |
 | `ooxml_common.xmlutil` | Namespace-agnostic helpers over `xml.etree` |
 | `ooxml_common.units` | EMU, point, pixel and angle conversions |
 | `ooxml_common.locales` | `Locale`, the regional settings a conversion or an edit is in -- decimal, thousands and list separators, date order, language -- with the fixed default `EN_US` and `locale_for` (see the README, "Locale") |
