@@ -62,10 +62,10 @@ class ZipPart:
     ``name`` (as the archive spells it), its inflated ``size``, its ``crc`` and its
     compression ``method`` (:data:`zipfile.ZIP_STORED` or :data:`zipfile.ZIP_DEFLATED`)."""
 
-    __slots__ = ("name", "size", "crc", "method", "_data", "_seeks")
+    __slots__ = ("name", "size", "crc", "method", "flags", "_data", "_seeks")
 
     def __init__(self, name: str, data: "bytes | memoryview", method: int, size: int,
-                 crc: int) -> None:
+                 crc: int, flags: int = 0) -> None:
         if method not in (zipfile.ZIP_STORED, zipfile.ZIP_DEFLATED):
             raise ValueError(f"compression method {method} is not kept compressed")
         self.name = name
@@ -73,6 +73,10 @@ class ZipPart:
         self.method = method
         self.size = size
         self.crc = crc
+        #: The entry's general purpose flags that describe its data (a deflate level's
+        #: bits), without those a writer sets for itself: a data descriptor follows
+        #: (bit 3) and the name is UTF-8 (bit 11) -- :func:`entry_flags`.
+        self.flags = flags
         #: The notes a reader from the start left (``(compressed offset, inflated offset,
         #: inflater, crc so far)``), once one reached the end and found the part whole.
         self._seeks: "tuple | None" = None
@@ -80,6 +84,12 @@ class ZipPart:
     @property
     def compressed_size(self) -> int:
         return len(self._data)
+
+    @property
+    def compressed(self) -> memoryview:
+        """The entry's compressed bytes as they are in the file, for a writer that copies
+        the entry as it is."""
+        return self._data
 
     def __repr__(self) -> str:
         return f"ZipPart({self.name!r}, {self.size} bytes, {len(self._data)} compressed)"
@@ -92,7 +102,8 @@ class ZipPart:
         return self
 
     def __reduce__(self):
-        return (ZipPart, (self.name, bytes(self._data), self.method, self.size, self.crc))
+        return (ZipPart, (self.name, bytes(self._data), self.method, self.size, self.crc,
+                          self.flags))
 
     def read(self) -> bytes:
         """The whole part, inflated and checked (:class:`PartError`)."""
@@ -289,16 +300,48 @@ class PartReader(io.RawIOBase):
 Stored = Union[ZipPart, bytes]
 
 
+def entry_flags(info: zipfile.ZipInfo) -> int:
+    """The general purpose flags of ``info`` that describe its data, for an entry copied
+    as it is: without bit 3 (sizes and CRC-32 in a data descriptor after the data -- a
+    copy writes them in its header) and bit 11 (a UTF-8 name, which a writer sets from
+    the name)."""
+    return info.flag_bits & ~(0x8 | 0x800)
+
+
+class RawEntry:
+    """A ZIP entry compressed by another method than stored or deflated (bzip2, LZMA),
+    read whole at open as before; kept beside its bytes (``value``) so that a writer can
+    copy the entry as it is while the part is still those bytes
+    (:meth:`PartStore.compressed`).  The same names as a :class:`ZipPart`'s."""
+
+    __slots__ = ("name", "size", "crc", "method", "flags", "compressed", "value")
+
+    def __init__(self, name: str, compressed: memoryview, method: int, size: int, crc: int,
+                 flags: int, value: bytes) -> None:
+        self.name, self.compressed, self.method = name, compressed, method
+        self.size, self.crc, self.flags, self.value = size, crc, flags, value
+
+    @property
+    def compressed_size(self) -> int:
+        return len(self.compressed)
+
+
 class PartStore(MutableMapping):
     """Part path -> bytes, each part kept as its :class:`ZipPart` until it is replaced:
     a lookup inflates it (not kept), :meth:`open` streams it, :meth:`size` and
     :meth:`stored` answer without inflating.  Assigning bytes (or a :class:`ZipPart`)
     replaces a part; :meth:`copy` shares the parts, compressed or not."""
 
-    __slots__ = ("_items",)
+    __slots__ = ("_items", "_raw")
 
     def __init__(self, items=None) -> None:
-        self._items: dict[str, Stored] = dict(items) if items else {}
+        #: The :class:`RawEntry` of each part read by another method, by path.
+        self._raw: dict[str, RawEntry] = {}
+        if isinstance(items, PartStore):   # shared, nothing inflated
+            self._items: dict[str, Stored] = dict(items._items)
+            self._raw = dict(items._raw)
+        else:
+            self._items = dict(items) if items else {}
 
     def __getitem__(self, path: str) -> bytes:
         value = self._items[path]
@@ -326,6 +369,17 @@ class PartStore(MutableMapping):
     def __repr__(self) -> str:
         return f"PartStore({len(self._items)} parts)"
 
+    def compressed(self, path: str) -> "ZipPart | RawEntry | None":
+        """The part's ZIP entry as it was read, while the part is still what was read --
+        its :class:`ZipPart`, or the :class:`RawEntry` of a part of another method -- for a
+        writer that copies the entry as it is; ``None`` for a part replaced since (or
+        none)."""
+        value = self._items.get(path)
+        if isinstance(value, ZipPart):
+            return value
+        raw = self._raw.get(path)
+        return raw if raw is not None and value is raw.value else None
+
     def stored(self, path: str) -> "Stored | None":
         """The part as kept -- its :class:`ZipPart`, or its bytes -- without inflating it."""
         return self._items.get(path)
@@ -350,7 +404,7 @@ class PartStore(MutableMapping):
         return stream
 
     def copy(self) -> "PartStore":
-        return PartStore(self._items)
+        return PartStore(self)
 
 
 def read_parts(source: "str | os.PathLike[str] | bytes | BinaryIO", normalize=None
@@ -391,7 +445,13 @@ def read_parts(source: "str | os.PathLike[str] | bytes | BinaryIO", normalize=No
                 if end > len(data):
                     raise zipfile.BadZipFile(f"{info.filename}: its data is cut short")
                 parts[name] = ZipPart(info.filename, view[start:end], info.compress_type,
-                                      info.file_size, info.CRC)
+                                      info.file_size, info.CRC, entry_flags(info))
             else:
-                parts[name] = archive.read(info)
+                value = parts[name] = archive.read(info)
+                if not info.flag_bits & 0x1:
+                    header = _LOCAL_HEADER.unpack_from(data, info.header_offset)
+                    start = info.header_offset + _LOCAL_HEADER.size + header[9] + header[10]
+                    parts._raw[name] = RawEntry(
+                        info.filename, view[start:start + info.compress_size],
+                        info.compress_type, info.file_size, info.CRC, entry_flags(info), value)
     return entries, parts

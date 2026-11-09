@@ -69,4 +69,4 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.themetint` -- docx-agent, docx2svg: `word_theme_tint`
 - `ooxml_common.units` -- ooxml-edit: `EMU_PER_POINT`; pptx-agent: `PX_PER_PT`, `emu_to_px`, `px_to_emu`
 - `ooxml_common.xmlutil` -- docx2svg, pptx-agent: `child`, `local_name`; docx2svg: `attr`, `children`, `descendants`, `element_child`, `element_children`, `parse_xml`; ooxml-edit: `NS_R`
-- `ooxml_common.zipparts` -- ooxml-edit, xlsx-agent: `ZipPart`; ooxml-edit: `PartStore`, `read_parts`
+- `ooxml_common.zipparts` -- ooxml-edit, xlsx-agent: `ZipPart`; ooxml-edit: `PartStore`, `RawEntry`, `read_parts`

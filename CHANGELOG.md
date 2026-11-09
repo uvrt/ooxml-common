@@ -4,6 +4,16 @@ Versions are set in `pyproject.toml`; none is on PyPI yet. Each version that rea
 is tagged `v<version>` on the commit that brought it, from 0.28.0; the earlier ones were
 never tagged.
 
+## 0.45.0 -- unreleased
+- **An entry as it was read, for a writer that copies it** (round 46: untouched parts saved
+  as their compressed entries, ooxml-edit 0.101.0). `PartStore.compressed(path)` gives the
+  part's entry while the part is still what was read -- its `ZipPart`, or for a part of
+  another method than stored or deflated (bzip2, LZMA; still read whole at open) a
+  `zipparts.RawEntry` -- with its compressed bytes as they are in the file
+  (`.compressed`), method, sizes, CRC-32 and `flags`: the entry's general purpose flags
+  that describe its data, without the data-descriptor and UTF-8-name bits a writer sets
+  for itself (`zipparts.entry_flags`). `None` once the part is replaced.
+
 ## 0.44.0 -- unreleased
 - **A package's parts stay compressed until they are needed** (production round 46: a
   workbook whose sheet is 534 MB of XML in a 70 MB file took 1.25 GB open).
