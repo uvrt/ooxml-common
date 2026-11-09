@@ -4,7 +4,7 @@ Versions are set in `pyproject.toml`; none is on PyPI yet. Each version that rea
 is tagged `v<version>` on the commit that brought it, from 0.28.0; the earlier ones were
 never tagged.
 
-## 0.41.0 -- unreleased
+## 0.42.0 -- unreleased
 - Aptos Narrow's own advance widths (production round 44, for xlsx-agent's fitted column
   widths): `METRICS["Aptos Narrow"]`, its bold, and its kern pairs (`KERNING`,
   `LEGACY_KERNING`), generated as Aptos's are -- by pptx2svg's
@@ -20,6 +20,7 @@ never tagged.
   pptx2svg and docx2svg measured it (it is drawn as Carlito, about 11% wider than Aptos
   Narrow), and `fonts.office.has_own_table("Aptos Narrow")` stays false, so where Office is
   installed they still measure the installed face.
+- (0.41.0 is taken by the pull request for package kinds from bytes, round 44.)
 
 ## 0.40.0 -- unreleased
 - `xmlutil.local_name` keeps each tag's local name once found (production round 39): a
