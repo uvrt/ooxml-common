@@ -4,6 +4,21 @@ Versions are set in `pyproject.toml`; none is on PyPI yet. Each version that rea
 is tagged `v<version>` on the commit that brought it, from 0.28.0; the earlier ones were
 never tagged.
 
+## 0.43.0 -- unreleased
+- What a file's bytes are (production round 44, R63a): `kinds.identify_package(source)` and
+  `kinds.package_kind(source)` read bytes, a path or a binary file and give the kind its main
+  part declares (`"xlsx"`, `"dotm"`...; `kind_of` of the content type of the part
+  `_rels/.rels` names as the office document), or `None` with a `reason` naming what it is
+  instead: an Excel 97-2003 workbook (a compound file with a `Workbook` or `Book` stream, or a
+  BIFF2-4 file), a Word 97-2003 document (`WordDocument`), a PowerPoint 97-2003 presentation
+  (`PowerPoint Document`), an encrypted package (`EncryptedPackage`), an XML spreadsheet or
+  document of Office 2003, PDF, RTF, OpenDocument, a `.xlsb`, a slide show or add-in, or a ZIP
+  that is no package. Only the ZIP's central directory and those two small parts are read,
+  within `IDENTIFY_LIMITS` (50 MB, 2,000 entries -- the libraries' own limits -- and 1 MB and
+  a 200x expansion for each part read); a part with a document type declaration is not parsed.
+  A file object is put back where it stood. The compound file reader is `ooxml_common.cfb`
+  (`compound_file_names`), as xlsx-agent's opener reads one (`tests/test_identify.py`).
+
 ## 0.42.0 -- unreleased
 - Aptos Narrow's own advance widths (production round 44, for xlsx-agent's fitted column
   widths): `METRICS["Aptos Narrow"]`, its bold, and its kern pairs (`KERNING`,
@@ -20,7 +35,7 @@ never tagged.
   pptx2svg and docx2svg measured it (it is drawn as Carlito, about 11% wider than Aptos
   Narrow), and `fonts.office.has_own_table("Aptos Narrow")` stays false, so where Office is
   installed they still measure the installed face.
-- (0.41.0 is taken by the pull request for package kinds from bytes, round 44.)
+- (0.41.0 was not used.)
 
 ## 0.40.0 -- unreleased
 - `xmlutil.local_name` keeps each tag's local name once found (production round 39): a
