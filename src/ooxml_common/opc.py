@@ -9,12 +9,13 @@ against the part's directory.
 
 from __future__ import annotations
 
+import io
 import posixpath
-import zipfile
 from dataclasses import dataclass, field
-from typing import BinaryIO, Mapping
+from typing import BinaryIO, Mapping, MutableMapping
 
 from .xmlutil import attr, children, local_name, parse_xml
+from .zipparts import PartStore, ZipPart, read_parts
 
 CONTENT_TYPES_PART = "[Content_Types].xml"
 
@@ -70,9 +71,14 @@ class Relationship:
 
 @dataclass
 class OpcPackage:
-    """A loaded .pptx, addressed by normalised part path (no leading slash)."""
+    """A loaded .pptx, addressed by normalised part path (no leading slash).
 
-    parts: dict[str, bytes]
+    ``parts`` maps each path to its bytes.  A package :meth:`open` read keeps every part as
+    its compressed ZIP entry (a :class:`~ooxml_common.zipparts.PartStore`): a part is
+    inflated each time it is read (:meth:`read`), or a piece at a time
+    (:meth:`open_part`), and never held inflated by the package."""
+
+    parts: MutableMapping[str, bytes]
     content_types: dict[str, str] = field(default_factory=dict)
     default_types: dict[str, str] = field(default_factory=dict)
     _rels_cache: dict[str, dict[str, Relationship]] = field(default_factory=dict, repr=False)
@@ -81,16 +87,9 @@ class OpcPackage:
 
     @classmethod
     def open(cls, source: str | bytes | BinaryIO) -> "OpcPackage":
-        if isinstance(source, bytes):
-            import io
-
-            source = io.BytesIO(source)
-        with zipfile.ZipFile(source) as archive:
-            parts = {
-                normalize_part_path(info.filename): archive.read(info)
-                for info in archive.infolist()
-                if not info.is_dir()
-            }
+        """A package read from a path, bytes or a binary file, its parts kept compressed
+        (:func:`~ooxml_common.zipparts.read_parts`)."""
+        _, parts = read_parts(source, normalize_part_path)
         package = cls(parts=parts)
         package._load_content_types()
         return package
@@ -129,7 +128,35 @@ class OpcPackage:
         return normalize_part_path(path) in self.parts
 
     def read(self, path: str) -> bytes | None:
+        """A part's bytes (inflated again at each call for a part kept compressed)."""
         return self.parts.get(normalize_part_path(path))
+
+    def open_part(self, path: str) -> BinaryIO | None:
+        """A binary file over a part's bytes, inflated a piece at a time as it is read when
+        the part is kept compressed: for a parser that need not hold the part whole.
+        ``None`` for no such part."""
+        path = normalize_part_path(path)
+        if isinstance(self.parts, PartStore):
+            return self.parts.open(path)
+        data = self.parts.get(path)
+        return None if data is None else io.BytesIO(data)
+
+    def part_size(self, path: str) -> int | None:
+        """A part's size in bytes, without inflating it; ``None`` for no such part."""
+        path = normalize_part_path(path)
+        if isinstance(self.parts, PartStore):
+            return self.parts.size(path)
+        data = self.parts.get(path)
+        return None if data is None else len(data)
+
+    def part_entry(self, path: str) -> ZipPart | None:
+        """The part's compressed ZIP entry (:class:`~ooxml_common.zipparts.ZipPart`), for a
+        caller that reads it more than once or from an offset; ``None`` when the part is
+        not kept compressed (or there is none)."""
+        if not isinstance(self.parts, PartStore):
+            return None
+        stored = self.parts.stored(normalize_part_path(path))
+        return stored if isinstance(stored, ZipPart) else None
 
     def read_xml(self, path: str):
         raw = self.read(path)

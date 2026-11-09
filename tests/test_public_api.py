@@ -524,6 +524,11 @@ USED_BY: dict[str, dict[str, str]] = {
         "local_name": "docx2svg, pptx-agent",
         "parse_xml": "docx2svg",
     },
+    "ooxml_common.zipparts": {
+        "PartStore": "ooxml-edit",
+        "ZipPart": "ooxml-edit, xlsx-agent",
+        "read_parts": "ooxml-edit",
+    },
 }
 
 #: (module, old underscore name) -> the public name; aliases kept for one release.

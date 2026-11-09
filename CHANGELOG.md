@@ -4,6 +4,30 @@ Versions are set in `pyproject.toml`; none is on PyPI yet. Each version that rea
 is tagged `v<version>` on the commit that brought it, from 0.28.0; the earlier ones were
 never tagged.
 
+## 0.44.0 -- unreleased
+- **A package's parts stay compressed until they are needed** (production round 46: a
+  workbook whose sheet is 534 MB of XML in a 70 MB file took 1.25 GB open).
+  `zipparts.read_parts(source, normalize=None)` reads a ZIP (bytes, a path or a binary
+  file, read whole; no handle is kept) into its file entries and a `zipparts.PartStore`:
+  part path -> bytes, each part kept as its `zipparts.ZipPart` -- a view of the file's
+  compressed bytes with the entry's size, CRC-32 and method -- until it is replaced with
+  bytes. A lookup inflates the part (nothing is cached); `ZipPart.open(offset=0)` is a
+  binary file over the inflated bytes, inflated 64 KB at a time as it is read, from any
+  offset (a reader that inflates a part from its start notes the inflater's state every 16
+  MB -- 64 notes at most, some 40 KB each -- so a later reader starts at the last note
+  before its offset); `PartStore.size`, `stored` and `copy` answer without inflating.
+  Every entry is checked at open as `zipfile` checks one it reads (local header, name,
+  overlaps, encryption; a part neither stored nor deflated is read at once, as before),
+  and its data as it is inflated, more strictly than `zipfile`: never past the declared
+  size (the inflater is bounded by it, so a bomb whose entry understates its size is
+  refused before more than a piece is held), not short of it, and the CRC-32 once a read
+  reaches the end -- `zipparts.PartError`, a `zipfile.BadZipFile`. A `ZipPart` is
+  immutable, copies as itself, pickles with its bytes, and is read by many threads at once
+  (each reader its own inflater).
+- `OpcPackage.open` keeps the parts so (`parts` is a `PartStore`; `from_parts` still takes
+  a dict), and `OpcPackage.open_part(path)` (a binary file, streamed), `part_size(path)`
+  and `part_entry(path)` (the `ZipPart`) are new. `read` gives the same bytes as before.
+
 ## 0.43.0 -- unreleased
 - What a file's bytes are (production round 44, R63a): `kinds.identify_package(source)` and
   `kinds.package_kind(source)` read bytes, a path or a binary file and give the kind its main

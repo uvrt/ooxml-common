@@ -9,6 +9,8 @@ fill, outline, effect, geometry and colour renderers could follow; the third bro
 charts and the shape tree, with the shape and text body renderers that draw them.
 
 * :mod:`ooxml_common.opc` -- the OPC container: ZIP parts, content types, relationships;
+* :mod:`ooxml_common.zipparts` -- a package's parts kept as their compressed ZIP entries,
+  read whole or streamed, checked as they are inflated;
 * :mod:`ooxml_common.kinds` -- which kind of package an extension names (``.docx``,
   ``.potm``...) and the main part's content type that kind needs;
 * :mod:`ooxml_common.xmlutil` -- namespace-agnostic helpers over ``xml.etree``;
@@ -53,4 +55,4 @@ body's paragraphs against Word's own output.  :mod:`ooxml_common.drawingml.wrap`
 DrawingML text body's, which a chart and a SmartArt shape carry in either format.
 """
 
-__version__ = "0.43.0"
+__version__ = "0.44.0"
