@@ -6,7 +6,8 @@ Back to the [README](../README.md).
 
 | Module | What it is |
 | --- | --- |
-| `ooxml_common.opc` | The OPC container: ZIP parts, content types, relationships |
+| `ooxml_common.opc` | The OPC container: ZIP parts (kept compressed: `open_part` streams one, `part_size` sizes it), content types, relationships |
+| `ooxml_common.zipparts` | A package's parts kept as their compressed ZIP entries until they are needed (`read_parts`, `PartStore`): a part read whole or streamed from any offset (`ZipPart.read`, `ZipPart.open`), checked as it is inflated -- bounded by its declared size, its CRC-32 at the end (`PartError`) |
 | `ooxml_common.kinds` | The package kinds: which extension names which (`.docx`, `.dotm`, `.potx`, `.xltm`...), whether it is a template and may carry macros, its main part's content type, `kind_mismatch` for a package whose content type its file name does not take, and `identify_package`/`package_kind`: the kind a file's bytes declare, or why it is none (a `.xls`, `.doc`, `.ppt`, an encrypted file named) |
 | `ooxml_common.cfb` | The names of a compound file's streams ([MS-CFB]), read without reading any stream: what tells a `.xls`, `.doc`, `.ppt` or an encrypted package apart |
 | `ooxml_common.xmlutil` | Namespace-agnostic helpers over `xml.etree` |
