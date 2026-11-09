@@ -14,6 +14,7 @@ import zlib
 import pytest
 
 from ooxml_common import zipparts
+from ooxml_common import zipparts as zparts
 from ooxml_common.opc import OpcPackage
 from ooxml_common.zipparts import PartError, PartReader, PartStore, ZipPart, read_parts
 
@@ -320,3 +321,35 @@ def test_a_package_keeps_its_parts_compressed():
     made = OpcPackage.from_parts({"[Content_Types].xml": xml, "a.xml": b"<a/>"})
     assert made.open_part("a.xml").read() == b"<a/>" and made.part_size("a.xml") == 4
     assert made.part_entry("a.xml") is None and made.open_part("b.xml") is None
+
+
+def test_an_entry_as_it_was_read_is_kept_for_copying():
+    """A part's compressed data and what describes it (method, sizes, CRC-32, the flags
+    that describe the data) while it is what was read; nothing once it is replaced."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("a.xml", _text(5000), zipfile.ZIP_DEFLATED, compresslevel=9)
+        archive.writestr("b.xml", _text(4000, 3), zipfile.ZIP_BZIP2)
+        archive.writestr("c.bin", b"stored", zipfile.ZIP_STORED)
+    data = buffer.getvalue()
+    parts = read_parts(data)[1]
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        infos = {info.filename: info for info in archive.infolist()}
+    for name in ("a.xml", "b.xml", "c.bin"):
+        entry = parts.compressed(name)
+        info = infos[name]
+        assert entry is not None
+        assert (entry.method, entry.size, entry.crc, entry.compressed_size) == (
+            info.compress_type, info.file_size, info.CRC, info.compress_size)
+        assert entry.flags == info.flag_bits & ~0x808
+        start = info.header_offset + 30 + len(name.encode()) + len(info.extra)
+        assert bytes(entry.compressed) == data[start:start + info.compress_size]
+    assert isinstance(parts.compressed("b.xml"), zparts.RawEntry)
+    copied = parts.copy()
+    parts["b.xml"] = bytes(bytearray(parts["b.xml"]))   # equal bytes, another object: replaced
+    parts["a.xml"] = b"<a/>"
+    assert parts.compressed("a.xml") is None and parts.compressed("b.xml") is None
+    assert copied.compressed("a.xml") is not None and copied.compressed("b.xml") is not None
+    assert parts.compressed("nothing") is None
+    again = pickle.loads(pickle.dumps(copied.compressed("a.xml")))
+    assert again.flags == copied.compressed("a.xml").flags and again.read() == _text(5000)

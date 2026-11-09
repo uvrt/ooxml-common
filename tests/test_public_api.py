@@ -526,6 +526,7 @@ USED_BY: dict[str, dict[str, str]] = {
     },
     "ooxml_common.zipparts": {
         "PartStore": "ooxml-edit",
+        "RawEntry": "ooxml-edit",
         "ZipPart": "ooxml-edit, xlsx-agent",
         "read_parts": "ooxml-edit",
     },
