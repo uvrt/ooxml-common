@@ -61,7 +61,7 @@ Each line is a module, then which siblings import what from it.
 - `ooxml_common.svgimage` -- pptx-agent: `with_pixel_size`; pptx2svg: `natural_size`, `with_pixel_sized_images`
 - `ooxml_common.stylenames` -- docx-agent: `find_style`, `list_separator`
 - `ooxml_common.text` -- pptx2svg: `kerning`, `metrics`
-- `ooxml_common.text.fontmap` -- docx2svg, pptx2svg: `generic_family`; docx2svg: `SUBSTITUTIONS`, `metrics_for`, `substitution_for`; pptx2svg: `JAPANESE_GOTHIC`, `covers_east_asian`, `family_key`, `japanese_fallback`, `metrics_fallback_font`
+- `ooxml_common.text.fontmap` -- docx2svg, pptx2svg: `generic_family`; docx2svg: `SUBSTITUTIONS`, `metrics_for`, `substitution_for`; pptx2svg: `JAPANESE_GOTHIC`, `covers_east_asian`, `family_key`, `japanese_fallback`, `metrics_fallback_font`; xlsx-agent: `own_metrics`
 - `ooxml_common.text.measure` -- docx2svg, pptx-agent: `DefaultTextMeasurer`; docx2svg: `font_kern_units`
 - `ooxml_common.text.metrics` -- docx2svg: `METRICS`
 - `ooxml_common.text.recorded_symbol_faces` -- docx2svg: `ADVANCES`, `DECORATIONS`, `METRICS`
