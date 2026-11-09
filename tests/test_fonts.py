@@ -30,6 +30,7 @@ from ooxml_common.text.fontmap import (
     font_family_value,
     generic_family,
     metrics_for,
+    own_metrics,
     substitution_for,
     typographic_family,
 )
@@ -264,7 +265,7 @@ DIVERGENT = {
 
 #: Tables with no font behind them.  See the note on :data:`DIVERGENT`.
 MEASURED_ONLY = {
-    "Aptos", "Aptos Display", "Cambria",
+    "Aptos", "Aptos Display", "Aptos Narrow", "Cambria",
     "ＭＳ ゴシック", "ＭＳ Ｐゴシック", "ＭＳ 明朝", "ＭＳ Ｐ明朝",
     "SimSun", "NSimSun", "SimHei", "KaiTi", "FangSong",
     "MingLiU", "MingLiU_HKSCS",
@@ -813,3 +814,23 @@ def test_the_fonttools_measurer_agrees_with_the_baked_table_on_kerning():
         assert live == pytest.approx(table, abs=1e-6), text
 
 
+
+
+def test_own_metrics_are_the_face_s_own_widths_or_none():
+    """A face's own table, or a Latin clone's with the same widths; never a near face's.
+    Aptos Narrow has its own table (measured from the face Office installs) while the
+    renderers keep measuring it with Aptos's, as they drew it before."""
+    assert own_metrics("Aptos Narrow") is METRICS["Aptos Narrow"]
+    assert own_metrics(" aptos narrow ") is METRICS["Aptos Narrow"]
+    assert metrics_for("Aptos Narrow") is METRICS["Aptos"]
+    narrow, aptos = METRICS["Aptos Narrow"], METRICS["Aptos"]
+    word = "Stock level by warehouse"
+    assert sum(narrow.widths[c] for c in word) < 0.95 * sum(aptos.widths[c] for c in word)
+    for family, key in (("Calibri", "Carlito"), ("Arial", "Arimo"), ("Helvetica", "Arimo"),
+                        ("Times New Roman", "Tinos"), ("Courier New", "Cousine"),
+                        ("Cambria", "Cambria"), ("Aptos", "Aptos"), ("Carlito", "Carlito"),
+                        ("Aptos Display", "Aptos Display")):
+        assert own_metrics(family) is METRICS[key], family
+    # Measured with another face's widths, or not at all: no answer.
+    for family in ("Aptos Light", "Calibri Light", "Rockwell", "Verdana", "MS Gothic", "", None):
+        assert own_metrics(family) is None, family

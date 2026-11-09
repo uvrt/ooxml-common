@@ -4,7 +4,7 @@ Versions are set in `pyproject.toml`; none is on PyPI yet. Each version that rea
 is tagged `v<version>` on the commit that brought it, from 0.28.0; the earlier ones were
 never tagged.
 
-## 0.41.0 -- unreleased
+## 0.43.0 -- unreleased
 - What a file's bytes are (production round 44, R63a): `kinds.identify_package(source)` and
   `kinds.package_kind(source)` read bytes, a path or a binary file and give the kind its main
   part declares (`"xlsx"`, `"dotm"`...; `kind_of` of the content type of the part
@@ -19,6 +19,25 @@ never tagged.
   A file object is put back where it stood. The compound file reader is `ooxml_common.cfb`
   (`compound_file_names`), as xlsx-agent's opener reads one (`tests/test_identify.py`).
 
+## 0.42.0 -- unreleased
+- Aptos Narrow's own advance widths (production round 44, for xlsx-agent's fitted column
+  widths): `METRICS["Aptos Narrow"]`, its bold, and its kern pairs (`KERNING`,
+  `LEGACY_KERNING`), generated as Aptos's are -- by pptx2svg's
+  `tools/extract_font_metrics.py`, from the face Office installs (`Aptos-Narrow.ttf`,
+  `Aptos-Narrow-Bold.ttf`, read through the local font profile); measurements only, no font
+  file. It is Excel's default body face, and a condensed cut: 8% narrower than Aptos on
+  "Stock level by warehouse", 15% on a 40-letter word at 11 pt.
+- `text.fontmap.own_metrics(family)`: the very face's own widths -- its own table, or a
+  Latin clone's verified to the same widths (Calibri -> Carlito) -- or `None`; never a near
+  face's, as `metrics_for` gives one ("Aptos Light" -> Aptos). Calibri Light (Carlito runs
+  it 1.3% wide) and East Asian faces reached by another name answer `None`.
+- Nothing changes for the renderers: `metrics_for("Aptos Narrow")` stays Aptos's table, as
+  pptx2svg and docx2svg measured it (it is drawn as Carlito, about 11% wider than Aptos
+  Narrow), and `fonts.office.has_own_table("Aptos Narrow")` stays false, so where Office is
+  installed they still measure the installed face.
+- (0.41.0 was not used.)
+
+## 0.40.0 -- unreleased
 - `xmlutil.local_name` keeps each tag's local name once found (production round 39): a
   document's few hundred tags are asked for over and over -- a check's paths resolved name
   every sibling on the way -- and a look-up takes about a quarter of the time splitting the tag does. At most
